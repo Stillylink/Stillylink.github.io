@@ -1,11 +1,33 @@
 <!DOCTYPE html>
-<html>
-  <head>
+<html lang="ru">
+<head>
     <meta charset="UTF-8">
-    <title>Мой сайт</title>
-  </head>
-  <body>
-    <h1>Привет, мир!</h1>
-    <p>Сайт работает!</p>
-  </body>
+    <title>Добро пожаловать</title>
+    <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+
+<div class="container">
+    <h1>Анонимный чат</h1>
+
+    <input id="room" class="input" type="text" placeholder="Название группы">
+    <input id="nickname" class="input" type="text" placeholder="Ваш ник">
+
+    <button class="btn" onclick="enterChat()">Войти</button>
+</div>
+
+<script>
+function enterChat() {
+    const room = document.getElementById("room").value.trim();
+    const nick = document.getElementById("nickname").value.trim();
+
+    if (!room || !nick) {
+        alert("Введите название группы и никнейм");
+        return;
+    }
+    window.location = `chat.html?room=${encodeURIComponent(room)}&nick=${encodeURIComponent(nick)}`;
+}
+</script>
+
+</body>
 </html>
