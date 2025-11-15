@@ -3,30 +3,60 @@
 <head>
     <meta charset="UTF-8">
     <title>Анонимный чат</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<div class="container">
+<header class="navbar">
+    <div class="logo">AnonChat</div>
+
+    <nav class="nav-links">
+        <a href="#">Главная</a>
+        <a href="#">Чаты</a>
+        <a href="#">Создать чат</a>
+        <a href="#">Регистрация</a>
+    </nav>
+
+    <div class="nav-toggle" onclick="toggleMenu()">☰</div>
+</header>
+
+<section class="hero">
     <h1>Анонимный чат</h1>
+    <p>Общайся свободно. Без регистрации. Полная анонимность.</p>
 
-    <input id="room" class="input" type="text" placeholder="Название группы">
-    <input id="nickname" class="input" type="text" placeholder="Ваш ник">
+    <a href="#create-chat" class="hero-btn">Создать чат</a>
+</section>
 
-    <button class="btn" onclick="enterChat()">Войти</button>
-</div>
+<section id="create-chat" class="section">
+    <h2>Создать новый чат</h2>
+
+    <div class="card">
+        <input class="input" type="text" placeholder="Название чата">
+        <input class="input" type="text" placeholder="Ваш ник">
+        <button class="btn">Создать</button>
+    </div>
+</section>
+
+<section class="section">
+    <h2>Регистрация</h2>
+
+    <div class="card">
+        <input class="input" type="text" placeholder="Логин">
+        <input class="input" type="password" placeholder="Пароль">
+        <button class="btn">Зарегистрироваться</button>
+    </div>
+</section>
+
+
+<footer class="footer">
+    <p>© 2025 StillyLink. Все права защищены.</p>
+</footer>
+
 
 <script>
-function enterChat() {
-    const room = document.getElementById("room").value.trim();
-    const nick = document.getElementById("nickname").value.trim();
-
-    if (!room || !nick) {
-        alert("Введите название группы и никнейм");
-        return;
-    }
-
-    window.location = `chat.html?room=${encodeURIComponent(room)}&nick=${encodeURIComponent(nick)}`;
+function toggleMenu() {
+    document.querySelector(".nav-links").classList.toggle("open");
 }
 </script>
 
