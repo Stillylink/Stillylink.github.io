@@ -29,6 +29,7 @@ body {
     color: #007bff;
 }
 
+/* Десктоп */
 .nav-links {
     margin-left: auto;
     display: flex;
@@ -47,11 +48,11 @@ body {
 
 .nav-toggle {
     display: none;
-    font-size: 26px;
+    font-size: 28px;
     margin-left: auto;
     cursor: pointer;
+    user-select: none;
 }
-
 
 /* ===== HERO ===== */
 
@@ -85,7 +86,6 @@ body {
     background: #e7e7e7;
 }
 
-
 /* ===== СЕКЦИИ ===== */
 
 .section {
@@ -97,7 +97,6 @@ body {
     font-size: 32px;
     margin-bottom: 30px;
 }
-
 
 /* ===== КАРТОЧКИ ===== */
 
@@ -117,7 +116,6 @@ body {
     border: 1px solid #ccc;
     border-radius: 8px;
     font-size: 16px;
-    display: block;
 }
 
 .btn {
@@ -135,7 +133,6 @@ body {
     background: #005fcc;
 }
 
-
 /* ===== ФУТЕР ===== */
 
 .footer {
@@ -146,37 +143,57 @@ body {
     margin-top: 40px;
 }
 
-
-
-/* ===== АДАПТИВ ===== */
+/* ===== МОБИЛЬНОЕ МЕНЮ ===== */
 
 @media (max-width: 768px) {
+
+    /* скрываем обычные ссылки */
     .nav-links {
-        position: absolute;
-        right: 0;
+        position: fixed;
         top: 60px;
-        background: white;
-        width: 200px;
-        display: none;
+        right: -260px;
+        width: 240px;
+        height: calc(100% - 60px);
+        background: #fff;
         flex-direction: column;
-        padding: 10px 0;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        padding: 20px;
+        gap: 15px;
+        box-shadow: -2px 0 12px rgba(0,0,0,0.15);
+        transition: right 0.3s ease;
+        z-index: 20;
     }
 
     .nav-links.open {
-        display: flex;
+        right: 0;
     }
 
     .nav-toggle {
         display: block;
     }
+
+    /* затемнение фона */
+    .menu-overlay {
+        display: none;
+        position: fixed;
+        top: 60px;
+        left: 0;
+        width: 100%;
+        height: calc(100% - 60px);
+        background: rgba(0,0,0,0.35);
+        z-index: 15;
+    }
+
+    .menu-overlay.show {
+        display: block;
+    }
 }
+
+/* ===== АДАПТИВ ТЕКСТА ===== */
 
 @media (max-width: 480px) {
     .hero h1 {
         font-size: 36px;
     }
-
     .hero p {
         font-size: 18px;
     }
