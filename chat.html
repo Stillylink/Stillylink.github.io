@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Чат</title>
-    <link rel="stylesheet" href="assets/style.css">
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
@@ -16,7 +16,32 @@
     </div>
 </div>
 
-<script src="assets/chat.js"></script>
+<script>
+// Читаем параметры из URL
+const url = new URLSearchParams(window.location.search);
+const room = url.get("room");
+const nickname = url.get("nick");
+
+document.title = `Чат – ${room}`;
+
+function sendMessage() {
+    const input = document.getElementById("messageInput");
+    const text = input.value.trim();
+    if (!text) return;
+
+    addMessage(`${nickname}: ${text}`);
+    input.value = "";
+}
+
+function addMessage(text) {
+    const messages = document.getElementById("messages");
+    const div = document.createElement("div");
+    div.className = "message";
+    div.textContent = text;
+    messages.appendChild(div);
+    messages.scrollTop = messages.scrollHeight;
+}
+</script>
 
 </body>
 </html>
