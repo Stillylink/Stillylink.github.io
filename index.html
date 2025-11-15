@@ -56,8 +56,31 @@
 
 <script>
 function toggleMenu() {
-    document.querySelector(".nav-links").classList.toggle("open");
+    const menu = document.querySelector(".nav-links");
+    const overlay = document.querySelector(".menu-overlay");
+
+    menu.classList.toggle("open");
+    overlay.classList.toggle("show");
 }
+
+document.addEventListener("click", function(e) {
+    const menu = document.querySelector(".nav-links");
+    const toggle = document.querySelector(".nav-toggle");
+    const overlay = document.querySelector(".menu-overlay");
+
+    if (!menu.classList.contains("open")) return;
+
+    if (menu.contains(e.target) || toggle.contains(e.target)) return;
+
+    menu.classList.remove("open");
+    overlay.classList.remove("show");
+});
+document.querySelectorAll(".nav-links a").forEach(link => {
+    link.addEventListener("click", () => {
+        document.querySelector(".nav-links").classList.remove("open");
+        document.querySelector(".menu-overlay").classList.remove("show");
+    });
+});
 </script>
 
 </body>
