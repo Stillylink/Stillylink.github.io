@@ -1,35 +1,48 @@
+/* ======== СБРОС СТИЛЕЙ ======== */
 * {
-    box-sizing: border-box;
-}
-
-body {
     margin: 0;
+    padding: 0;
+    box-sizing: border-box;
     font-family: Arial, sans-serif;
-    background: #f5f6fa;
-    color: #333;
 }
 
-/* ===== НАВИГАЦИЯ ===== */
+/* ======== ГЛАВНЫЕ ЦВЕТА ======== */
+:root {
+    --bg-dark: #111214;
+    --bg-card: #1a1c1f;
+    --text-main: #e5e5e5;
+    --text-secondary: #b5b5b5;
+    --accent: #2ec4b6;
+    --accent-light: #4fc3f7;
+    --border: #2a2c31;
+}
 
-.navbar {
-    background: white;
-    height: 60px;
+/* ======== ОБЩИЙ ФОН ======== */
+body {
+    background: var(--bg-dark);
+    color: var(--text-main);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* ======== НАВИГАЦИЯ ======== */
+nav {
     display: flex;
     align-items: center;
-    padding: 0 20px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    position: sticky;
-    top: 0;
-    z-index: 10;
+    padding: 12px 20px;
+    background: var(--bg-card);
+    border-bottom: 1px solid var(--border);
+    position: relative;
 }
 
 .logo {
     font-size: 22px;
     font-weight: bold;
-    color: #007bff;
+    color: var(--accent-light);
 }
 
-/* Десктоп */
+/* Кнопки в обычной версии */
 .nav-links {
     margin-left: auto;
     display: flex;
@@ -37,163 +50,136 @@ body {
 }
 
 .nav-links a {
+    color: var(--text-secondary);
     text-decoration: none;
-    color: #333;
     font-size: 16px;
+    transition: 0.25s;
 }
 
 .nav-links a:hover {
-    color: #007bff;
+    color: var(--accent-light);
 }
 
+/* ======== КНОПКА БУРГЕР ======== */
 .nav-toggle {
     display: none;
-    font-size: 28px;
     margin-left: auto;
+    font-size: 28px;
     cursor: pointer;
-    user-select: none;
+    color: var(--accent-light);
 }
 
-/* ===== HERO ===== */
-
-.hero {
-    padding: 100px 20px;
-    text-align: center;
-    background: linear-gradient(135deg, #007bff, #00b4ff);
-    color: white;
+/* ======== МОБИЛЬНОЕ МЕНЮ ======== */
+.mobile-menu {
+    display: none;
+    flex-direction: column;
+    position: absolute;
+    top: 60px;
+    right: 0;
+    background: var(--bg-card);
+    border-left: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    width: 220px;
+    padding: 10px 0;
+    animation: slideIn 0.25s ease;
+    z-index: 20;
 }
 
-.hero h1 {
-    font-size: 48px;
-    margin: 0;
-}
-
-.hero p {
-    font-size: 20px;
-    margin: 15px 0 30px;
-}
-
-.hero-btn {
-    background: white;
-    color: #007bff;
-    padding: 14px 28px;
-    border-radius: 30px;
+.mobile-menu a {
+    padding: 12px 20px;
+    color: var(--text-secondary);
     text-decoration: none;
-    font-weight: bold;
+    font-size: 16px;
 }
 
-.hero-btn:hover {
-    background: #e7e7e7;
+.mobile-menu a:hover {
+    background: #222327;
+    color: var(--accent-light);
 }
 
-/* ===== СЕКЦИИ ===== */
+/* Анимация появления */
+@keyframes slideIn {
+    from { transform: translateY(-10px); opacity: 0; }
+    to   { transform: translateY(0); opacity: 1; }
+}
 
-.section {
-    padding: 60px 20px;
+/* ======== БЕЗ ЗАТЕМНЕНИЯ ======== */
+.menu-overlay {
+    display: none !important; /* полностью отключили */
+}
+
+/* ======== ГЛАВНЫЙ КОНТЕЙНЕР ======== */
+.container {
+    margin: 40px auto;
+    padding: 25px;
+    max-width: 400px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow: 0 0 15px rgba(0,0,0,0.35);
     text-align: center;
 }
 
-.section h2 {
-    font-size: 32px;
-    margin-bottom: 30px;
+/* Заголовок */
+.container h1 {
+    margin-bottom: 20px;
+    font-size: 26px;
+    color: var(--accent-light);
 }
 
-/* ===== КАРТОЧКИ ===== */
-
-.card {
-    max-width: 400px;
-    margin: 0 auto;
-    padding: 25px;
-    border-radius: 12px;
-    background: white;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-}
-
+/* Поля */
 .input {
     width: 100%;
-    padding: 14px;
-    margin: 10px 0;
-    border: 1px solid #ccc;
+    padding: 12px;
+    margin-bottom: 15px;
     border-radius: 8px;
+    border: 1px solid var(--border);
+    background: #111214;
+    color: var(--text-main);
     font-size: 16px;
+    transition: 0.2s;
 }
 
+.input:focus {
+    border-color: var(--accent-light);
+    outline: none;
+}
+
+/* Кнопки */
 .btn {
     width: 100%;
-    padding: 14px;
-    background: #007bff;
+    padding: 12px;
     border: none;
-    color: white;
+    background: var(--accent);
+    color: #000;
+    font-size: 18px;
     border-radius: 8px;
-    font-size: 16px;
     cursor: pointer;
+    transition: 0.25s;
 }
 
 .btn:hover {
-    background: #005fcc;
+    background: var(--accent-light);
 }
 
-/* ===== ФУТЕР ===== */
-
-.footer {
-    background: #111;
-    color: #ddd;
+/* ======== ФУТЕР ======== */
+footer {
+    margin-top: auto;
+    border-top: 1px solid var(--border);
+    background: var(--bg-card);
+    padding: 15px;
     text-align: center;
-    padding: 20px;
-    margin-top: 40px;
+    color: var(--text-secondary);
+    font-size: 14px;
 }
 
-/* ===== МОБИЛЬНОЕ МЕНЮ ===== */
-
+/* ======== АДАПТИВ ======== */
 @media (max-width: 768px) {
-
     .nav-links {
-        position: fixed;
-        top: 60px;
-        right: -260px;
-        width: 240px;
-        height: calc(100% - 60px);
-        background: #fff;
-        flex-direction: column;
-        padding: 20px;
-        gap: 15px;
-        box-shadow: -2px 0 12px rgba(0,0,0,0.15);
-        transition: right 0.3s ease;
-        z-index: 20;
-    }
-
-    .nav-links.open {
-        right: 0;
+        display: none;
     }
 
     .nav-toggle {
         display: block;
-    }
-
-    /* прозрачная подложка для закрытия меню */
-    .menu-overlay {
-        display: none;
-        position: fixed;
-        top: 60px;
-        left: 0;
-        width: 100%;
-        height: calc(100% - 60px);
-        background: transparent;  /* ⬅ больше нет затемнения */
-        z-index: 15;
-    }
-
-    .menu-overlay.show {
-        display: block;
-    }
-}
-
-/* ===== АДАПТИВ ТЕКСТА ===== */
-
-@media (max-width: 480px) {
-    .hero h1 {
-        font-size: 36px;
-    }
-    .hero p {
-        font-size: 18px;
     }
 }
