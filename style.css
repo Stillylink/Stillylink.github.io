@@ -3,37 +3,129 @@
 }
 
 body {
+    margin: 0;
     font-family: Arial, sans-serif;
-    background: #f2f2f2;
+    background: #f5f6fa;
+    color: #333;
+}
+
+/* ===== НАВИГАЦИЯ ===== */
+
+.navbar {
+    background: white;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.logo {
+    font-size: 22px;
+    font-weight: bold;
+    color: #007bff;
+}
+
+.nav-links {
+    margin-left: auto;
+    display: flex;
+    gap: 20px;
+}
+
+.nav-links a {
+    text-decoration: none;
+    color: #333;
+    font-size: 16px;
+}
+
+.nav-links a:hover {
+    color: #007bff;
+}
+
+.nav-toggle {
+    display: none;
+    font-size: 26px;
+    margin-left: auto;
+    cursor: pointer;
+}
+
+
+/* ===== HERO ===== */
+
+.hero {
+    padding: 100px 20px;
+    text-align: center;
+    background: linear-gradient(135deg, #007bff, #00b4ff);
+    color: white;
+}
+
+.hero h1 {
+    font-size: 48px;
     margin: 0;
 }
 
-.container {
-    max-width: 400px;
-    margin: 120px auto;
-    padding: 20px;
+.hero p {
+    font-size: 20px;
+    margin: 15px 0 30px;
+}
+
+.hero-btn {
     background: white;
-    border-radius: 10px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    color: #007bff;
+    padding: 14px 28px;
+    border-radius: 30px;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+.hero-btn:hover {
+    background: #e7e7e7;
+}
+
+
+/* ===== СЕКЦИИ ===== */
+
+.section {
+    padding: 60px 20px;
     text-align: center;
+}
+
+.section h2 {
+    font-size: 32px;
+    margin-bottom: 30px;
+}
+
+
+/* ===== КАРТОЧКИ ===== */
+
+.card {
+    max-width: 400px;
+    margin: 0 auto;
+    padding: 25px;
+    border-radius: 12px;
+    background: white;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
 }
 
 .input {
     width: 100%;
-    padding: 12px;
-    margin: 8px 0;
-    font-size: 16px;
-    border-radius: 8px;
+    padding: 14px;
+    margin: 10px 0;
     border: 1px solid #ccc;
+    border-radius: 8px;
+    font-size: 16px;
+    display: block;
 }
 
 .btn {
     width: 100%;
-    padding: 12px;
-    margin-top: 10px;
+    padding: 14px;
     background: #007bff;
-    color: white;
     border: none;
+    color: white;
     border-radius: 8px;
     font-size: 16px;
     cursor: pointer;
@@ -43,32 +135,49 @@ body {
     background: #005fcc;
 }
 
-.chat-container {
-    max-width: 600px;
-    margin: 40px auto;
-    background: white;
-    border-radius: 10px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    height: 80vh;
-    display: flex;
-    flex-direction: column;
+
+/* ===== ФУТЕР ===== */
+
+.footer {
+    background: #111;
+    color: #ddd;
+    text-align: center;
+    padding: 20px;
+    margin-top: 40px;
 }
 
-.messages {
-    flex: 1;
-    padding: 15px;
-    overflow-y: auto;
+
+
+/* ===== АДАПТИВ ===== */
+
+@media (max-width: 768px) {
+    .nav-links {
+        position: absolute;
+        right: 0;
+        top: 60px;
+        background: white;
+        width: 200px;
+        display: none;
+        flex-direction: column;
+        padding: 10px 0;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    .nav-links.open {
+        display: flex;
+    }
+
+    .nav-toggle {
+        display: block;
+    }
 }
 
-.message {
-    margin-bottom: 10px;
-    padding: 8px 12px;
-    background: #eaeaea;
-    border-radius: 6px;
-}
+@media (max-width: 480px) {
+    .hero h1 {
+        font-size: 36px;
+    }
 
-.input-row {
-    display: flex;
-    padding: 10px;
-    gap: 10px;
+    .hero p {
+        font-size: 18px;
+    }
 }
