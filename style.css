@@ -10,14 +10,13 @@
 :root {
     --bg-dark: #111214;
     --bg-page: #ffffff;     /* новый мягкий тёмно-серый фон */
-    --bg-card: #f3f3f5;
+    --bg-card: #1a1c1f;
     --bg-hover: #222327;
 
     --text-main: #e5e5e5;
     --text-secondary: #b5b5b5;
 
     --accent: #2ec4b6;
-    --accent-light: #2ec4b6;
 
     --border: #2a2c31;
 }
@@ -43,7 +42,7 @@ body {
 .logo {
     font-size: 22px;
     font-weight: bold;
-    color: var(--accent-light);
+    color: var(--accent);
 }
 
 /* Десктоп меню */
@@ -61,7 +60,7 @@ body {
 }
 
 .nav-links a:hover {
-    color: var(--accent-light);
+    color: var(--accent);
 }
 
 /* ======== КНОПКА БУРГЕР ======== */
@@ -70,7 +69,7 @@ body {
     margin-left: auto;
     font-size: 28px;
     cursor: pointer;
-    color: var(--accent-light);
+    color: var(--accent);
 }
 
 /* ======== МОБИЛЬНОЕ МЕНЮ ======== */
@@ -119,7 +118,7 @@ body {
 .hero h1 {
     font-size: 42px;
     margin-bottom: 10px;
-    color: var(--accent-light);
+    color: var(--accent);
 }
 
 .hero p {
@@ -139,7 +138,7 @@ body {
 }
 
 .hero-btn:hover {
-    background: var(--accent-light);
+    background: var(--accent);
 }
 
 /* ======== ОБЩИЕ СЕКЦИИ ======== */
@@ -150,7 +149,7 @@ body {
 
 .section h2 {
     margin-bottom: 20px;
-    color: var(--accent-light);
+    color: var(--accent);
 }
 
 /* ======== КАРТОЧКИ ======== */
@@ -178,7 +177,7 @@ body {
 }
 
 .input:focus {
-    border-color: var(--accent-light);
+    border-color: var(--accent);
     outline: none;
 }
 
@@ -196,7 +195,7 @@ body {
 }
 
 .btn:hover {
-    background: var(--accent-light);
+    background: var(--accent);
 }
 
 /* ======== ФУТЕР ======== */
