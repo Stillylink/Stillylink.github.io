@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Чат</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body { font-family: Arial; padding: 20px; background: #f2f2f2; }
+        #messages { background: #fff; padding: 15px; border-radius: 10px; height: 400px; overflow-y: auto; }
+        .msg { margin-bottom: 10px; padding: 6px 10px; background: #e6e6e6; border-radius: 5px; }
+        #sendbox { margin-top: 15px; display: flex; gap: 10px; }
+        input { flex: 1; padding: 10px; border-radius: 6px; border: 1px solid #aaa; }
+        button { padding: 10px 20px; border: none; background: #007bff; color: white; border-radius: 6px; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+<h2>Чат</h2>
+
+<div id="messages"></div>
+
+<div id="sendbox">
+    <input id="msg" type="text" placeholder="Введите сообщение">
+    <button onclick="sendMessage()">Отправить</button>
+</div>
+
+<script type="module">
+    /* Firebase */
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
+    import { getFirestore, collection, addDoc, serverTimestamp, query, orderBy, onSnapshot }
+        from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyBWlR4QWdnbqXLKKaftEAzhXneTmV9xXX0",
+        authDomain: "stillylink-f1d0f.firebaseapp.com",
+        projectId: "stillylink-f1d0f",
+        storageBucket: "stillylink-f1d0f.firebasestorage.app",
+        messagingSenderId: "772070114710",
+        appId: "1:772070114710:web:939bce83e4d3be14bdc9b7",
+        measurementId: "G-N8FHLR5GFQ"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    const messagesDiv = document.getElementById("messages");
+    const msgInput = document.getElementById("msg");
+
+    /* 🔥 Получение сообщений в реальном времени */
+    const q = query(collection(db, "messages"), orderBy("createdAt"));
+
+    onSnapshot(q, (snapshot) => {
+        messagesDiv.innerHTML = "";
+        snapshot.forEach(doc => {
+            const m = doc.data();
+            messagesDiv.innerHTML += `<div class='msg'><b>${m.user ?? "Anon"}:</b> ${m.text}</div>`;
+        });
+
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    });
+
+    /* ✉️ Отправка сообщения */
+    window.sendMessage = async () => {
+        const text = msgInput.value.trim();
+        if (!text) return;
+
+        await addDoc(collection(db, "messages"), {
+            text,
+            user: "Гость",
+            createdAt: serverTimestamp()
+        });
+
+        msgInput.value = "";
+    };
+</script>
+
+</body>
+</html>
