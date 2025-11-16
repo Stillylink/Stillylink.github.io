@@ -10,14 +10,14 @@
 :root {
     --bg-dark: #111214;
     --bg-page: #ffffff;     /* новый мягкий тёмно-серый фон */
-    --bg-card: #1a1c1f;
+    --bg-card: #f3f3f5;
     --bg-hover: #222327;
 
     --text-main: #e5e5e5;
     --text-secondary: #b5b5b5;
 
     --accent: #2ec4b6;
-    --accent-light: #4fc3f7;
+    --accent-light: #2ec4b6;
 
     --border: #2a2c31;
 }
