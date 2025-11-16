@@ -1,31 +1,29 @@
-/* ======== СБРОС СТИЛЕЙ ======== */
+/* ======== СБРОС ======== */
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-    font-family: Arial, sans-serif;
 }
 
-/* ======== ГЛАВНЫЕ ЦВЕТА ======== */
+/* ======== ЦВЕТА ======== */
 :root {
-    --bg-dark: #111214;
-    --bg-page: #1e1f22;     /* новый мягкий тёмно-серый фон */
-    --bg-card: #1a1c1f;
-    --bg-hover: #222327;
+    --bg: #ffffff;               /* ФОН ТЕПЕРЬ БЕЛЫЙ */
+    --bg-dark: #111214;          /* HERO */
+    --card: #f3f3f5;             /* карточки стали светло-серыми */
+    --border: #d4d4d6;
 
-    --text-main: #e5e5e5;
-    --text-secondary: #b5b5b5;
+    --text-main: #222;           
+    --text-secondary: #555;
 
     --accent: #2ec4b6;
-    --accent-light: #4fc3f7;
-
-    --border: #2a2c31;
+    --accent-light: #44d8ca;
 }
 
-/* ======== ОБЩИЙ ФОН САЙТА ======== */
+/* ======== ОСНОВА ======== */
 body {
-    background: var(--bg-page);
+    background: var(--bg);
     color: var(--text-main);
+    font-family: Arial, sans-serif;
     min-height: 100vh;
     display: flex;
     flex-direction: column;
@@ -33,108 +31,78 @@ body {
 
 /* ======== НАВИГАЦИЯ ======== */
 .navbar {
+    background: #ffffff;
+    border-bottom: 1px solid var(--border);
+    height: 60px;
     display: flex;
     align-items: center;
-    padding: 12px 20px;
-    background: var(--bg-card);
-    border-bottom: 1px solid var(--border);
+    padding: 0 20px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
 }
 
 .logo {
     font-size: 22px;
     font-weight: bold;
-    color: var(--accent-light);
+    color: var(--accent);
 }
 
-/* Десктоп меню */
+/* Десктоп */
 .nav-links {
-    margin-left: auto;
     display: flex;
     gap: 20px;
+    margin-left: auto;
 }
 
 .nav-links a {
     color: var(--text-secondary);
     text-decoration: none;
     font-size: 16px;
-    transition: 0.25s;
 }
 
 .nav-links a:hover {
-    color: var(--accent-light);
+    color: var(--accent);
 }
 
-/* ======== КНОПКА БУРГЕР ======== */
+/* Бургер */
 .nav-toggle {
     display: none;
-    margin-left: auto;
     font-size: 28px;
+    margin-left: auto;
     cursor: pointer;
-    color: var(--accent-light);
+    color: var(--accent);
+    user-select: none;
 }
 
-/* ======== МОБИЛЬНОЕ МЕНЮ ======== */
-.nav-links.open {
-    display: flex !important;
-    flex-direction: column;
-    position: absolute;
-    top: 60px;
-    right: 0;
-    width: 220px;
-    background: var(--bg-card);
-    border-left: 1px solid var(--border);
-    border-bottom: 1px solid var(--border);
-    animation: slideIn 0.25s ease;
-    z-index: 999;
-    padding: 10px 0;
-}
-
-.nav-links.open a {
-    padding: 12px 20px;
-}
-
-.nav-links.open a:hover {
-    background: var(--bg-hover);
-}
-
-/* Анимация меню */
-@keyframes slideIn {
-    from { transform: translateY(-10px); opacity: 0; }
-    to   { transform: translateY(0); opacity: 1; }
-}
-
-/* ======== ОТКЛЮЧЕНИЕ ЗАТЕМНЕНИЯ ======== */
-.menu-overlay {
-    display: none !important;
-}
-
-/* ======== HERO-БЛОК ======== */
+/* ======== HERO (тёмный) ======== */
 .hero {
-    background: var(--bg-dark);       /* остаётся тёмным */
-    padding: 70px 20px;
+    padding: 100px 20px;
     text-align: center;
-    color: var(--text-main);
+    background: linear-gradient(135deg, #1b1c1f, #111214);
+    color: white;
 }
 
 .hero h1 {
-    font-size: 42px;
-    margin-bottom: 10px;
+    font-size: 48px;
     color: var(--accent-light);
 }
 
 .hero p {
-    font-size: 18px;
-    color: var(--text-secondary);
-    margin-bottom: 25px;
+    font-size: 20px;
+    margin-top: 15px;
+    color: #cccccc;
 }
 
 .hero-btn {
-    padding: 12px 25px;
+    display: inline-block;
+    margin-top: 30px;
+    padding: 14px 28px;
     background: var(--accent);
     color: #000;
+    border-radius: 30px;
+    font-weight: bold;
     text-decoration: none;
-    font-size: 18px;
-    border-radius: 8px;
     transition: 0.25s;
 }
 
@@ -142,55 +110,53 @@ body {
     background: var(--accent-light);
 }
 
-/* ======== ОБЩИЕ СЕКЦИИ ======== */
+/* ======== СЕКЦИИ ======== */
 .section {
-    padding: 40px 20px;
+    padding: 60px 20px;
     text-align: center;
 }
 
 .section h2 {
-    margin-bottom: 20px;
-    color: var(--accent-light);
+    font-size: 32px;
+    margin-bottom: 30px;
+    color: var(--accent);
 }
 
 /* ======== КАРТОЧКИ ======== */
 .card {
     margin: 0 auto;
     max-width: 400px;
-    padding: 25px;
-    background: var(--bg-card);
+    background: var(--card);
     border: 1px solid var(--border);
+    padding: 25px;
     border-radius: 12px;
-    box-shadow: 0 0 12px rgba(0,0,0,0.3);
+    box-shadow: 0 0 12px rgba(0,0,0,0.08);
 }
 
-/* Поля ввода */
 .input {
     width: 100%;
-    padding: 12px;
-    margin-bottom: 15px;
+    padding: 14px;
+    margin: 10px 0;
     border-radius: 8px;
     border: 1px solid var(--border);
-    background: #151618;
+    background: #fff;
     color: var(--text-main);
     font-size: 16px;
-    transition: 0.2s;
 }
 
 .input:focus {
-    border-color: var(--accent-light);
+    border-color: var(--accent);
     outline: none;
 }
 
-/* Кнопки */
 .btn {
     width: 100%;
-    padding: 12px;
-    border: none;
+    padding: 14px;
     background: var(--accent);
     color: #000;
-    font-size: 18px;
+    border: none;
     border-radius: 8px;
+    font-size: 16px;
     cursor: pointer;
     transition: 0.25s;
 }
@@ -201,22 +167,54 @@ body {
 
 /* ======== ФУТЕР ======== */
 .footer {
-    margin-top: auto;
+    background: #fafafa;
     border-top: 1px solid var(--border);
-    background: var(--bg-card);
-    padding: 15px;
     text-align: center;
+    padding: 20px;
     color: var(--text-secondary);
-    font-size: 14px;
+    margin-top: auto;
 }
 
-/* ======== АДАПТИВ ======== */
+/* ======== МОБИЛЬНОЕ МЕНЮ ======== */
 @media (max-width: 768px) {
+
     .nav-links {
-        display: none;
+        position: fixed;
+        top: 60px;
+        right: -260px;
+        width: 240px;
+        height: calc(100% - 60px);
+        background: #fff;
+        flex-direction: column;
+        padding: 20px;
+        border-left: 1px solid var(--border);
+        box-shadow: -2px 0 12px rgba(0,0,0,0.15);
+        transition: 0.3s ease;
+        z-index: 50;
+    }
+
+    .nav-links.open {
+        right: 0;
     }
 
     .nav-toggle {
         display: block;
+    }
+
+    /* overlay убран */
+    .menu-overlay {
+        display: none !important;
+    }
+}
+
+/* ======== АДАПТИВ ======== */
+@media (max-width: 480px) {
+
+    .hero h1 {
+        font-size: 36px;
+    }
+
+    .hero p {
+        font-size: 18px;
     }
 }
