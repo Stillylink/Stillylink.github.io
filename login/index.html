@@ -69,23 +69,34 @@
 ">
     <div style="
         background:#222;
-        padding:20px;
+        padding:20px 20px 18px;
         border-radius:12px;
         width:320px;
         box-shadow:0 0 15px rgba(0,0,0,0.3);
     ">
-        <h3 style="color:#fff; margin-bottom:15px;">Создать пароль</h3>
+        <h3 style="color:#fff; margin-bottom:12px;">Создать пароль</h3>
 
-        <input id="newPass" class="input" type="password" placeholder="Новый пароль (мин. 6 символов)">
+        <input id="newPass" class="input" 
+               type="password" 
+               placeholder="Новый пароль (мин. 6 символов)"
+               style="margin-bottom:6px;">
 
-        <div id="modalError" style="color:#ff5555; margin-top:10px; min-height:18px;"></div>
+        <div id="modalError" style="
+            color:#ff5555; 
+            margin:4px 0 6px; 
+            min-height:14px;
+            font-size:14px;
+        "></div>
 
-        <button id="savePassBtn" class="btn" style="margin-top:10px; width:100%;">
+        <button id="savePassBtn" class="btn" style="
+            margin-top:4px; 
+            width:100%;
+        ">
             Сохранить пароль
         </button>
 
         <button id="cancelPassBtn" class="btn" style="
-            margin-top:10px;
+            margin-top:8px;
             width:100%;
             background:#444;
         ">
