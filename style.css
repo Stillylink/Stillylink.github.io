@@ -202,6 +202,26 @@ body {
     background: var(--accent);
 }
 
+.chat-list {
+    max-width: 700px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.chat-item h3 {
+    color: var(--accent);
+    margin-bottom: 10px;
+}
+
+.chat-info {
+    color: var(--text-secondary);
+    margin-bottom: 12px;
+}
+
+
+
 /* ======== ФУТЕР ======== */
 .footer {
     margin-top: auto;
