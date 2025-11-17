@@ -21,7 +21,7 @@
     <div class="nav-toggle" onclick="toggleMenu()">☰</div>
 </header>
 
-<section class="section">
+<section class="section chat-section">
     <h2>Список чатов</h2>
 
     <div id="chat-list" class="chat-list"></div>
@@ -53,14 +53,19 @@
 
     const chatList = document.getElementById("chat-list");
 
-    function renderRoom(id, data) {
-        return `
-        <div class="card chat-item">
+function renderRoom(id, data) {
+    return `
+    <div class="chat-item">
+        <div class="chat-left">
             <h3>${data.name}</h3>
-            <p class="chat-info">Пользователей: ${data.users || 0}</p>
-            <button class="btn" onclick="joinChat('${id}')">Присоединиться</button>
-        </div>`;
-    }
+        </div>
+
+        <div class="chat-right">
+            <div class="chat-info">Пользователей: ${data.users || 0}</div>
+            <button class="btn chat-join-btn" onclick="joinChat('${id}')">Присоединиться</button>
+        </div>
+    </div>`;
+}
 
     onSnapshot(collection(db, "rooms"), (snapshot) => {
         chatList.innerHTML = "";
