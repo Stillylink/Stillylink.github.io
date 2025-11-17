@@ -13,7 +13,7 @@
 
     <nav class="nav-links">
         <a href="../index.html">Главная</a>
-        <a href="../chats.html">Чаты</a>
+        <a href="../chats/index.html">Чаты</a>
         <a href="../index.html#create-chat">Создать чат</a>
         <a href="index.html">Регистрация</a>
     </nav>
@@ -29,15 +29,20 @@
         <input id="password" class="input" type="password" placeholder="Пароль">
 
         <div id="errorMsg" style="
-    color: #ff5555;
-    margin-bottom: 10px;
-    text-align: left;
-    font-size: 14px;
-    min-height: 18px;
-         "></div>
+            color: #ff5555;
+            margin-bottom: 10px;
+            text-align: left;
+            font-size: 14px;
+            min-height: 18px;
+        "></div>
 
         <button id="loginBtn" class="btn">Войти</button>
         <button id="registerBtn" class="btn" style="margin-top:10px;">Создать аккаунт</button>
+
+        <button id="resetPasswordBtn" class="btn" 
+            style="margin-top:10px; background:#444;">
+            Забыли пароль?
+        </button>
 
         <hr style="margin:20px 0; border-color:#333;">
 
@@ -51,6 +56,34 @@
     <p>© 2025 StillyLink. Все права защищены.</p>
 </footer>
 
+<!-- ===== Модальное окно добавления пароля ===== -->
+<div id="passwordModal" style="
+    display:none;
+    position: fixed;
+    left: 0; top: 0;
+    width:100%; height:100%;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(3px);
+    align-items: center;
+    justify-content: center;
+">
+    <div style="
+        background:#222;
+        padding:20px;
+        border-radius:12px;
+        width:320px;
+        box-shadow:0 0 15px rgba(0,0,0,0.3);
+    ">
+        <h3 style="color:#fff; margin-bottom:15px;">Создать пароль</h3>
+
+        <input id="newPass" class="input" type="password" placeholder="Новый пароль (мин. 6 символов)">
+        <button id="savePassBtn" class="btn" style="margin-top:10px;">Сохранить пароль</button>
+        <button id="cancelPassBtn" class="btn" style="margin-top:10px; background:#444;">Пропустить</button>
+
+        <div id="modalError" style="color:#ff5555; margin-top:10px; min-height:18px;"></div>
+    </div>
+</div>
+
 <!-- ===== Firebase Auth ===== -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
@@ -59,7 +92,10 @@ import {
     createUserWithEmailAndPassword,
     signInWithEmailAndPassword,
     GoogleAuthProvider,
-    signInWithPopup
+    signInWithPopup,
+    sendPasswordResetEmail,
+    EmailAuthProvider,
+    linkWithCredential
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
 
 const firebaseConfig = {
@@ -83,35 +119,20 @@ function showError(code) {
     let msg = "";
 
     switch(code) {
-        case "auth/invalid-email":
-            msg = "Некорректный email.";
-            break;
-        case "auth/user-not-found":
-            msg = "Аккаунт с таким email не найден.";
-            break;
-        case "auth/wrong-password":
-            msg = "Неверный пароль.";
-            break;
-        case "auth/invalid-credential":
-            msg = "Неверный email или пароль.";
-            break;
-        case "auth/email-already-in-use":
-            msg = "Аккаунт с таким email уже зарегистрирован.";
-            break;
-        case "auth/weak-password":
-            msg = "Пароль должен содержать минимум 6 символов.";
-            break;
-        case "auth/missing-password":
-            msg = "Введите пароль.";
-            break;
-        default:
-            msg = "Ошибка: " + code;
+        case "auth/invalid-email": msg = "Некорректный email."; break;
+        case "auth/user-not-found": msg = "Аккаунт с таким email не найден."; break;
+        case "auth/wrong-password": msg = "Неверный пароль."; break;
+        case "auth/email-already-in-use": msg = "Аккаунт с таким email уже зарегистрирован."; break;
+        case "auth/weak-password": msg = "Пароль должен содержать минимум 6 символов."; break;
+        case "auth/missing-password": msg = "Введите пароль."; break;
+        case "auth/invalid-credential": msg = "Неверный email или пароль."; break;
+        default: msg = "Ошибка: " + code;
     }
 
     errorMsg.textContent = msg;
 }
 
-// Регистрация
+/* ---------- Регистрация ---------- */
 document.getElementById("registerBtn").onclick = () => {
     errorMsg.textContent = "";
     const email = emailInput.value.trim();
@@ -122,7 +143,7 @@ document.getElementById("registerBtn").onclick = () => {
         .catch(err => showError(err.code));
 };
 
-// Вход
+/* ---------- Вход ---------- */
 document.getElementById("loginBtn").onclick = () => {
     errorMsg.textContent = "";
     const email = emailInput.value.trim();
@@ -133,18 +154,76 @@ document.getElementById("loginBtn").onclick = () => {
         .catch(err => showError(err.code));
 };
 
-// Google вход
+/* ---------- Восстановление пароля ---------- */
+document.getElementById("resetPasswordBtn").onclick = () => {
+    const email = emailInput.value.trim();
+
+    if (!email) {
+        showError("auth/invalid-email");
+        return;
+    }
+
+    sendPasswordResetEmail(auth, email)
+        .then(() => alert("Ссылка для восстановления пароля отправлена на email."))
+        .catch(err => showError(err.code));
+};
+
+/* ---------- Google вход ---------- */
 document.getElementById("googleBtn").onclick = () => {
     errorMsg.textContent = "";
 
     signInWithPopup(auth, provider)
-        .then(() => window.location.href = "../index.html")
+        .then(result => {
+            const user = result.user;
+
+            const hasPassword = user.providerData.some(p => p.providerId === "password");
+
+            if (!hasPassword) {
+                document.getElementById("passwordModal").style.display = "flex";
+            } else {
+                window.location.href = "../index.html";
+            }
+        })
         .catch(err => showError(err.code));
 };
 
-// Мобильное меню
-window.toggleMenu = function () {
-    document.querySelector(".nav-links").classList.toggle("open");
+/* ---------- Создание пароля после Google-входа ---------- */
+const saveBtn = document.getElementById("savePassBtn");
+const cancelBtn = document.getElementById("cancelPassBtn");
+
+saveBtn.onclick = () => {
+    const newPass = document.getElementById("newPass").value.trim();
+    const modalError = document.getElementById("modalError");
+    modalError.textContent = "";
+
+    if (newPass.length < 6) {
+        modalError.textContent = "Пароль должен быть минимум 6 символов.";
+        return;
+    }
+
+    const user = auth.currentUser;
+    const email = user.email;
+
+    const cred = EmailAuthProvider.credential(email, newPass);
+
+    linkWithCredential(user, cred)
+        .then(() => {
+            alert("Пароль успешно создан!");
+            window.location.href = "../index.html";
+        })
+        .catch(err => modalError.textContent = "Ошибка: " + err.code);
+};
+
+cancelBtn.onclick = () => {
+    document.getElementById("passwordModal").style.display = "none";
+    window.location.href = "../index.html";
+};
+</script>
+
+<script>
+function toggleMenu() {
+    const menu = document.querySelector(".nav-links");
+    menu.classList.toggle("open");
 }
 </script>
 
