@@ -77,9 +77,20 @@
         <h3 style="color:#fff; margin-bottom:15px;">Создать пароль</h3>
 
         <input id="newPass" class="input" type="password" placeholder="Новый пароль (мин. 6 символов)">
-        <button id="savePassBtn" class="btn" style="margin-top:10px;">Сохранить пароль</button>
 
         <div id="modalError" style="color:#ff5555; margin-top:10px; min-height:18px;"></div>
+
+        <button id="savePassBtn" class="btn" style="margin-top:10px; width:100%;">
+            Сохранить пароль
+        </button>
+
+        <button id="cancelPassBtn" class="btn" style="
+            margin-top:10px;
+            width:100%;
+            background:#444;
+        ">
+            Отмена
+        </button>
     </div>
 </div>
 
@@ -190,12 +201,19 @@ document.getElementById("googleBtn").onclick = () => {
 };
 
 /* ---------- Создание пароля после Google-входа ---------- */
+
 const saveBtn = document.getElementById("savePassBtn");
 const cancelBtn = document.getElementById("cancelPassBtn");
+const newPassInput = document.getElementById("newPass");
+const modalError = document.getElementById("modalError");
 
+newPassInput.addEventListener("input", () => {
+    modalError.textContent = "";
+});
+
+// Сохранить пароль
 saveBtn.onclick = () => {
-    const newPass = document.getElementById("newPass").value.trim();
-    const modalError = document.getElementById("modalError");
+    const newPass = newPassInput.value.trim();
     modalError.textContent = "";
 
     if (newPass.length < 6) {
@@ -214,6 +232,11 @@ saveBtn.onclick = () => {
             window.location.href = "../index.html";
         })
         .catch(err => modalError.textContent = "Ошибка: " + err.code);
+};
+
+// Отмена
+cancelBtn.onclick = () => {
+    document.getElementById("passwordModal").style.display = "none";
 };
 </script>
 
