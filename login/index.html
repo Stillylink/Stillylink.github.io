@@ -78,7 +78,6 @@
 
         <input id="newPass" class="input" type="password" placeholder="Новый пароль (мин. 6 символов)">
         <button id="savePassBtn" class="btn" style="margin-top:10px;">Сохранить пароль</button>
-        <button id="cancelPassBtn" class="btn" style="margin-top:10px; background:#444;">Пропустить</button>
 
         <div id="modalError" style="color:#ff5555; margin-top:10px; min-height:18px;"></div>
     </div>
@@ -115,6 +114,9 @@ const emailInput = document.getElementById("email");
 const passInput = document.getElementById("password");
 const errorMsg = document.getElementById("errorMsg");
 
+emailInput.addEventListener("input", () => errorMsg.textContent = "");
+passInput.addEventListener("input", () => errorMsg.textContent = "");
+    
 function showError(code) {
     let msg = "";
 
@@ -212,11 +214,6 @@ saveBtn.onclick = () => {
             window.location.href = "../index.html";
         })
         .catch(err => modalError.textContent = "Ошибка: " + err.code);
-};
-
-cancelBtn.onclick = () => {
-    document.getElementById("passwordModal").style.display = "none";
-    window.location.href = "../index.html";
 };
 </script>
 
