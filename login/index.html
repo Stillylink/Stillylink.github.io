@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Вход — StillyLink</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+
+<header class="navbar">
+    <div class="logo">StillyLink</div>
+
+    <nav class="nav-links">
+        <a href="../index.html">Главная</a>
+        <a href="../chats.html">Чаты</a>
+        <a href="../index.html#create-chat">Создать чат</a>
+        <a href="index.html">Регистрация</a>
+    </nav>
+
+    <div class="nav-toggle" onclick="toggleMenu()">☰</div>
+</header>
+
+<section class="section">
+    <h2 style="color:#000">Вход / Регистрация</h2>
+
+    <div class="card" style="max-width:420px;">
+        <input id="email" class="input" type="email" placeholder="Email">
+        <input id="password" class="input" type="password" placeholder="Пароль">
+
+        <button id="loginBtn" class="btn">Войти</button>
+        <button id="registerBtn" class="btn" style="margin-top:10px;">Создать аккаунт</button>
+
+        <hr style="margin:20px 0; border-color:#333;">
+
+        <button id="googleBtn" class="btn" style="background:#fff; color:#000;">
+            Войти через Google
+        </button>
+    </div>
+</section>
+
+<footer class="footer">
+    <p>© 2025 StillyLink. Все права защищены.</p>
+</footer>
+
+<!-- ===== Firebase Auth ===== -->
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
+    import { 
+        getAuth, 
+        createUserWithEmailAndPassword,
+        signInWithEmailAndPassword,
+        GoogleAuthProvider,
+        signInWithPopup
+    } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyBWlR4QWdnbqXLKKaftEAzhXneTmV9xXX0",
+        authDomain: "stillylink-f1d0f.firebaseapp.com",
+        projectId: "stillylink-f1d0f",
+        storageBucket: "stillylink-f1d0f.firebasestorage.app",
+        messagingSenderId: "772070114710",
+        appId: "1:772070114710:web:939bce83e4d3be14bdc9b7"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const provider = new GoogleAuthProvider();
+
+    const emailInput = document.getElementById("email");
+    const passInput = document.getElementById("password");
+
+    document.getElementById("registerBtn").onclick = () => {
+        const email = emailInput.value.trim();
+        const pass = passInput.value.trim();
+
+        createUserWithEmailAndPassword(auth, email, pass)
+            .then(() => {
+                alert("Аккаунт создан!");
+                window.location.href = "../index.html";
+            })
+            .catch(err => alert(err.message));
+    };
+
+    document.getElementById("loginBtn").onclick = () => {
+        const email = emailInput.value.trim();
+        const pass = passInput.value.trim();
+
+        signInWithEmailAndPassword(auth, email, pass)
+            .then(() => window.location.href = "../index.html")
+            .catch(err => alert(err.message));
+    };
+
+    document.getElementById("googleBtn").onclick = () => {
+        signInWithPopup(auth, provider)
+            .then(() => window.location.href = "../index.html")
+            .catch(err => alert(err.message));
+    };
+</script>
+
+<script>
+function toggleMenu() {
+    const menu = document.querySelector(".nav-links");
+    menu.classList.toggle("open");
+}
+</script>
+
+</body>
+</html>
