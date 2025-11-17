@@ -210,6 +210,10 @@ body {
     gap: 20px;
 }
 
+.chat-section h2 {
+    color: #000 !important;
+}
+
 .chat-item h3 {
     color: var(--accent);
     margin-bottom: 10px;
