@@ -92,6 +92,9 @@ function showError(code) {
         case "auth/wrong-password":
             msg = "Неверный пароль.";
             break;
+        case "auth/invalid-credential":
+            msg = "Неверный email или пароль.";
+            break;
         case "auth/email-already-in-use":
             msg = "Аккаунт с таким email уже зарегистрирован.";
             break;
