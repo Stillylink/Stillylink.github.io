@@ -202,29 +202,59 @@ body {
     background: var(--accent);
 }
 
-.chat-list {
-    max-width: 700px;
-    margin: 0 auto;
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-}
-
 .chat-section h2 {
     color: #000 !important;
 }
 
-.chat-item h3 {
+.chat-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 15px;
+
+    padding: 18px 22px;
+    border-radius: 10px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+
+    box-shadow: 0 0 10px rgba(0,0,0,0.2);
+}
+
+.chat-list {
+    max-width: 800px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+}
+
+.chat-left {
+    display: flex;
+    flex-direction: column;
+}
+
+.chat-left h3 {
     color: var(--accent);
-    margin-bottom: 10px;
+    font-size: 20px;
+}
+
+.chat-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
 }
 
 .chat-info {
     color: var(--text-secondary);
-    margin-bottom: 12px;
+    font-size: 14px;
 }
 
-
+.chat-join-btn {
+    padding: 8px 14px;
+    font-size: 14px;
+    width: auto;
+}
 
 /* ======== ФУТЕР ======== */
 .footer {
