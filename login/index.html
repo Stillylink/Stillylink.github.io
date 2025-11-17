@@ -28,6 +28,14 @@
         <input id="email" class="input" type="email" placeholder="Email">
         <input id="password" class="input" type="password" placeholder="Пароль">
 
+        <div id="errorMsg" style="
+    color: #ff5555;
+    margin-bottom: 10px;
+    text-align: left;
+    font-size: 14px;
+    min-height: 18px;
+         "></div>
+
         <button id="loginBtn" class="btn">Войти</button>
         <button id="registerBtn" class="btn" style="margin-top:10px;">Создать аккаунт</button>
 
@@ -45,63 +53,95 @@
 
 <!-- ===== Firebase Auth ===== -->
 <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
-    import { 
-        getAuth, 
-        createUserWithEmailAndPassword,
-        signInWithEmailAndPassword,
-        GoogleAuthProvider,
-        signInWithPopup
-    } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
+import { 
+    getAuth, 
+    createUserWithEmailAndPassword,
+    signInWithEmailAndPassword,
+    GoogleAuthProvider,
+    signInWithPopup
+} from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
 
-    const firebaseConfig = {
-        apiKey: "AIzaSyBWlR4QWdnbqXLKKaftEAzhXneTmV9xXX0",
-        authDomain: "stillylink-f1d0f.firebaseapp.com",
-        projectId: "stillylink-f1d0f",
-        storageBucket: "stillylink-f1d0f.firebasestorage.app",
-        messagingSenderId: "772070114710",
-        appId: "1:772070114710:web:939bce83e4d3be14bdc9b7"
-    };
+const firebaseConfig = {
+    apiKey: "AIzaSyBWlR4QWdnbqXLKKaftEAzhXneTmV9xXX0",
+    authDomain: "stillylink-f1d0f.firebaseapp.com",
+    projectId: "stillylink-f1d0f",
+    storageBucket: "stillylink-f1d0f.appspot.com",
+    messagingSenderId: "772070114710",
+    appId: "1:772070114710:web:939bce83e4d3be14bdc9b7"
+};
 
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const provider = new GoogleAuthProvider();
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const provider = new GoogleAuthProvider();
 
-    const emailInput = document.getElementById("email");
-    const passInput = document.getElementById("password");
+const emailInput = document.getElementById("email");
+const passInput = document.getElementById("password");
+const errorMsg = document.getElementById("errorMsg");
 
-    document.getElementById("registerBtn").onclick = () => {
-        const email = emailInput.value.trim();
-        const pass = passInput.value.trim();
+function showError(code) {
+    let msg = "";
 
-        createUserWithEmailAndPassword(auth, email, pass)
-            .then(() => {
-                alert("Аккаунт создан!");
-                window.location.href = "../index.html";
-            })
-            .catch(err => alert(err.message));
-    };
+    switch(code) {
+        case "auth/invalid-email":
+            msg = "Некорректный email.";
+            break;
+        case "auth/user-not-found":
+            msg = "Аккаунт с таким email не найден.";
+            break;
+        case "auth/wrong-password":
+            msg = "Неверный пароль.";
+            break;
+        case "auth/email-already-in-use":
+            msg = "Аккаунт с таким email уже зарегистрирован.";
+            break;
+        case "auth/weak-password":
+            msg = "Пароль должен содержать минимум 6 символов.";
+            break;
+        case "auth/missing-password":
+            msg = "Введите пароль.";
+            break;
+        default:
+            msg = "Ошибка: " + code;
+    }
 
-    document.getElementById("loginBtn").onclick = () => {
-        const email = emailInput.value.trim();
-        const pass = passInput.value.trim();
+    errorMsg.textContent = msg;
+}
 
-        signInWithEmailAndPassword(auth, email, pass)
-            .then(() => window.location.href = "../index.html")
-            .catch(err => alert(err.message));
-    };
+// Регистрация
+document.getElementById("registerBtn").onclick = () => {
+    errorMsg.textContent = "";
+    const email = emailInput.value.trim();
+    const pass = passInput.value.trim();
 
-    document.getElementById("googleBtn").onclick = () => {
-        signInWithPopup(auth, provider)
-            .then(() => window.location.href = "../index.html")
-            .catch(err => alert(err.message));
-    };
-</script>
+    createUserWithEmailAndPassword(auth, email, pass)
+        .then(() => window.location.href = "../index.html")
+        .catch(err => showError(err.code));
+};
 
-<script>
-function toggleMenu() {
-    const menu = document.querySelector(".nav-links");
-    menu.classList.toggle("open");
+// Вход
+document.getElementById("loginBtn").onclick = () => {
+    errorMsg.textContent = "";
+    const email = emailInput.value.trim();
+    const pass = passInput.value.trim();
+
+    signInWithEmailAndPassword(auth, email, pass)
+        .then(() => window.location.href = "../index.html")
+        .catch(err => showError(err.code));
+};
+
+// Google вход
+document.getElementById("googleBtn").onclick = () => {
+    errorMsg.textContent = "";
+
+    signInWithPopup(auth, provider)
+        .then(() => window.location.href = "../index.html")
+        .catch(err => showError(err.code));
+};
+
+// Мобильное меню
+window.toggleMenu = function () {
+    document.querySelector(".nav-links").classList.toggle("open");
 }
 </script>
 
