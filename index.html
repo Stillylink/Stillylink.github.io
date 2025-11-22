@@ -5,207 +5,33 @@
     <title>StillyLink</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="style.css">
-
-<style>
-/* ------------------- НАВИГАЦИЯ ------------------- */
-
-.navbar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 12px 18px;
-    gap: 12px;
-}
-
-/* уменьшаем расстояние — одинаково для всех пунктов */
-.nav-links {
-    display: flex;
-    align-items: center;
-    gap: 12px; /* одинаковое расстояние между ссылками */
-    list-style: none;
-    margin: 0;
-    padding: 0;
-}
-
-/* делаем все прямыми элементами (включая ссылку регистрации) */
-.nav-links a,
-.nav-links > div {
-    display: inline-flex;
-    align-items: center;
-}
-
-/* кнопка регистрации как обычная ссылка */
-#register-btn {
-    padding: 6px 8px;
-    border-radius: 6px;
-    text-decoration: none;
-    color: inherit;
-    background: transparent;
-    border: 1px solid transparent;
-    font-size: 15px;
-}
-
-/* ------------------- АВАТАР ------------------- */
-
-.avatar {
-    width: 34px;
-    height: 34px;
-    border-radius: 50%;
-    background: #000;
-    color: #fff;
-    font-weight: bold;
-    font-size: 18px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-}
-
-/* ПК — аватар внутри nav-links (пустой контейнер пока) */
-#avatar-desktop {
-    width: 34px;         /* резервируем место для будущего аватара, но не тянем layout */
-    height: 34px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-}
-
-/* мобильный — аватар справа */
-#avatar-mobile {
-    display: none;
-}
-
-/* ------------------- МЕНЮ АВАТАРА ------------------- */
-
-.avatar-menu-panel {
-    position: fixed;
-    top: 0;
-    right: -220px;
-    width: 220px;
-    height: 100%;
-    background: #222;
-    color: #fff;
-    padding-top: 70px;
-    display: flex;
-    flex-direction: column;
-    transition: 0.28s;
-    z-index: 200;
-}
-
-.avatar-menu-panel.open { right: 0; }
-
-.avatar-menu-panel a {
-    padding: 15px 20px;
-    font-size: 16px;
-    color: #fff;
-    text-decoration: none;
-}
-.avatar-menu-panel a:hover {
-    background: #333;
-}
-
-.avatar-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.35);
-    display: none;
-    z-index: 150;
-}
-.avatar-overlay.show { display: block; }
-
-/* ------------------- МОБИЛЬНЫЙ ------------------- */
-
-.nav-toggle {
-    display: none;
-    font-size: 26px;
-    cursor: pointer;
-}
-
-.menu-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.25);
-    display: none;
-    z-index: 90;
-}
-
-.menu-overlay.show { display: block; }
-
-@media (max-width: 768px) {
-    .nav-toggle { display: block; }
-
-    .nav-links {
-        position: fixed;
-        top: 0;
-        left: -260px;
-        width: 260px;
-        height: 100%;
-        background: #fff;
-        flex-direction: column;
-        align-items: flex-start;
-        padding: 80px 18px;
-        gap: 18px;
-        transition: 0.28s;
-        z-index: 100;
-    }
-
-    .nav-links.open { left: 0; }
-
-    /* ПК-аватар скрыт */
-    #avatar-desktop { display: none; }
-
-    /* мобильная аватарка рядом с бургером */
-    #avatar-mobile { display: flex; margin-left: 8px; width: 34px; height: 34px; }
-}
-</style>
 </head>
-
 <body>
 
 <header class="navbar">
+    <div class="logo">StillyLink</div>
 
-    <div style="display:flex; align-items:center; gap:12px;">
-        <div class="nav-toggle" onclick="toggleMenu()">☰</div>
-
-        <!-- мобильный аватар (пустой пока) -->
-        <div id="avatar-mobile"></div>
-    </div>
-
-    <!-- nav-links: теперь регистрация ВНУТРИ nav-links, перед avatar-desktop -->
-    <nav class="nav-links">
+     <nav class="nav-links">
         <a href="/">Главная</a>
         <a href="/chats/">Чаты</a>
         <a href="../index.html#create-chat">Создать чат</a>
-
-        <!-- регистрация как обычный пункт меню (рядом с остальными) -->
-        <a id="register-btn" href="/login/">Регистрация</a>
-
-        <!-- ПК-аватар (резервное место, аватар вставится внутрь этого блока) -->
-        <div id="avatar-desktop" aria-hidden="true"></div>
+        <a href="/login/">Регистрация</a>
     </nav>
 
+    <div class="nav-toggle" onclick="toggleMenu()">☰</div>
 </header>
-
 <div class="menu-overlay"></div>
-
-<!-- меню аватара -->
-<div id="avatar-overlay" class="avatar-overlay"></div>
-<div id="avatar-menu" class="avatar-menu-panel">
-    <a href="/profile/">Профиль</a>
-    <a href="/chats/">Мои чаты</a>
-    <a id="logout-btn" href="#">Выйти</a>
-</div>
-
-
-<!-- HERO -->
+    
 <section class="hero">
     <h1>StillyLink</h1>
     <p>Общайся свободно. Без регистрации. Полная анонимность.</p>
+
     <a href="#create-chat" class="hero-btn">Создать чат</a>
 </section>
 
 <section id="create-chat" class="section">
     <h2>Создать новый чат</h2>
+
     <div class="card">
         <input class="input" type="text" placeholder="Название чата">
         <input class="input" type="text" placeholder="Ваш ник">
@@ -215,6 +41,7 @@
 
 <section class="section">
     <h2>Регистрация</h2>
+
     <div class="card">
         <input class="input" type="text" placeholder="Логин">
         <input class="input" type="password" placeholder="Пароль">
@@ -222,120 +49,51 @@
     </div>
 </section>
 
+
 <footer class="footer">
     <p>© 2025 StillyLink. Все права защищены.</p>
 </footer>
 
-
-<!-- FIREBASE -->
 <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
+    import { getFirestore, collection, addDoc, serverTimestamp }
+        from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
-import { getFirestore, collection, addDoc, serverTimestamp }
-    from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
-import { getAuth, onAuthStateChanged, signOut }
-    from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
+    const firebaseConfig = {
+        apiKey: "AIzaSyBWlR4QWdnbqXLKKaftEAzhXneTmV9xXX0",
+        authDomain: "stillylink-f1d0f.firebaseapp.com",
+        projectId: "stillylink-f1d0f",
+        storageBucket: "stillylink-f1d0f.firebasestorage.app",
+        messagingSenderId: "772070114710",
+        appId: "1:772070114710:web:939bce83e4d3be14bdc9b7",
+        measurementId: "G-N8FHLR5GFQ"
+    };
 
-const firebaseConfig = {
-    apiKey: "AIzaSyBWlR4QWdnbqXLKKaftEAzhXneTmV9xXX0",
-    authDomain: "stillylink-f1d0f.firebaseapp.com",
-    projectId: "stillylink-f1d0f",
-    storageBucket: "stillylink-f1d0f.firebasestorage.app",
-    messagingSenderId: "772070114710",
-    appId: "1:772070114710:web:939bce83e4d3be14bdc9b7",
-    measurementId: "G-N8FHLR5GFQ"
-};
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-const auth = getAuth(app);
+    const createBtn = document.querySelector("#create-chat .btn");
+    const nameInput = document.querySelectorAll("#create-chat .input")[0];
+    const userInput = document.querySelectorAll("#create-chat .input")[1];
 
-function genAvatarLetter(name) {
-    return name ? name[0].toUpperCase() : 'U';
-}
+    createBtn.onclick = async () => {
+        const roomName = nameInput.value.trim();
+        const userName = userInput.value.trim();
 
-const avatarDesktop = document.getElementById("avatar-desktop");
-const avatarMobile = document.getElementById("avatar-mobile");
-const registerBtn = document.getElementById("register-btn");
+        if (!roomName || !userName) {
+            alert("Заполните все поля");
+            return;
+        }
 
-const avatarMenu = document.getElementById("avatar-menu");
-const avatarOverlay = document.getElementById("avatar-overlay");
+        const docRef = await addDoc(collection(db, "rooms"), {
+            name: roomName,
+            createdAt: serverTimestamp()
+        });
 
-/* ------------------- Авторизация ------------------- */
-onAuthStateChanged(auth, (user) => {
-    // очистим контейнеры (на случай повторного вызова)
-    avatarDesktop.innerHTML = '';
-    avatarMobile.innerHTML = '';
-
-    if (!user) {
-        // показываем регистрацию
-        registerBtn.style.display = 'inline-flex';
-        return;
-    }
-
-    // при логине — скрываем регистрацию (не удаляем, чтобы порядок остался)
-    registerBtn.style.display = 'none';
-
-    const letter = genAvatarLetter(user.displayName || user.email || "U");
-
-    const avatar = document.createElement("div");
-    avatar.className = "avatar";
-    avatar.textContent = letter;
-
-    const avatar2 = avatar.cloneNode(true);
-
-    // помещаем аватар внутрь зарезервированного блока (не ломает layout)
-    avatarDesktop.appendChild(avatar);
-    avatarMobile.appendChild(avatar2);
-
-    avatar.addEventListener("click", openAvatarMenu);
-    avatar2.addEventListener("click", openAvatarMenu);
-});
-
-function openAvatarMenu(e) {
-    e.stopPropagation();
-    avatarMenu.classList.add("open");
-    avatarOverlay.classList.add("show");
-}
-
-avatarOverlay.onclick = () => {
-    avatarMenu.classList.remove("open");
-    avatarOverlay.classList.remove("show");
-};
-
-document.getElementById("logout-btn").onclick = async (e) => {
-    e.preventDefault();
-    await signOut(auth);
-    location.reload();
-};
-
-
-/* ------------------- Создание чата ------------------- */
-
-const createBtn = document.querySelector("#create-chat .btn");
-const nameInput = document.querySelectorAll("#create-chat .input")[0];
-const userInput = document.querySelectorAll("#create-chat .input")[1];
-
-createBtn.onclick = async () => {
-    const roomName = nameInput.value.trim();
-    const username = userInput.value.trim();
-
-    if (!roomName || !username) {
-        alert("Заполните все поля");
-        return;
-    }
-
-    const docRef = await addDoc(collection(db, "rooms"), {
-        name: roomName,
-        createdAt: serverTimestamp()
-    });
-
-    window.location.href = `chat/?room=${docRef.id}&user=${encodeURIComponent(username)}`;
-};
+      window.location.href = `chat/?room=${docRef.id}&user=${encodeURIComponent(userName)}`;
+    };
 </script>
 
-
-<!-- БУРГЕР -->
 <script>
 function toggleMenu() {
     const menu = document.querySelector(".nav-links");
@@ -345,10 +103,24 @@ function toggleMenu() {
     overlay.classList.toggle("show");
 }
 
-document.querySelector(".menu-overlay").onclick = () => {
-    document.querySelector(".nav-links").classList.remove("open");
-    document.querySelector(".menu-overlay").classList.remove("show");
-};
+document.addEventListener("click", function(e) {
+    const menu = document.querySelector(".nav-links");
+    const toggle = document.querySelector(".nav-toggle");
+    const overlay = document.querySelector(".menu-overlay");
+
+    if (!menu.classList.contains("open")) return;
+
+    if (menu.contains(e.target) || toggle.contains(e.target)) return;
+
+    menu.classList.remove("open");
+    overlay.classList.remove("show");
+});
+document.querySelectorAll(".nav-links a").forEach(link => {
+    link.addEventListener("click", () => {
+        document.querySelector(".nav-links").classList.remove("open");
+        document.querySelector(".menu-overlay").classList.remove("show");
+    });
+});
 </script>
 
 </body>
