@@ -31,17 +31,6 @@ body {
 }
 
 /* ======== НАВИГАЦИЯ ======== */
-.navbar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 12px 20px;
-    background: var(--bg-card);
-    border-bottom: 1px solid var(--border);
-    position: sticky;
-    top: 0;
-    z-index: 20;
-}
 
 .logo {
     font-size: 22px;
@@ -261,6 +250,58 @@ body {
     font-size: 18px;
     border-radius: 8px;
     cursor: pointer;
+}
+
+/* === Фикс: одинаковая ширина справа (аватар или кнопка) === */
+.nav-right {
+    width: 120px; /* фиксированная ширина блока справа */
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 20px;
+}
+
+/* Делаем кнопку регистрации по ширине как аватар */
+.auth-btn {
+    min-width: 70px;
+    text-align: right;
+}
+
+/* === Фикс: ссылки навигации остаются на месте === */
+.navbar {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    padding: 12px 20px;
+    background: var(--bg-card);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 20;
+}
+
+
+/* === Мобильная версия: отправляем кнопку регистрации в бургер === */
+@media (max-width: 768px) {
+    .auth-btn {
+        display: none !important; /* скрываем сверху */
+    }
+
+    .nav-links.open .auth-btn {
+        display: block !important; /* показываем в бургер-меню */
+        padding: 12px 20px;
+        color: var(--text-secondary);
+        text-decoration: none;
+    }
+}
+
+/* === Фикс: бургер и аватар больше не прыгают === */
+.user-avatar {
+    flex-shrink: 0;
+}
+
+.nav-toggle {
+    flex-shrink: 0;
 }
 
 /* ======== ФУТЕР ======== */
