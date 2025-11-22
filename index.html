@@ -7,83 +7,122 @@
     <link rel="stylesheet" href="style.css">
 
     <style>
-        /* ====== АВАТАР ====== */
-        .avatar {
-            width: 38px;
-            height: 38px;
-            border-radius: 50%;
-            object-fit: cover;
-            cursor: pointer;
-            border: 2px solid #000;
-        }
+/* ====== Аватар как пункт меню ====== */
+.nav-avatar {
+    display: flex;
+    align-items: center;
+    margin-left: 20px; /* как у других ссылок */
+}
 
-        /* ====== МЕНЮ АВАТАРА ====== */
-        .avatar-menu {
-            position: absolute;
-            top: 60px;
-            right: 20px;
-            background: #fff;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-            padding: 10px 0;
-            width: 160px;
-            display: none;
-            z-index: 50;
-        }
+.nav-avatar img {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 2px solid #000;
+    cursor: pointer;
+}
 
-        .avatar-menu a {
-            display: block;
-            padding: 10px 16px;
-            color: #000;
-            text-decoration: none;
-            font-size: 15px;
-            transition: 0.2s;
-        }
+/* ====== Меню аватара стилизуем как бургер-меню ====== */
+.avatar-menu-panel {
+    position: fixed;
+    top: 0;
+    right: -260px; /* скрыто */
+    width: 260px;
+    height: 100%;
+    background: #fff;
+    box-shadow: -4px 0 20px rgba(0,0,0,0.15);
+    padding-top: 70px;
+    display: flex;
+    flex-direction: column;
+    transition: 0.3s;
+    z-index: 200;
+}
 
-        .avatar-menu a:hover {
-            background: #f3f3f3;
-        }
+.avatar-menu-panel.open {
+    right: 0;
+}
+
+.avatar-menu-panel a {
+    padding: 15px 25px;
+    font-size: 18px;
+    color: #000;
+    text-decoration: none;
+}
+
+.avatar-menu-panel a:hover {
+    background: #f4f4f4;
+}
+
+/* затемнение фона */
+.avatar-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.2);
+    display: none;
+    z-index: 150;
+}
+
+.avatar-overlay.show {
+    display: block;
+}
+
+/* На мобильных аватар справа от бургера */
+@media (max-width: 768px) {
+    #avatar-container {
+        margin-left: 10px;
+    }
+}
     </style>
 </head>
 <body>
 
 <header class="navbar">
+
     <div class="logo">StillyLink</div>
 
     <nav class="nav-links">
         <a href="/">Главная</a>
         <a href="/chats/">Чаты</a>
         <a href="../index.html#create-chat">Создать чат</a>
+
+        <!-- МЕСТО ДЛЯ АВАТАРА внутри меню -->
+        <div id="nav-avatar"></div>
+
         <a id="register-btn" href="/login/">Регистрация</a>
     </nav>
 
-    <!-- Мобильный бургер -->
     <div class="nav-toggle" onclick="toggleMenu()">☰</div>
 
-    <!-- Контейнер для аватарки справа -->
+    <!-- Аватар справа (для мобильных) -->
     <div id="avatar-container"></div>
+
 </header>
 
-<div class="menu-overlay"></div>
+<!-- затемнение -->
+<div id="avatar-overlay" class="avatar-overlay"></div>
 
-<!-- Выпадающее меню аватарки -->
-<div id="avatar-menu" class="avatar-menu">
+<!-- Меню аватара -->
+<div id="avatar-menu" class="avatar-menu-panel">
     <a href="/profile/">Профиль</a>
     <a href="/chats/">Мои чаты</a>
     <a id="logout-btn" href="#">Выйти</a>
 </div>
 
+<div class="menu-overlay"></div>
+
 
 <section class="hero">
     <h1>StillyLink</h1>
     <p>Общайся свободно. Без регистрации. Полная анонимность.</p>
-
     <a href="#create-chat" class="hero-btn">Создать чат</a>
 </section>
 
+
 <section id="create-chat" class="section">
     <h2>Создать новый чат</h2>
-
     <div class="card">
         <input class="input" type="text" placeholder="Название чата">
         <input class="input" type="text" placeholder="Ваш ник">
@@ -91,9 +130,9 @@
     </div>
 </section>
 
+
 <section class="section">
     <h2>Регистрация</h2>
-
     <div class="card">
         <input class="input" type="text" placeholder="Логин">
         <input class="input" type="password" placeholder="Пароль">
@@ -107,103 +146,110 @@
 </footer>
 
 
-<!-- Firebase -->
+<!-- FIREBASE -->
 <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
-    import { getFirestore, collection, addDoc, serverTimestamp }
-        from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
+import { getFirestore, collection, addDoc, serverTimestamp }
+    from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
+import { getAuth, onAuthStateChanged, signOut }
+    from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
 
-    import { getAuth, onAuthStateChanged, signOut }
-        from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
+const firebaseConfig = {
+    apiKey: "AIzaSyBWlR4QWdnbqXLKKaftEAzhXneTmV9xXX0",
+    authDomain: "stillylink-f1d0f.firebaseapp.com",
+    projectId: "stillylink-f1d0f",
+    storageBucket: "stillylink-f1d0f.firebasestorage.app",
+    messagingSenderId: "772070114710",
+    appId: "1:772070114710:web:939bce83e4d3be14bdc9b7",
+    measurementId: "G-N8FHLR5GFQ"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+
+function avatarLetter(name) {
+    return `https://dummyimage.com/100x100/000/fff&text=${name[0].toUpperCase()}`;
+}
+
+const navAvatar = document.getElementById("nav-avatar");
+const mobileAvatar = document.getElementById("avatar-container");
+const avatarMenu = document.getElementById("avatar-menu");
+const avatarOverlay = document.getElementById("avatar-overlay");
+const registerBtn = document.getElementById("register-btn");
+
+/* === единый обработчик авторизации === */
+onAuthStateChanged(auth, (user) => {
+    if (!user) return;
+
+    if (registerBtn) registerBtn.remove();
+
+    const url = user.photoURL || avatarLetter(user.displayName || "U");
+
+    const img = document.createElement("img");
+    img.src = url;
+    img.className = "avatar";
+
+    /* ПК-режим: аватар внутри nav-links */
+    navAvatar.appendChild(img.cloneNode(true));
+
+    /* мобильный: аватар справа */
+    mobileAvatar.appendChild(img);
+
+    /* клик — открыть меню */
+    img.addEventListener("click", openAvatarMenu);
+});
+
+function openAvatarMenu(e) {
+    e.stopPropagation();
+    avatarMenu.classList.add("open");
+    avatarOverlay.classList.add("show");
+}
+
+/* закрытие меню */
+avatarOverlay.onclick = () => {
+    avatarMenu.classList.remove("open");
+    avatarOverlay.classList.remove("show");
+};
+
+document.addEventListener("click", () => {
+    avatarMenu.classList.remove("open");
+    avatarOverlay.classList.remove("show");
+});
+
+/* выход */
+document.getElementById("logout-btn").onclick = async (e) => {
+    e.preventDefault();
+    await signOut(auth);
+    location.reload();
+};
 
 
-    const firebaseConfig = {
-        apiKey: "AIzaSyBWlR4QWdnbqXLKKaftEAzhXneTmV9xXX0",
-        authDomain: "stillylink-f1d0f.firebaseapp.com",
-        projectId: "stillylink-f1d0f",
-        storageBucket: "stillylink-f1d0f.firebasestorage.app",
-        messagingSenderId: "772070114710",
-        appId: "1:772070114710:web:939bce83e4d3be14bdc9b7",
-        measurementId: "G-N8FHLR5GFQ"
-    };
+/* Создание чата */
+const createBtn = document.querySelector("#create-chat .btn");
+const nameInput = document.querySelectorAll("#create-chat .input")[0];
+const userInput = document.querySelectorAll("#create-chat .input")[1];
 
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-    const auth = getAuth(app);
+createBtn.onclick = async () => {
+    const roomName = nameInput.value.trim();
+    const username = userInput.value.trim();
 
-    /* Генерация фейковой аватарки */
-    function generateAvatar(name) {
-        const letter = name.charAt(0).toUpperCase();
-        return `https://dummyimage.com/100x100/000/fff&text=${letter}`;
+    if (!roomName || !username) {
+        alert("Заполните все поля");
+        return;
     }
 
-    const nav = document.querySelector(".nav-links");
-    const registerBtn = document.getElementById("register-btn");
-    const avatarContainer = document.getElementById("avatar-container");
-    const avatarMenu = document.getElementById("avatar-menu");
-
-
-    /* ====== ЕДИНСТВЕННЫЙ onAuthStateChanged ====== */
-    onAuthStateChanged(auth, (user) => {
-        if (!user) return;
-
-        if (registerBtn) registerBtn.remove();
-
-        const avatarUrl = user.photoURL || generateAvatar(user.displayName || "U");
-
-        const avatar = document.createElement("img");
-        avatar.src = avatarUrl;
-        avatar.className = "avatar";
-        avatar.id = "user-avatar";
-
-        avatarContainer.innerHTML = "";
-        avatarContainer.appendChild(avatar);
-
-        avatar.addEventListener("click", (e) => {
-            e.stopPropagation();
-            avatarMenu.style.display =
-                avatarMenu.style.display === "block" ? "none" : "block";
-        });
+    const docRef = await addDoc(collection(db, "rooms"), {
+        name: roomName,
+        createdAt: serverTimestamp()
     });
 
-    /* Закрыть при клике вне */
-    document.addEventListener("click", () => {
-        avatarMenu.style.display = "none";
-    });
-
-    /* Выход */
-    document.getElementById("logout-btn").onclick = async (e) => {
-        e.preventDefault();
-        await signOut(auth);
-        window.location.reload();
-    };
-
-
-    /* Создание чата */
-    const createBtn = document.querySelector("#create-chat .btn");
-    const nameInput = document.querySelectorAll("#create-chat .input")[0];
-    const userInput = document.querySelectorAll("#create-chat .input")[1];
-
-    createBtn.onclick = async () => {
-        const roomName = nameInput.value.trim();
-        const userName = userInput.value.trim();
-
-        if (!roomName || !userName) {
-            alert("Заполните все поля");
-            return;
-        }
-
-        const docRef = await addDoc(collection(db, "rooms"), {
-            name: roomName,
-            createdAt: serverTimestamp()
-        });
-
-        window.location.href = `chat/?room=${docRef.id}&user=${encodeURIComponent(userName)}`;
-    };
+    window.location.href = `chat/?room=${docRef.id}&user=${encodeURIComponent(username)}`;
+};
 </script>
 
 
-<!-- Бургер-меню -->
+<!-- Бургер меню -->
 <script>
 function toggleMenu() {
     const menu = document.querySelector(".nav-links");
@@ -224,13 +270,6 @@ document.addEventListener("click", function(e) {
 
     menu.classList.remove("open");
     overlay.classList.remove("show");
-});
-
-document.querySelectorAll(".nav-links a").forEach(link => {
-    link.addEventListener("click", () => {
-        document.querySelector(".nav-links").classList.remove("open");
-        document.querySelector(".menu-overlay").classList.remove("show");
-    });
 });
 </script>
 
