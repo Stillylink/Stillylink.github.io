@@ -11,17 +11,25 @@
 <header class="navbar">
     <div class="logo">StillyLink</div>
 
+    <!-- ЛЕВАЯ ЧАСТЬ — ссылки -->
     <nav class="nav-links">
         <a href="/">Главная</a>
         <a href="/chats/">Чаты</a>
-        <a href="../index.html#create-chat">Создать чат</a>
+        <a href="#create-chat">Создать чат</a>
+    </nav>
+
+    <!-- ПРАВАЯ ЧАСТЬ — кнопка/аватар + бургер -->
+    <div class="nav-right">
 
         <!-- До авторизации показываем кнопку -->
         <a class="auth-btn" href="/login/">Регистрация</a>
 
         <!-- Аватар (скрыт до входа) -->
         <div class="user-avatar hidden" id="userAvatar"></div>
-    </nav>
+
+        <!-- Бургер -->
+        <div class="nav-toggle" onclick="toggleMenu()">☰</div>
+    </div>
 
     <!-- Меню пользователя -->
     <div class="user-menu" id="userMenu">
@@ -29,9 +37,6 @@
         <a href="/my-chats/">Мои чаты</a>
         <a id="logoutBtn">Выйти</a>
     </div>
-
-    <!-- Бургер -->
-    <div class="nav-toggle" onclick="toggleMenu()">☰</div>
 </header>
 
 <div class="menu-overlay"></div>
@@ -67,6 +72,7 @@
     <p>© 2025 StillyLink. Все права защищены.</p>
 </footer>
 
+<!-- ====================== FIREBASE ====================== -->
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
     import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
@@ -91,12 +97,12 @@
     const avatar = document.getElementById("userAvatar");
     const userMenu = document.getElementById("userMenu");
 
-    /* 🔥 Подключение аватара после входа */
+    /* 🔥 Авторизация — показать/скрыть аватар */
     onAuthStateChanged(auth, user => {
         if (user) {
-            const name = user.email ? user.email[0].toUpperCase() : "U";
+            const letter = user.email ? user.email[0].toUpperCase() : "U";
 
-            avatar.textContent = name;
+            avatar.textContent = letter;
             avatar.classList.remove("hidden");
             authBtn.classList.add("hidden");
         } else {
@@ -105,13 +111,25 @@
         }
     });
 
-    /* 🔥 Выход */
-    document.getElementById("logoutBtn").onclick = () => {
-        signOut(auth);
-        window.location.reload();
+    /* 🔥 Клик по аватарке — открыть меню */
+    avatar.onclick = () => {
+        userMenu.classList.toggle("open");
     };
 
-    /* Создание чата */
+    /* 🔥 Клик вне меню — закрыть */
+    document.addEventListener("click", e => {
+        if (!avatar.contains(e.target) && !userMenu.contains(e.target)) {
+            userMenu.classList.remove("open");
+        }
+    });
+
+    /* 🔥 Выход */
+    document.getElementById("logoutBtn").onclick = async () => {
+        await signOut(auth);
+        location.reload();
+    };
+
+    /* 🔥 Создание чата */
     const createBtn = document.querySelector("#create-chat .btn");
     const nameInput = document.querySelectorAll("#create-chat .input")[0];
     const userInput = document.querySelectorAll("#create-chat .input")[1];
@@ -132,19 +150,9 @@
 
         window.location.href = `chat/?room=${docRef.id}&user=${encodeURIComponent(userName)}`;
     };
-
-    /* ⬇ меню аватара */
-    avatar.onclick = () => {
-        userMenu.classList.toggle("open");
-    };
-
-    document.addEventListener("click", e => {
-        if (!avatar.contains(e.target) && !userMenu.contains(e.target)) {
-            userMenu.classList.remove("open");
-        }
-    });
 </script>
 
+<!-- ====================== МЕНЮ БУРГЕРА ====================== -->
 <script>
 function toggleMenu() {
     const menu = document.querySelector(".nav-links");
