@@ -6,27 +6,38 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="style.css">
 
-    <style>
-/* ====== Аватар как пункт меню ====== */
-.nav-avatar {
+<style>
+/* ======== АВАТАР ======== */
+.avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: #000;
+    color: #fff;
+    font-size: 18px;
+    font-weight: bold;
     display: flex;
     align-items: center;
-    margin-left: 20px; /* как у других ссылок */
-}
-
-.nav-avatar img {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    border: 2px solid #000;
+    justify-content: center;
     cursor: pointer;
 }
 
-/* ====== Меню аватара стилизуем как бургер-меню ====== */
+/* контейнер справа от меню */
+#avatar-desktop {
+    margin-left: 20px;
+    display: none;
+}
+
+#avatar-mobile {
+    display: none;
+    margin-left: 10px;
+}
+
+/* ======== МЕНЮ АВАТАРА — ТОЧНО КАК БУРГЕР ======== */
 .avatar-menu-panel {
     position: fixed;
     top: 0;
-    right: -260px; /* скрыто */
+    right: -260px;
     width: 260px;
     height: 100%;
     background: #fff;
@@ -43,7 +54,7 @@
 }
 
 .avatar-menu-panel a {
-    padding: 15px 25px;
+    padding: 18px 25px;
     font-size: 18px;
     color: #000;
     text-decoration: none;
@@ -53,7 +64,6 @@
     background: #f4f4f4;
 }
 
-/* затемнение фона */
 .avatar-overlay {
     position: fixed;
     top: 0;
@@ -69,18 +79,31 @@
     display: block;
 }
 
-/* На мобильных аватар справа от бургера */
+/* ======== Мобильный режим ======== */
 @media (max-width: 768px) {
-    #avatar-container {
-        margin-left: 10px;
+    #avatar-mobile {
+        display: block;
+    }
+    #avatar-desktop {
+        display: none;
     }
 }
-    </style>
+
+/* ПК */
+@media (min-width: 769px) {
+    #avatar-desktop {
+        display: flex;
+    }
+    #avatar-mobile {
+        display: none;
+    }
+}
+</style>
 </head>
+
 <body>
 
 <header class="navbar">
-
     <div class="logo">StillyLink</div>
 
     <nav class="nav-links">
@@ -88,38 +111,35 @@
         <a href="/chats/">Чаты</a>
         <a href="../index.html#create-chat">Создать чат</a>
 
-        <!-- МЕСТО ДЛЯ АВАТАРА внутри меню -->
-        <div id="nav-avatar"></div>
+        <!-- Место для аватара на ПК -->
+        <div id="avatar-desktop"></div>
 
         <a id="register-btn" href="/login/">Регистрация</a>
     </nav>
 
     <div class="nav-toggle" onclick="toggleMenu()">☰</div>
 
-    <!-- Аватар справа (для мобильных) -->
-    <div id="avatar-container"></div>
-
+    <!-- Аватар справа в мобильной версии -->
+    <div id="avatar-mobile"></div>
 </header>
 
-<!-- затемнение -->
+<!-- затемнение для меню аватара -->
 <div id="avatar-overlay" class="avatar-overlay"></div>
 
-<!-- Меню аватара -->
+<!-- боковое меню аватара -->
 <div id="avatar-menu" class="avatar-menu-panel">
     <a href="/profile/">Профиль</a>
     <a href="/chats/">Мои чаты</a>
-    <a id="logout-btn" href="#">Выйти</a>
+    <a href="#" id="logout-btn">Выйти</a>
 </div>
 
 <div class="menu-overlay"></div>
-
 
 <section class="hero">
     <h1>StillyLink</h1>
     <p>Общайся свободно. Без регистрации. Полная анонимность.</p>
     <a href="#create-chat" class="hero-btn">Создать чат</a>
 </section>
-
 
 <section id="create-chat" class="section">
     <h2>Создать новый чат</h2>
@@ -130,7 +150,6 @@
     </div>
 </section>
 
-
 <section class="section">
     <h2>Регистрация</h2>
     <div class="card">
@@ -140,13 +159,11 @@
     </div>
 </section>
 
-
 <footer class="footer">
     <p>© 2025 StillyLink. Все права защищены.</p>
 </footer>
 
-
-<!-- FIREBASE -->
+<!-- ========================== FIREBASE ========================== -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
 import { getFirestore, collection, addDoc, serverTimestamp }
@@ -168,36 +185,34 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
 
-function avatarLetter(name) {
-    return `https://dummyimage.com/100x100/000/fff&text=${name[0].toUpperCase()}`;
+function createAvatar(name) {
+    const div = document.createElement("div");
+    div.className = "avatar";
+    div.textContent = name[0].toUpperCase();
+    return div;
 }
 
-const navAvatar = document.getElementById("nav-avatar");
-const mobileAvatar = document.getElementById("avatar-container");
+const avatarDesktop = document.getElementById("avatar-desktop");
+const avatarMobile = document.getElementById("avatar-mobile");
 const avatarMenu = document.getElementById("avatar-menu");
 const avatarOverlay = document.getElementById("avatar-overlay");
 const registerBtn = document.getElementById("register-btn");
 
-/* === единый обработчик авторизации === */
 onAuthStateChanged(auth, (user) => {
     if (!user) return;
 
     if (registerBtn) registerBtn.remove();
 
-    const url = user.photoURL || avatarLetter(user.displayName || "U");
+    const name = user.displayName || "U";
+    const avatar = createAvatar(name);
 
-    const img = document.createElement("img");
-    img.src = url;
-    img.className = "avatar";
+    const avatar2 = createAvatar(name);
 
-    /* ПК-режим: аватар внутри nav-links */
-    navAvatar.appendChild(img.cloneNode(true));
+    avatar.onclick = openAvatarMenu;
+    avatar2.onclick = openAvatarMenu;
 
-    /* мобильный: аватар справа */
-    mobileAvatar.appendChild(img);
-
-    /* клик — открыть меню */
-    img.addEventListener("click", openAvatarMenu);
+    avatarDesktop.appendChild(avatar);
+    avatarMobile.appendChild(avatar2);
 });
 
 function openAvatarMenu(e) {
@@ -206,29 +221,22 @@ function openAvatarMenu(e) {
     avatarOverlay.classList.add("show");
 }
 
-/* закрытие меню */
-avatarOverlay.onclick = () => {
+avatarOverlay.onclick = closeAvatarMenu;
+
+function closeAvatarMenu() {
     avatarMenu.classList.remove("open");
     avatarOverlay.classList.remove("show");
-};
+}
 
-document.addEventListener("click", () => {
-    avatarMenu.classList.remove("open");
-    avatarOverlay.classList.remove("show");
-});
-
-/* выход */
 document.getElementById("logout-btn").onclick = async (e) => {
     e.preventDefault();
     await signOut(auth);
     location.reload();
 };
 
-
-/* Создание чата */
 const createBtn = document.querySelector("#create-chat .btn");
 const nameInput = document.querySelectorAll("#create-chat .input")[0];
-const userInput = document.querySelectorAll("#create-chat .input")[1];
+    const userInput = document.querySelectorAll("#create-chat .input")[1];
 
 createBtn.onclick = async () => {
     const roomName = nameInput.value.trim();
@@ -248,8 +256,7 @@ createBtn.onclick = async () => {
 };
 </script>
 
-
-<!-- Бургер меню -->
+<!-- ===== Бургер ===== -->
 <script>
 function toggleMenu() {
     const menu = document.querySelector(".nav-links");
@@ -258,19 +265,6 @@ function toggleMenu() {
     menu.classList.toggle("open");
     overlay.classList.toggle("show");
 }
-
-document.addEventListener("click", function(e) {
-    const menu = document.querySelector(".nav-links");
-    const toggle = document.querySelector(".nav-toggle");
-    const overlay = document.querySelector(".menu-overlay");
-
-    if (!menu.classList.contains("open")) return;
-
-    if (menu.contains(e.target) || toggle.contains(e.target)) return;
-
-    menu.classList.remove("open");
-    overlay.classList.remove("show");
-});
 </script>
 
 </body>
