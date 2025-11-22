@@ -2,177 +2,84 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>StillyLink</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StillyLink</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
 <header class="navbar">
-    <div class="logo">StillyLink</div>
+    <div class="nav-left">
+        <div class="logo">StillyLink</div>
 
-    <!-- ЛЕВАЯ ЧАСТЬ — ссылки -->
-    <nav class="nav-links">
-        <a href="/">Главная</a>
-        <a href="/chats/">Чаты</a>
-        <a href="#create-chat">Создать чат</a>
-    </nav>
-
-    <!-- ПРАВАЯ ЧАСТЬ — кнопка/аватар + бургер -->
-    <div class="nav-right">
-
-        <!-- До авторизации показываем кнопку -->
-        <a class="auth-btn" href="/login/">Регистрация</a>
-
-        <!-- Аватар (скрыт до входа) -->
-        <div class="user-avatar hidden" id="userAvatar"></div>
-
-        <!-- Бургер -->
-        <div class="nav-toggle" onclick="toggleMenu()">☰</div>
+        <nav class="nav-links">
+            <a href="#">Главная</a>
+            <a href="#">Чаты</a>
+            <a href="#">О нас</a>
+        </nav>
     </div>
 
-    <!-- Меню пользователя -->
-    <div class="user-menu" id="userMenu">
-        <a href="/profile/">Профиль</a>
-        <a href="/my-chats/">Мои чаты</a>
-        <a id="logoutBtn">Выйти</a>
+    <div class="nav-right">
+        <!-- ДО АВТОРИЗАЦИИ -->
+        <div class="auth-buttons" id="authButtons">
+            <a href="#" class="btn">Войти</a>
+            <a href="#" class="btn">Регистрация</a>
+        </div>
+
+        <!-- ПОСЛЕ АВТОРИЗАЦИИ -->
+        <div class="avatar-container" id="avatarContainer" style="display:none;">
+            <div class="avatar" id="avatarCircle">A</div>
+            <div class="avatar-menu" id="avatarMenu">
+                <a href="#">Профиль</a>
+                <a href="#">Настройки</a>
+                <a href="#">Выйти</a>
+            </div>
+        </div>
+
+        <div class="burger" id="burgerMenu">☰</div>
     </div>
 </header>
 
-<div class="menu-overlay"></div>
 
-<section class="hero">
-    <h1>StillyLink</h1>
-    <p>Общайся свободно. Без регистрации. Полная анонимность.</p>
+<!-- Мобильное меню -->
+<div class="mobile-menu" id="mobileMenu">
+    <a href="#">Главная</a>
+    <a href="#">Чаты</a>
+    <a href="#">О нас</a>
 
-    <a href="#create-chat" class="hero-btn">Создать чат</a>
-</section>
+    <!-- Кнопки регистрации тоже тут -->
+    <a href="#" class="btn">Войти</a>
+    <a href="#" class="btn">Регистрация</a>
+</div>
 
-<section id="create-chat" class="section">
-    <h2>Создать новый чат</h2>
 
-    <div class="card">
-        <input class="input" type="text" placeholder="Название чата">
-        <input class="input" type="text" placeholder="Ваш ник">
-        <button class="btn">Создать</button>
-    </div>
-</section>
-
-<section class="section">
-    <h2>Регистрация</h2>
-
-    <div class="card">
-        <input class="input" type="text" placeholder="Логин">
-        <input class="input" type="password" placeholder="Пароль">
-        <button class="btn">Зарегистрироваться</button>
-    </div>
-</section>
-
-<footer class="footer">
-    <p>© 2025 StillyLink. Все права защищены.</p>
-</footer>
-
-<!-- ====================== FIREBASE ====================== -->
-<script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
-    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
-    import { getFirestore, collection, addDoc, serverTimestamp }
-        from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
-
-    const firebaseConfig = {
-        apiKey: "AIzaSyBWlR4QWdnbqXLKKaftEAzhXneTmV9xXX0",
-        authDomain: "stillylink-f1d0f.firebaseapp.com",
-        projectId: "stillylink-f1d0f",
-        storageBucket: "stillylink-f1d0f.firebasestorage.app",
-        messagingSenderId: "772070114710",
-        appId: "1:772070114710:web:939bce83e4d3be14bdc9b7",
-        measurementId: "G-N8FHLR5GFQ"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-    const auth = getAuth(app);
-
-    const authBtn = document.querySelector(".auth-btn");
-    const avatar = document.getElementById("userAvatar");
-    const userMenu = document.getElementById("userMenu");
-
-    /* 🔥 Авторизация — показать/скрыть аватар */
-    onAuthStateChanged(auth, user => {
-        if (user) {
-            const letter = user.email ? user.email[0].toUpperCase() : "U";
-
-            avatar.textContent = letter;
-            avatar.classList.remove("hidden");
-            authBtn.classList.add("hidden");
-        } else {
-            avatar.classList.add("hidden");
-            authBtn.classList.remove("hidden");
-        }
-    });
-
-    /* 🔥 Клик по аватарке — открыть меню */
-    avatar.onclick = () => {
-        userMenu.classList.toggle("open");
-    };
-
-    /* 🔥 Клик вне меню — закрыть */
-    document.addEventListener("click", e => {
-        if (!avatar.contains(e.target) && !userMenu.contains(e.target)) {
-            userMenu.classList.remove("open");
-        }
-    });
-
-    /* 🔥 Выход */
-    document.getElementById("logoutBtn").onclick = async () => {
-        await signOut(auth);
-        location.reload();
-    };
-
-    /* 🔥 Создание чата */
-    const createBtn = document.querySelector("#create-chat .btn");
-    const nameInput = document.querySelectorAll("#create-chat .input")[0];
-    const userInput = document.querySelectorAll("#create-chat .input")[1];
-
-    createBtn.onclick = async () => {
-        const roomName = nameInput.value.trim();
-        const userName = userInput.value.trim();
-
-        if (!roomName || !userName) {
-            alert("Заполните все поля");
-            return;
-        }
-
-        const docRef = await addDoc(collection(db, "rooms"), {
-            name: roomName,
-            createdAt: serverTimestamp()
-        });
-
-        window.location.href = `chat/?room=${docRef.id}&user=${encodeURIComponent(userName)}`;
-    };
-</script>
-
-<!-- ====================== МЕНЮ БУРГЕРА ====================== -->
 <script>
-function toggleMenu() {
-    const menu = document.querySelector(".nav-links");
-    const overlay = document.querySelector(".menu-overlay");
+    // Открытие аватар-меню
+    const avatar = document.getElementById("avatarCircle");
+    const avatarMenu = document.getElementById("avatarMenu");
 
-    menu.classList.toggle("open");
-    overlay.classList.toggle("show");
-}
+    if (avatar) {
+        avatar.addEventListener("click", () => {
+            avatarMenu.classList.toggle("open");
+        });
+    }
 
-document.addEventListener("click", function(e) {
-    const menu = document.querySelector(".nav-links");
-    const toggle = document.querySelector(".nav-toggle");
-    const overlay = document.querySelector(".menu-overlay");
+    // Мобильное меню
+    const burger = document.getElementById("burgerMenu");
+    const mobileMenu = document.getElementById("mobileMenu");
 
-    if (!menu.classList.contains("open")) return;
-    if (menu.contains(e.target) || toggle.contains(e.target)) return;
+    burger.addEventListener("click", () => {
+        mobileMenu.classList.toggle("open");
+    });
 
-    menu.classList.remove("open");
-    overlay.classList.remove("show");
-});
+    // ИМИТАЦИЯ АВТОРИЗАЦИИ (для теста)
+    // Удали при подключении Firebase
+    setTimeout(() => {
+        document.getElementById("authButtons").style.display = "none";
+        document.getElementById("avatarContainer").style.display = "flex";
+
+        document.getElementById("avatarCircle").textContent = "V";
+    }, 1500);
 </script>
 
 </body>
