@@ -5,23 +5,65 @@
     <title>StillyLink</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="style.css">
+
+    <style>
+        .avatar {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            object-fit: cover;
+            cursor: pointer;
+            border: 2px solid #000;
+        }
+   .avatar-menu {
+        position: absolute;
+        top: 60px;
+        right: 20px;
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        padding: 10px 0;
+        width: 160px;
+        display: none;
+        z-index: 50;
+    }
+
+    .avatar-menu a {
+        display: block;
+        padding: 10px 16px;
+        color: #000;
+        text-decoration: none;
+        font-size: 15px;
+        transition: 0.2s;
+    }
+
+    .avatar-menu a:hover {
+        background: #f3f3f3;
+    }
+    </style>
 </head>
 <body>
 
 <header class="navbar">
     <div class="logo">StillyLink</div>
 
-     <nav class="nav-links">
+    <nav class="nav-links">
         <a href="/">Главная</a>
         <a href="/chats/">Чаты</a>
         <a href="../index.html#create-chat">Создать чат</a>
-        <a href="/login/">Регистрация</a>
+        <a id="register-btn" href="/login/">Регистрация</a>
     </nav>
 
     <div class="nav-toggle" onclick="toggleMenu()">☰</div>
 </header>
 <div class="menu-overlay"></div>
-    
+    <div id="avatar-menu" class="avatar-menu">
+    <a href="/profile/">Профиль</a>
+    <a href="/chats/">Мои чаты</a>
+    <a id="logout-btn" href="#">Выйти</a>
+</div>
+
+
 <section class="hero">
     <h1>StillyLink</h1>
     <p>Общайся свободно. Без регистрации. Полная анонимность.</p>
@@ -54,10 +96,15 @@
     <p>© 2025 StillyLink. Все права защищены.</p>
 </footer>
 
+
+<!-- Firebase + Firestore -->
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
     import { getFirestore, collection, addDoc, serverTimestamp }
         from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
+
+    import { getAuth, onAuthStateChanged } 
+        from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSyBWlR4QWdnbqXLKKaftEAzhXneTmV9xXX0",
@@ -71,7 +118,75 @@
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
+    const auth = getAuth(app);
 
+
+    /* ---------- Генерация фейковой аватарки ---------- */
+    function generateAvatar(name) {
+        const letter = name.charAt(0).toUpperCase();
+        return `https://dummyimage.com/100x100/000/fff&text=${letter}`;
+    }
+
+
+    /* ---------- Подмена кнопки "Регистрация" на аватар ---------- */
+    const nav = document.querySelector(".nav-links");
+    const registerBtn = document.getElementById("register-btn");
+
+    onAuthStateChanged(auth, (user) => {
+        if (!user) return;
+
+        if (registerBtn) registerBtn.remove();
+
+        const avatarUrl = user.photoURL || generateAvatar(user.displayName || "U");
+
+        const img = document.createElement("img");
+        img.src = avatarUrl;
+        img.className = "avatar";
+
+        nav.appendChild(img);
+    });
+
+    /* ---------- ВЫПАДАЮЩЕЕ МЕНЮ АВАТАРА ---------- */
+let avatarMenu = document.getElementById("avatar-menu");
+
+// Когда юзер появляется — создаём аватар
+onAuthStateChanged(auth, (user) => {
+    if (!user) return;
+
+    if (registerBtn) registerBtn.remove();
+
+    const avatarUrl = user.photoURL || generateAvatar(user.displayName || "U");
+
+    const img = document.createElement("img");
+    img.src = avatarUrl;
+    img.className = "avatar";
+    img.id = "user-avatar";
+
+    nav.appendChild(img);
+
+    // Клик на аватар открывает меню
+    img.addEventListener("click", (e) => {
+        e.stopPropagation();
+        avatarMenu.style.display =
+            avatarMenu.style.display === "block" ? "none" : "block";
+    });
+});
+
+// Клик вне меню — закрыть
+document.addEventListener("click", () => {
+    avatarMenu.style.display = "none";
+});
+
+/* ---------- КНОПКА ВЫЙТИ ---------- */
+import { signOut } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
+
+document.getElementById("logout-btn").onclick = async (e) => {
+    e.preventDefault();
+    await signOut(auth);
+    window.location.reload();
+};
+
+    /* ---------- Создание чата ---------- */
     const createBtn = document.querySelector("#create-chat .btn");
     const nameInput = document.querySelectorAll("#create-chat .input")[0];
     const userInput = document.querySelectorAll("#create-chat .input")[1];
@@ -90,10 +205,12 @@
             createdAt: serverTimestamp()
         });
 
-      window.location.href = `chat/?room=${docRef.id}&user=${encodeURIComponent(userName)}`;
+        window.location.href = `chat/?room=${docRef.id}&user=${encodeURIComponent(userName)}`;
     };
 </script>
 
+
+<!-- Логика меню -->
 <script>
 function toggleMenu() {
     const menu = document.querySelector(".nav-links");
@@ -115,6 +232,7 @@ document.addEventListener("click", function(e) {
     menu.classList.remove("open");
     overlay.classList.remove("show");
 });
+
 document.querySelectorAll(".nav-links a").forEach(link => {
     link.addEventListener("click", () => {
         document.querySelector(".nav-links").classList.remove("open");
