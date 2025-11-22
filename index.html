@@ -1,213 +1,245 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
+    <meta charset="UTF-8" />
     <title>StillyLink</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="style.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="style.css" />
 
-<style>
+    <style>
+    /* ---- БАЗА НАВБАР ---- */
+    .navbar {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 12px 18px;
+        position: relative;
+    }
 
-/* ------------------- НАВИГАЦИЯ ------------------- */
+    .logo {
+        font-weight: 700;
+        font-size: 20px;
+    }
 
-.navbar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 15px 25px;
-}
+    /* контейнер ссылок и правый блок */
+    .nav-center {
+        display: flex;
+        align-items: center;
+        gap: 24px;
+        margin-left: 12px;
+        /* не тянем на всю ширину */
+    }
 
-.nav-links {
-    display: flex;
-    align-items: center;
-    gap: 20px;
-}
-
-/* фиксируем ширину меню ДО появления аватарки */
-.nav-links::after {
-    content: "";
-    display: block;
-    width: 36px;   /* как аватар */
-    height: 36px;
-}
-
-/* кнопка регистрации ведёт себя как обычная ссылка */
-#register-btn {
-    display: flex;
-    align-items: center;
-}
-
-/* ------------------- АВАТАР ------------------- */
-
-.avatar {
-    width: 34px;
-    height: 34px;
-    border-radius: 50%;
-    background: #000;
-    color: #fff;
-    font-weight: bold;
-    font-size: 18px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-}
-
-/* ПК — аватар внутри nav-links */
-#avatar-desktop {
-    display: flex;
-    align-items: center;
-}
-
-/* мобильный — аватар справа */
-#avatar-mobile {
-    display: none;
-}
-
-/* ------------------- МЕНЮ АВАТАРА ------------------- */
-
-.avatar-menu-panel {
-    position: fixed;
-    top: 0;
-    right: -220px;
-    width: 220px;
-    height: 100%;
-    background: #222;
-    color: #fff;
-
-    padding-top: 70px;
-
-    display: flex;
-    flex-direction: column;
-    transition: 0.3s;
-    z-index: 200;
-}
-
-.avatar-menu-panel.open { right: 0; }
-
-.avatar-menu-panel a {
-    padding: 15px 25px;
-    font-size: 17px;
-    color: #fff;
-    text-decoration: none;
-}
-.avatar-menu-panel a:hover {
-    background: #333;
-}
-
-.avatar-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0,0,0,0.35);
-    display: none;
-    z-index: 150;
-}
-.avatar-overlay.show { display: block; }
-
-/* ------------------- МОБИЛЬНЫЙ ------------------- */
-
-.nav-toggle {
-    display: none;
-    font-size: 28px;
-    cursor: pointer;
-}
-
-.menu-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0,0,0,0.25);
-    display: none;
-    z-index: 90;
-}
-
-.menu-overlay.show { display: block; }
-
-@media (max-width: 768px) {
-    .nav-toggle { display: block; }
-
+    /* ссылки навигации — одинаковые отступы */
     .nav-links {
+        display: flex;
+        align-items: center;
+        gap: 18px; /* одинаковое расстояние между ссылками */
+    }
+
+    .nav-links a {
+        text-decoration: none;
+        color: inherit;
+        padding: 6px 8px;
+        white-space: nowrap;
+        font-size: 15px;
+    }
+
+    /* правая группа: регистрация / аватар */
+    .right-controls {
+        margin-left: auto; /* прижимает правую группу к правому краю */
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    #register-btn {
+        display: inline-flex;
+        align-items: center;
+        padding: 6px 10px;
+        text-decoration: none;
+        color: inherit;
+        border-radius: 6px;
+        background: transparent;
+        border: 1px solid transparent;
+        font-size: 15px;
+    }
+
+    #register-btn:hover { background: rgba(0,0,0,0.03); }
+
+    /* ---- АВАТАР (круг с буквой) ---- */
+    .avatar {
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        background: #000;
+        color: #fff;
+        font-weight: 700;
+        font-size: 16px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        user-select: none;
+    }
+
+    /* мобильная и десктоп кнопки */
+    #avatar-desktop { display: flex; }
+    #avatar-mobile  { display: none; }
+
+    /* ---- МЕНЮ АВАТАРА (тёмное и чуть уже) ---- */
+    .avatar-menu-panel {
+        position: fixed;
+        top: 0;
+        right: -220px;
+        width: 210px;
+        height: 100%;
+        background: #222;
+        color: #fff;
+        padding-top: 72px;
+        display: flex;
+        flex-direction: column;
+        transition: right .22s ease;
+        z-index: 1200;
+    }
+
+    .avatar-menu-panel.open { right: 0; }
+
+    .avatar-menu-panel a {
+        padding: 14px 18px;
+        color: #fff;
+        text-decoration: none;
+        font-size: 15px;
+    }
+
+    .avatar-menu-panel a:hover { background: rgba(255,255,255,0.03); }
+
+    .avatar-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.35);
+        display: none;
+        z-index: 1100;
+    }
+
+    .avatar-overlay.show { display: block; }
+
+    /* ---- MOBILE: бургер и скрытая панель ---- */
+    .nav-toggle {
+        display: none;
+        font-size: 24px;
+        cursor: pointer;
+    }
+
+    .menu-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.25);
+        display: none;
+        z-index: 900;
+    }
+
+    .menu-overlay.show { display: block; }
+
+    /* выезжающая панель бургера (слева) */
+    .mobile-panel {
         position: fixed;
         top: 0;
         left: -260px;
         width: 260px;
         height: 100%;
         background: #fff;
-        flex-direction: column;
-        align-items: flex-start;
-        padding: 80px 20px;
-        gap: 25px;
-        transition: 0.3s;
-        z-index: 100;
-    }
-
-    .nav-links.open {
-        left: 0;
-    }
-
-    /* выключаем заглушку для мобильной версии */
-    .nav-links::after {
-        display: none;
-    }
-
-    /* ПК-аватар скрыт */
-    #avatar-desktop {
-        display: none;
-    }
-
-    /* мобильная аватарка рядом с бургером */
-    #avatar-mobile {
+        padding-top: 72px;
         display: flex;
-        margin-left: 10px;
+        flex-direction: column;
+        gap: 8px;
+        transition: left .22s ease;
+        z-index: 1000;
     }
-}
 
-</style>
+    .mobile-panel.open { left: 0; }
+
+    .mobile-panel a {
+        padding: 14px 18px;
+        color: #000;
+        text-decoration: none;
+        font-size: 16px;
+    }
+
+    .mobile-panel a:hover { background: #f4f4f4; }
+
+    /* ---- Адаптив ---- */
+    @media (max-width: 768px) {
+        .nav-center { display: none; } /* прячем центральную строку — будет в mobile-panel */
+        .nav-toggle { display: block; }
+        #avatar-desktop { display: none; }
+        #avatar-mobile { display: flex; }
+        .right-controls { margin-left: 8px; }
+        .logo { margin-right: 8px; }
+    }
+
+    /* при больших экранах, центруем всё в одну строку */
+    @media (min-width: 769px) {
+        .mobile-panel { display: none; }
+    }
+
+    /* мелкие визуальные правки страницы (не критично) */
+    body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; color: #111; }
+    .hero { padding: 36px 18px; }
+    .section { padding: 20px 18px; }
+    .card { padding: 14px; border-radius: 8px; background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.03); max-width:600px; }
+    .input { display:block; width:100%; padding:8px 10px; margin-bottom:10px; }
+    .btn { padding:8px 12px; cursor:pointer; }
+    </style>
 </head>
-
 <body>
 
 <header class="navbar">
-
     <div class="logo">StillyLink</div>
 
+    <!-- слева: для мобильного — бургер и мобильный аватар -->
     <div style="display:flex; align-items:center; gap:10px;">
-        <div class="nav-toggle" onclick="toggleMenu()">☰</div>
-
-        <!-- мобильный аватар -->
+        <div class="nav-toggle" id="burger" onclick="toggleMobileMenu()">☰</div>
         <div id="avatar-mobile"></div>
     </div>
 
-    <nav class="nav-links">
-        <a href="/">Главная</a>
-        <a href="/chats/">Чаты</a>
-        <a href="../index.html#create-chat">Создать чат</a>
+    <!-- центр: навигация (видна только на десктопе) -->
+    <div class="nav-center">
+        <nav class="nav-links" id="nav-links">
+            <a href="/">Главная</a>
+            <a href="/chats/">Чаты</a>
+            <a href="../index.html#create-chat">Создать чат</a>
+        </nav>
+    </div>
 
-        <!-- ПК-аватар -->
+    <!-- правая группа: регистрация и (десктоп) аватар -->
+    <div class="right-controls">
         <div id="avatar-desktop"></div>
-
         <a id="register-btn" href="/login/">Регистрация</a>
-    </nav>
-
+    </div>
 </header>
 
-<div class="menu-overlay"></div>
+<!-- мобильная панель (бургер) -->
+<div id="mobile-panel" class="mobile-panel" aria-hidden="true">
+    <a href="/">Главная</a>
+    <a href="/chats/">Чаты</a>
+    <a href="../index.html#create-chat">Создать чат</a>
+    <hr style="border:none;border-top:1px solid #eee;margin:8px 0;">
+    <a id="mobile-register" href="/login/">Регистрация</a>
+</div>
 
-<!-- меню аватара -->
+<!-- затемнения -->
+<div id="mobile-overlay" class="menu-overlay"></div>
 <div id="avatar-overlay" class="avatar-overlay"></div>
-<div id="avatar-menu" class="avatar-menu-panel">
+
+<!-- меню аватара (справа, тёмное и узкое) -->
+<div id="avatar-menu" class="avatar-menu-panel" aria-hidden="true">
     <a href="/profile/">Профиль</a>
     <a href="/chats/">Мои чаты</a>
     <a id="logout-btn" href="#">Выйти</a>
 </div>
 
-
-<!-- HERO -->
+<!-- Контент страницы -->
 <section class="hero">
     <h1>StillyLink</h1>
     <p>Общайся свободно. Без регистрации. Полная анонимность.</p>
@@ -217,8 +249,8 @@
 <section id="create-chat" class="section">
     <h2>Создать новый чат</h2>
     <div class="card">
-        <input class="input" type="text" placeholder="Название чата">
-        <input class="input" type="text" placeholder="Ваш ник">
+        <input class="input" type="text" placeholder="Название чата" />
+        <input class="input" type="text" placeholder="Ваш ник" />
         <button class="btn">Создать</button>
     </div>
 </section>
@@ -226,20 +258,18 @@
 <section class="section">
     <h2>Регистрация</h2>
     <div class="card">
-        <input class="input" type="text" placeholder="Логин">
-        <input class="input" type="password" placeholder="Пароль">
+        <input class="input" type="text" placeholder="Логин" />
+        <input class="input" type="password" placeholder="Пароль" />
         <button class="btn">Зарегистрироваться</button>
     </div>
 </section>
 
-<footer class="footer">
+<footer class="footer" style="padding:18px;">
     <p>© 2025 StillyLink. Все права защищены.</p>
 </footer>
 
-
-<!-- FIREBASE -->
+<!-- FIREBASE + логика -->
 <script type="module">
-
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
 import { getFirestore, collection, addDoc, serverTimestamp }
     from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
@@ -260,58 +290,79 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
 
-function genAvatarLetter(name) {
-    return name[0].toUpperCase();
+/* утилита: создаёт DOM-элемент круга с буквой */
+function createAvatarElement(name) {
+    const el = document.createElement('div');
+    el.className = 'avatar';
+    el.textContent = (name && name.length) ? name[0].toUpperCase() : 'U';
+    return el;
 }
 
-const avatarDesktop = document.getElementById("avatar-desktop");
-const avatarMobile = document.getElementById("avatar-mobile");
-const registerBtn = document.getElementById("register-btn");
+/* DOM узлы */
+const avatarDesktopRoot = document.getElementById('avatar-desktop');
+const avatarMobileRoot  = document.getElementById('avatar-mobile');
+const registerBtn       = document.getElementById('register-btn');
+const mobileRegisterBtn = document.getElementById('mobile-register');
 
-const avatarMenu = document.getElementById("avatar-menu");
-const avatarOverlay = document.getElementById("avatar-overlay");
+const avatarMenuPanel = document.getElementById('avatar-menu');
+const avatarOverlay   = document.getElementById('avatar-overlay');
 
-/* ------------------- Авторизация ------------------- */
+const mobilePanel     = document.getElementById('mobile-panel');
+const mobileOverlay   = document.getElementById('mobile-overlay');
+
+/* Единственный onAuthStateChanged — создаём по одному элементу для десктопа и мобилки */
 onAuthStateChanged(auth, (user) => {
-    if (!user) return;
+    // сначала очистим (на случай повторного вызова)
+    avatarDesktopRoot.innerHTML = '';
+    avatarMobileRoot.innerHTML = '';
 
-    registerBtn.remove();
+    if (!user) {
+        // не логин — показать регистрацию и мобильную ссылку
+        registerBtn.style.display = 'inline-flex';
+        if (mobileRegisterBtn) mobileRegisterBtn.style.display = 'block';
+        return;
+    }
 
-    const letter = genAvatarLetter(user.displayName || "U");
+    // при логине убираем ссылку регистрации
+    registerBtn.style.display = 'none';
+    if (mobileRegisterBtn) mobileRegisterBtn.style.display = 'none';
 
-    const avatar = document.createElement("div");
-    avatar.className = "avatar";
-    avatar.textContent = letter;
+    const name = user.displayName || user.email || 'U';
+    const avatarDesktop = createAvatarElement(name);
+    const avatarMobile  = createAvatarElement(name);
 
-    const avatar2 = avatar.cloneNode(true);
+    // обработчик открытия меню аватара
+    function openAvatarMenu(e){
+        e.stopPropagation();
+        avatarMenuPanel.classList.add('open');
+        avatarOverlay.classList.add('show');
+    }
 
-    avatarDesktop.appendChild(avatar);
-    avatarMobile.appendChild(avatar2);
+    avatarDesktop.addEventListener('click', openAvatarMenu);
+    avatarMobile.addEventListener('click', openAvatarMenu);
 
-    avatar.addEventListener("click", openAvatarMenu);
-    avatar2.addEventListener("click", openAvatarMenu);
+    avatarDesktopRoot.appendChild(avatarDesktop);
+    avatarMobileRoot.appendChild(avatarMobile);
 });
 
-function openAvatarMenu(e) {
-    e.stopPropagation();
-    avatarMenu.classList.add("open");
-    avatarOverlay.classList.add("show");
-}
+/* Закрыть меню аватара по оверлею и клику вне */
+avatarOverlay.addEventListener('click', () => {
+    avatarMenuPanel.classList.remove('open');
+    avatarOverlay.classList.remove('show');
+});
+document.addEventListener('click', () => {
+    avatarMenuPanel.classList.remove('open');
+    avatarOverlay.classList.remove('show');
+});
 
-avatarOverlay.onclick = () => {
-    avatarMenu.classList.remove("open");
-    avatarOverlay.classList.remove("show");
-};
-
-document.getElementById("logout-btn").onclick = async (e) => {
+/* Кнопка выйти */
+document.getElementById('logout-btn').addEventListener('click', async (e) => {
     e.preventDefault();
     await signOut(auth);
     location.reload();
-};
+});
 
-
-/* ------------------- Создание чата ------------------- */
-
+/* Создание чата (основной) */
 const createBtn = document.querySelector("#create-chat .btn");
 const nameInput = document.querySelectorAll("#create-chat .input")[0];
 const userInput = document.querySelectorAll("#create-chat .input")[1];
@@ -319,36 +370,31 @@ const userInput = document.querySelectorAll("#create-chat .input")[1];
 createBtn.onclick = async () => {
     const roomName = nameInput.value.trim();
     const username = userInput.value.trim();
-
-    if (!roomName || !username) {
-        alert("Заполните все поля");
-        return;
-    }
-
+    if (!roomName || !username) { alert("Заполните все поля"); return; }
     const docRef = await addDoc(collection(db, "rooms"), {
         name: roomName,
         createdAt: serverTimestamp()
     });
-
     window.location.href = `chat/?room=${docRef.id}&user=${encodeURIComponent(username)}`;
 };
 </script>
 
-
-<!-- БУРГЕР -->
+<!-- BURGER / MOBILE PANEL logic (not module) -->
 <script>
-function toggleMenu() {
-    const menu = document.querySelector(".nav-links");
-    const overlay = document.querySelector(".menu-overlay");
-
-    menu.classList.toggle("open");
-    overlay.classList.toggle("show");
+function toggleMobileMenu() {
+    const panel = document.getElementById('mobile-panel');
+    const overlay = document.getElementById('mobile-overlay');
+    panel.classList.toggle('open');
+    overlay.classList.toggle('show');
 }
 
-document.querySelector(".menu-overlay").onclick = () => {
-    document.querySelector(".nav-links").classList.remove("open");
-    document.querySelector(".menu-overlay").classList.remove("show");
-};
+document.getElementById('mobile-overlay').addEventListener('click', () => {
+    document.getElementById('mobile-panel').classList.remove('open');
+    document.getElementById('mobile-overlay').classList.remove('show');
+});
+
+// Prevent avatar menu from closing when clicking inside
+document.getElementById('avatar-menu').addEventListener('click', (e)=> e.stopPropagation());
 </script>
 
 </body>
