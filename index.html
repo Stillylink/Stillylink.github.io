@@ -11,17 +11,31 @@
 <header class="navbar">
     <div class="logo">StillyLink</div>
 
-     <nav class="nav-links">
+    <nav class="nav-links">
         <a href="/">Главная</a>
         <a href="/chats/">Чаты</a>
         <a href="../index.html#create-chat">Создать чат</a>
-        <a href="/login/">Регистрация</a>
+
+        <!-- До авторизации показываем кнопку -->
+        <a class="auth-btn" href="/login/">Регистрация</a>
+
+        <!-- Аватар (скрыт до входа) -->
+        <div class="user-avatar hidden" id="userAvatar"></div>
     </nav>
 
+    <!-- Меню пользователя -->
+    <div class="user-menu" id="userMenu">
+        <a href="/profile/">Профиль</a>
+        <a href="/my-chats/">Мои чаты</a>
+        <a id="logoutBtn">Выйти</a>
+    </div>
+
+    <!-- Бургер -->
     <div class="nav-toggle" onclick="toggleMenu()">☰</div>
 </header>
+
 <div class="menu-overlay"></div>
-    
+
 <section class="hero">
     <h1>StillyLink</h1>
     <p>Общайся свободно. Без регистрации. Полная анонимность.</p>
@@ -49,13 +63,13 @@
     </div>
 </section>
 
-
 <footer class="footer">
     <p>© 2025 StillyLink. Все права защищены.</p>
 </footer>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
     import { getFirestore, collection, addDoc, serverTimestamp }
         from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
 
@@ -71,7 +85,33 @@
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
+    const auth = getAuth(app);
 
+    const authBtn = document.querySelector(".auth-btn");
+    const avatar = document.getElementById("userAvatar");
+    const userMenu = document.getElementById("userMenu");
+
+    /* 🔥 Подключение аватара после входа */
+    onAuthStateChanged(auth, user => {
+        if (user) {
+            const name = user.email ? user.email[0].toUpperCase() : "U";
+
+            avatar.textContent = name;
+            avatar.classList.remove("hidden");
+            authBtn.classList.add("hidden");
+        } else {
+            avatar.classList.add("hidden");
+            authBtn.classList.remove("hidden");
+        }
+    });
+
+    /* 🔥 Выход */
+    document.getElementById("logoutBtn").onclick = () => {
+        signOut(auth);
+        window.location.reload();
+    };
+
+    /* Создание чата */
     const createBtn = document.querySelector("#create-chat .btn");
     const nameInput = document.querySelectorAll("#create-chat .input")[0];
     const userInput = document.querySelectorAll("#create-chat .input")[1];
@@ -90,8 +130,19 @@
             createdAt: serverTimestamp()
         });
 
-      window.location.href = `chat/?room=${docRef.id}&user=${encodeURIComponent(userName)}`;
+        window.location.href = `chat/?room=${docRef.id}&user=${encodeURIComponent(userName)}`;
     };
+
+    /* ⬇ меню аватара */
+    avatar.onclick = () => {
+        userMenu.classList.toggle("open");
+    };
+
+    document.addEventListener("click", e => {
+        if (!avatar.contains(e.target) && !userMenu.contains(e.target)) {
+            userMenu.classList.remove("open");
+        }
+    });
 </script>
 
 <script>
@@ -109,17 +160,10 @@ document.addEventListener("click", function(e) {
     const overlay = document.querySelector(".menu-overlay");
 
     if (!menu.classList.contains("open")) return;
-
     if (menu.contains(e.target) || toggle.contains(e.target)) return;
 
     menu.classList.remove("open");
     overlay.classList.remove("show");
-});
-document.querySelectorAll(".nav-links a").forEach(link => {
-    link.addEventListener("click", () => {
-        document.querySelector(".nav-links").classList.remove("open");
-        document.querySelector(".menu-overlay").classList.remove("show");
-    });
 });
 </script>
 
