@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="style.css">
 
     <style>
+        /* ====== АВАТАР ====== */
         .avatar {
             width: 38px;
             height: 38px;
@@ -15,31 +16,33 @@
             cursor: pointer;
             border: 2px solid #000;
         }
-   .avatar-menu {
-        position: absolute;
-        top: 60px;
-        right: 20px;
-        background: #fff;
-        border-radius: 12px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-        padding: 10px 0;
-        width: 160px;
-        display: none;
-        z-index: 50;
-    }
 
-    .avatar-menu a {
-        display: block;
-        padding: 10px 16px;
-        color: #000;
-        text-decoration: none;
-        font-size: 15px;
-        transition: 0.2s;
-    }
+        /* ====== МЕНЮ АВАТАРА ====== */
+        .avatar-menu {
+            position: absolute;
+            top: 60px;
+            right: 20px;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            padding: 10px 0;
+            width: 160px;
+            display: none;
+            z-index: 50;
+        }
 
-    .avatar-menu a:hover {
-        background: #f3f3f3;
-    }
+        .avatar-menu a {
+            display: block;
+            padding: 10px 16px;
+            color: #000;
+            text-decoration: none;
+            font-size: 15px;
+            transition: 0.2s;
+        }
+
+        .avatar-menu a:hover {
+            background: #f3f3f3;
+        }
     </style>
 </head>
 <body>
@@ -54,10 +57,17 @@
         <a id="register-btn" href="/login/">Регистрация</a>
     </nav>
 
+    <!-- Мобильный бургер -->
     <div class="nav-toggle" onclick="toggleMenu()">☰</div>
+
+    <!-- Контейнер для аватарки справа -->
+    <div id="avatar-container"></div>
 </header>
+
 <div class="menu-overlay"></div>
-    <div id="avatar-menu" class="avatar-menu">
+
+<!-- Выпадающее меню аватарки -->
+<div id="avatar-menu" class="avatar-menu">
     <a href="/profile/">Профиль</a>
     <a href="/chats/">Мои чаты</a>
     <a id="logout-btn" href="#">Выйти</a>
@@ -97,14 +107,15 @@
 </footer>
 
 
-<!-- Firebase + Firestore -->
+<!-- Firebase -->
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
     import { getFirestore, collection, addDoc, serverTimestamp }
         from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
 
-    import { getAuth, onAuthStateChanged } 
+    import { getAuth, onAuthStateChanged, signOut }
         from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
+
 
     const firebaseConfig = {
         apiKey: "AIzaSyBWlR4QWdnbqXLKKaftEAzhXneTmV9xXX0",
@@ -120,18 +131,19 @@
     const db = getFirestore(app);
     const auth = getAuth(app);
 
-
-    /* ---------- Генерация фейковой аватарки ---------- */
+    /* Генерация фейковой аватарки */
     function generateAvatar(name) {
         const letter = name.charAt(0).toUpperCase();
         return `https://dummyimage.com/100x100/000/fff&text=${letter}`;
     }
 
-
-    /* ---------- Подмена кнопки "Регистрация" на аватар ---------- */
     const nav = document.querySelector(".nav-links");
     const registerBtn = document.getElementById("register-btn");
+    const avatarContainer = document.getElementById("avatar-container");
+    const avatarMenu = document.getElementById("avatar-menu");
 
+
+    /* ====== ЕДИНСТВЕННЫЙ onAuthStateChanged ====== */
     onAuthStateChanged(auth, (user) => {
         if (!user) return;
 
@@ -139,54 +151,35 @@
 
         const avatarUrl = user.photoURL || generateAvatar(user.displayName || "U");
 
-        const img = document.createElement("img");
-        img.src = avatarUrl;
-        img.className = "avatar";
+        const avatar = document.createElement("img");
+        avatar.src = avatarUrl;
+        avatar.className = "avatar";
+        avatar.id = "user-avatar";
 
-        nav.appendChild(img);
+        avatarContainer.innerHTML = "";
+        avatarContainer.appendChild(avatar);
+
+        avatar.addEventListener("click", (e) => {
+            e.stopPropagation();
+            avatarMenu.style.display =
+                avatarMenu.style.display === "block" ? "none" : "block";
+        });
     });
 
-    /* ---------- ВЫПАДАЮЩЕЕ МЕНЮ АВАТАРА ---------- */
-let avatarMenu = document.getElementById("avatar-menu");
-
-// Когда юзер появляется — создаём аватар
-onAuthStateChanged(auth, (user) => {
-    if (!user) return;
-
-    if (registerBtn) registerBtn.remove();
-
-    const avatarUrl = user.photoURL || generateAvatar(user.displayName || "U");
-
-    const img = document.createElement("img");
-    img.src = avatarUrl;
-    img.className = "avatar";
-    img.id = "user-avatar";
-
-    nav.appendChild(img);
-
-    // Клик на аватар открывает меню
-    img.addEventListener("click", (e) => {
-        e.stopPropagation();
-        avatarMenu.style.display =
-            avatarMenu.style.display === "block" ? "none" : "block";
+    /* Закрыть при клике вне */
+    document.addEventListener("click", () => {
+        avatarMenu.style.display = "none";
     });
-});
 
-// Клик вне меню — закрыть
-document.addEventListener("click", () => {
-    avatarMenu.style.display = "none";
-});
+    /* Выход */
+    document.getElementById("logout-btn").onclick = async (e) => {
+        e.preventDefault();
+        await signOut(auth);
+        window.location.reload();
+    };
 
-/* ---------- КНОПКА ВЫЙТИ ---------- */
-import { signOut } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
 
-document.getElementById("logout-btn").onclick = async (e) => {
-    e.preventDefault();
-    await signOut(auth);
-    window.location.reload();
-};
-
-    /* ---------- Создание чата ---------- */
+    /* Создание чата */
     const createBtn = document.querySelector("#create-chat .btn");
     const nameInput = document.querySelectorAll("#create-chat .input")[0];
     const userInput = document.querySelectorAll("#create-chat .input")[1];
@@ -210,7 +203,7 @@ document.getElementById("logout-btn").onclick = async (e) => {
 </script>
 
 
-<!-- Логика меню -->
+<!-- Бургер-меню -->
 <script>
 function toggleMenu() {
     const menu = document.querySelector(".nav-links");
