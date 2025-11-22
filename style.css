@@ -9,7 +9,7 @@
 /* ======== ГЛАВНЫЕ ЦВЕТА ======== */
 :root {
     --bg-dark: #111214;
-    --bg-page: #ffffff;
+    --bg-page: #ffffff;     /* новый мягкий тёмно-серый фон */
     --bg-card: #1a1c1f;
     --bg-hover: #222327;
 
@@ -21,7 +21,7 @@
     --border: #2a2c31;
 }
 
-/* ======== ОБЩИЙ ФОН ======== */
+/* ======== ОБЩИЙ ФОН САЙТА ======== */
 body {
     background: var(--bg-page);
     color: var(--text-main);
@@ -31,6 +31,17 @@ body {
 }
 
 /* ======== НАВИГАЦИЯ ======== */
+.navbar {
+    display: flex;
+    align-items: center;
+    padding: 12px 20px;
+    background: var(--bg-card);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
 
 .logo {
     font-size: 22px;
@@ -38,8 +49,9 @@ body {
     color: var(--accent);
 }
 
-/* Левые ссылки */
+/* Десктоп меню */
 .nav-links {
+    margin-left: auto;
     display: flex;
     gap: 20px;
 }
@@ -55,133 +67,53 @@ body {
     color: var(--accent);
 }
 
-/* Правая часть */
-.nav-right {
-    display: flex;
-    align-items: center;
-    gap: 20px;
-}
-
-/* Кнопка регистрации */
-.auth-btn {
-    color: var(--text-secondary);
-    text-decoration: none;
-    font-size: 16px;
-    transition: 0.25s;
-}
-
-.auth-btn:hover {
-    color: var(--accent);
-}
-
-/* Аватарка */
-.user-avatar {
-    width: 38px;
-    height: 38px;
-    background: #000;
-    color: #fff;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 600;
-    cursor: pointer;
-    user-select: none;
-    transition: 0.2s;
-}
-
-.hidden {
-    display: none !important;
-}
-
-/* Меню аватара */
-.user-menu {
-    position: absolute;
-    top: 65px;
-    right: 20px;
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    display: none;
-    width: 160px;
-    padding: 10px 0;
-    flex-direction: column;
-    z-index: 999;
-    box-shadow: 0 4px 14px rgba(0,0,0,0.45);
-}
-
-.user-menu.open {
-    display: flex;
-}
-
-.user-menu a {
-    padding: 12px 18px;
-    color: var(--text-secondary);
-    text-decoration: none;
-    transition: 0.2s;
-}
-
-.user-menu a:hover {
-    background: var(--bg-hover);
-    color: var(--accent);
-}
-
-/* ======== БУРГЕР ======== */
+/* ======== КНОПКА БУРГЕР ======== */
 .nav-toggle {
     display: none;
+    margin-left: auto;
     font-size: 28px;
     cursor: pointer;
     color: var(--accent);
 }
 
-/* Мобилька */
-@media (max-width: 768px) {
-
-    .nav-links {
-        display: none;
-    }
-
-    .nav-links.open {
-        display: flex;
-        flex-direction: column;
-        position: absolute;
-        top: 60px;
-        right: 0;
-        width: 220px;
-        background: var(--bg-card);
-        border-left: 1px solid var(--border);
-        border-bottom: 1px solid var(--border);
-        padding: 10px 0;
-        animation: slideIn 0.25s ease;
-        z-index: 999;
-    }
-
-    .nav-links.open a {
-        padding: 12px 20px;
-    }
-
-    .nav-toggle {
-        display: block;
-    }
-
-    .nav-right {
-        gap: 10px;
-    }
+/* ======== МОБИЛЬНОЕ МЕНЮ ======== */
+.nav-links.open {
+    display: flex !important;
+    flex-direction: column;
+    position: absolute;
+    top: 60px;
+    right: 0;
+    width: 220px;
+    background: var(--bg-card);
+    border-left: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    animation: slideIn 0.25s ease;
+    z-index: 999;
+    padding: 10px 0;
 }
 
+.nav-links.open a {
+    padding: 12px 20px;
+}
+
+.nav-links.open a:hover {
+    background: var(--bg-hover);
+}
+
+/* Анимация меню */
 @keyframes slideIn {
     from { transform: translateY(-10px); opacity: 0; }
     to   { transform: translateY(0); opacity: 1; }
 }
 
-/* Оверлей */
+/* ======== ОТКЛЮЧЕНИЕ ЗАТЕМНЕНИЯ ======== */
 .menu-overlay {
     display: none !important;
 }
 
-/* ======== HERO ======== */
+/* ======== HERO-БЛОК ======== */
 .hero {
-    background: var(--bg-dark);
+    background: var(--bg-dark);       /* остаётся тёмным */
     padding: 70px 20px;
     text-align: center;
     color: var(--text-main);
@@ -209,7 +141,11 @@ body {
     transition: 0.25s;
 }
 
-/* ======== СЕКЦИИ ======== */
+.hero-btn:hover {
+    background: var(--accent);
+}
+
+/* ======== ОБЩИЕ СЕКЦИИ ======== */
 .section {
     padding: 40px 20px;
     text-align: center;
@@ -231,6 +167,7 @@ body {
     box-shadow: 0 0 12px rgba(0,0,0,0.3);
 }
 
+/* Поля ввода */
 .input {
     width: 100%;
     padding: 12px;
@@ -239,8 +176,16 @@ body {
     border: 1px solid var(--border);
     background: #151618;
     color: var(--text-main);
+    font-size: 16px;
+    transition: 0.2s;
 }
 
+.input:focus {
+    border-color: var(--accent);
+    outline: none;
+}
+
+/* Кнопки */
 .btn {
     width: 100%;
     padding: 12px;
@@ -250,58 +195,65 @@ body {
     font-size: 18px;
     border-radius: 8px;
     cursor: pointer;
+    transition: 0.25s;
 }
 
-/* === Фикс: одинаковая ширина справа (аватар или кнопка) === */
-.nav-right {
-    width: 120px; /* фиксированная ширина блока справа */
+.btn:hover {
+    background: var(--accent);
+}
+
+.chat-section h2 {
+    color: #000 !important;
+}
+
+.chat-item {
     display: flex;
-    justify-content: flex-end;
+    justify-content: space-between;
     align-items: center;
-    gap: 20px;
-}
+    gap: 15px;
 
-/* Делаем кнопку регистрации по ширине как аватар */
-.auth-btn {
-    min-width: 70px;
-    text-align: right;
-}
-
-/* === Фикс: ссылки навигации остаются на месте === */
-.navbar {
-    display: grid;
-    grid-template-columns: auto 1fr auto;
-    align-items: center;
-    padding: 12px 20px;
+    padding: 18px 22px;
+    border-radius: 10px;
     background: var(--bg-card);
-    border-bottom: 1px solid var(--border);
-    position: sticky;
-    top: 0;
-    z-index: 20;
+    border: 1px solid var(--border);
+
+    box-shadow: 0 0 10px rgba(0,0,0,0.2);
 }
 
-
-/* === Мобильная версия: отправляем кнопку регистрации в бургер === */
-@media (max-width: 768px) {
-    .auth-btn {
-        display: none !important; /* скрываем сверху */
-    }
-
-    .nav-links.open .auth-btn {
-        display: block !important; /* показываем в бургер-меню */
-        padding: 12px 20px;
-        color: var(--text-secondary);
-        text-decoration: none;
-    }
+.chat-list {
+    max-width: 800px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
 }
 
-/* === Фикс: бургер и аватар больше не прыгают === */
-.user-avatar {
-    flex-shrink: 0;
+.chat-left {
+    display: flex;
+    flex-direction: column;
 }
 
-.nav-toggle {
-    flex-shrink: 0;
+.chat-left h3 {
+    color: var(--accent);
+    font-size: 20px;
+}
+
+.chat-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+}
+
+.chat-info {
+    color: var(--text-secondary);
+    font-size: 14px;
+}
+
+.chat-join-btn {
+    padding: 8px 14px;
+    font-size: 14px;
+    width: auto;
 }
 
 /* ======== ФУТЕР ======== */
@@ -313,4 +265,15 @@ body {
     text-align: center;
     color: var(--text-secondary);
     font-size: 14px;
+}
+
+/* ======== АДАПТИВ ======== */
+@media (max-width: 768px) {
+    .nav-links {
+        display: none;
+    }
+
+    .nav-toggle {
+        display: block;
+    }
 }
