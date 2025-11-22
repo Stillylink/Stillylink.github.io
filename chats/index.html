@@ -5,6 +5,42 @@
     <title>Чаты — StillyLink</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="/style.css">
+
+    <style>
+.skeleton {
+    background: #2b2b2b;
+    padding: 15px;
+    border-radius: 12px;
+    margin-bottom: 15px;
+    animation: pulse 1.6s infinite ease-in-out;
+}
+
+.skeleton-line {
+    height: 14px;
+    background: #444;
+    border-radius: 8px;
+}
+
+.skeleton-line.title {
+    width: 50%;
+    height: 18px;
+    margin-bottom: 10px;
+}
+
+.skeleton-line.small {
+    width: 30%;
+}
+
+@keyframes pulse {
+    0% { opacity: 0.55; }
+    50% { opacity: 1; }
+    100% { opacity: 0.55; }
+}
+
+.chat-item h3 {
+    color: #fff;
+}
+</style>
 </head>
 <body>
 
