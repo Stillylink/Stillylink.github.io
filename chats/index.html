@@ -24,7 +24,21 @@
 <section class="section chat-section">
     <h2>Список чатов</h2>
 
-    <div id="chat-list" class="chat-list"></div>
+    <div id="chat-list" class="chat-list">
+    <div class="skeleton chat-item">
+        <div class="skeleton-line title"></div>
+        <div class="skeleton-line small"></div>
+    </div>
+    <div class="skeleton chat-item">
+        <div class="skeleton-line title"></div>
+        <div class="skeleton-line small"></div>
+    </div>
+    <div class="skeleton chat-item">
+        <div class="skeleton-line title"></div>
+        <div class="skeleton-line small"></div>
+    </div>
+</div>
+
 </section>
 
 <footer class="footer">
@@ -67,17 +81,18 @@ function renderRoom(id, data) {
     </div>`;
 }
 
-    onSnapshot(collection(db, "rooms"), (snapshot) => {
-        chatList.innerHTML = "";
-        if (snapshot.empty) {
-            chatList.innerHTML = "<p>Пока нет созданных чатов.</p>";
-            return;
-        }
+onSnapshot(collection(db, "rooms"), (snapshot) => {
+    chatList.innerHTML = ""; // Убираем skeleton
 
-        snapshot.forEach(doc => {
-            chatList.innerHTML += renderRoom(doc.id, doc.data());
-        });
+    if (snapshot.empty) {
+        chatList.innerHTML = "<p>Пока нет созданных чатов.</p>";
+        return;
+    }
+
+    snapshot.forEach(doc => {
+        chatList.innerHTML += renderRoom(doc.id, doc.data());
     });
+});
 
     window.joinChat = function(roomId) {
         const user = prompt("Введите ваш ник:");
