@@ -50,13 +50,25 @@
     <nav class="nav-links">
         <a href="/">Главная</a>
         <a href="/chats/">Чаты</a>
-        <a href="../index.html#create-chat">Создать чат</a>
-        <a href="/login/">Регистрация</a>
+        <a href="/#create-chat">Создать чат</a>
+        <a href="/login/" class="register-btn">Регистрация</a>
     </nav>
 
+     <div class="user-avatar hidden" onclick="toggleUserMenu()">
+        <span>U</span>
+    </div>
+
+      <div class="user-menu">
+        <a href="/profile/">Профиль</a>
+        <a href="/mychats/">Мои чаты</a>
+        <a href="#" id="logoutBtn">Выйти</a>
+    </div>
+    
     <div class="nav-toggle" onclick="toggleMenu()">☰</div>
 </header>
 
+<div class="menu-overlay"></div>
+    
 <section class="section chat-section">
     <h2>Список чатов</h2>
 
@@ -84,8 +96,17 @@
 <!-- ===== FIREBASE ===== -->
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
+
     import { 
-        getFirestore, collection, onSnapshot 
+        getAuth,
+        onAuthStateChanged,
+        signOut
+    } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
+
+    import { 
+        getFirestore,
+        collection,
+        onSnapshot
     } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
 
     const firebaseConfig = {
@@ -99,7 +120,14 @@
     };
 
     const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
     const db = getFirestore(app);
+
+    const regBtn = document.querySelector(".register-btn");
+    const avatar = document.querySelector(".user-avatar");
+    const avatarLetter = document.querySelector(".user-avatar span");
+    const userMenu = document.querySelector(".user-menu");
+    const logoutBtn = document.getElementById("logoutBtn");
 
     const chatList = document.getElementById("chat-list");
 
@@ -129,6 +157,45 @@ onSnapshot(collection(db, "rooms"), (snapshot) => {
         chatList.innerHTML += renderRoom(doc.id, doc.data());
     });
 });
+
+    // === Локальная загрузка аватара сразу при заходе ===
+const savedAvatar = localStorage.getItem("userAvatarLetter");
+if (savedAvatar) {
+    regBtn.classList.add("hidden");
+    avatar.classList.remove("hidden");
+
+    avatarLetter.textContent = savedAvatar;
+}
+
+onAuthStateChanged(auth, user => {
+    if (user) {
+        regBtn.classList.add("hidden");
+        avatar.classList.remove("hidden");
+
+        const letter = user.email?.charAt(0).toUpperCase() || "U";
+        avatarLetter.textContent = letter;
+
+        // Сохраняем локально
+        localStorage.setItem("userAvatarLetter", letter);
+
+    } else {
+        regBtn.classList.remove("hidden");
+        avatar.classList.add("hidden");
+        userMenu.classList.remove("open");
+
+        // Удаляем локальные данные при выходе
+        localStorage.removeItem("userAvatarLetter");
+    }
+});
+    
+    logoutBtn.onclick = (e) => {
+    e.preventDefault();
+    signOut(auth).then(() => {
+        localStorage.removeItem("userAvatarLetter");
+        window.location.reload();
+    });
+};
+
 
     window.joinChat = function(roomId) {
         const user = prompt("Введите ваш ник:");
