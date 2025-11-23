@@ -15,47 +15,79 @@
 }
 
 /* ===== Общая карточка ===== */
+.anon-wrapper {
+    display: flex;
+    gap: 30px;
+    justify-content: center;
+    margin-top: 30px;
+    flex-wrap: wrap;
+}
+
+/* ===== КАРТОЧКА ===== */
 .anon-card {
-    width: 300px;                /* Уже (было 380px) */
-    min-height: 350px;           /* Длиннее */
+    width: 300px;
+    min-height: 320px;            /* меньше пустоты */
     border-radius: 14px;
     overflow: hidden;
     cursor: pointer;
     transition: 0.25s;
-    border: 1px solid #dcdcdc;
+    border: 1px solid #e0e0e0;
     display: flex;
     flex-direction: column;
+    background: #fafafa;          /* лёгкая мягкость */
 }
 
-/* Hover */
 .anon-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 6px 14px rgba(0,0,0,0.15);
+    transform: translateY(-4px);
+    box-shadow: 0 8px 18px rgba(0,0,0,0.12);
 }
 
-/* =====  Верхняя часть ===== */
+/* ===== ВЕРХ ===== */
 .anon-card-top {
     background: #000;
     color: #fff;
-    padding: 25px 20px;
-    height: 120px;               /* Чуть выше */
+    padding: 22px 18px;
+    height: 110px;
     display: flex;
-    justify-content: center;     /* Центрируем */
-    align-items: center;         /* Центрируем по вертикали */
-    text-align: center;          /* Центрируем текст */
-    font-size: 18px;
-    font-weight: bold;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: 0.3px;        /* капля выразительности */
 }
 
-/* ===== нижняя часть ===== */
+/* ===== НИЗ ===== */
 .anon-card-bottom {
     background: #fff;
-    color: #000;
-    padding: 20px;
-    font-size: 15px;
-    line-height: 1.45;
-    text-align: center;          /* Тоже центрируем, выглядит аккуратнее */
-    flex: 1;                      /* Растягивает вниз */
+    color: #444;
+    padding: 18px 20px;
+    font-size: 14px;
+    line-height: 1.4;
+    text-align: center;
+    flex: 1;
+}
+
+/* ===== МОБИЛЬНАЯ ВЕРСИЯ ===== */
+@media (max-width: 480px) {
+
+    .anon-card {
+        width: 100%;
+        max-width: 330px;
+        min-height: 240px;        /* заметно ниже */
+    }
+
+    .anon-card-top {
+        height: 85px;             /* заголовок компактнее */
+        font-size: 16px;
+        padding: 16px;
+    }
+
+    .anon-card-bottom {
+        padding: 14px 18px;
+        font-size: 13.5px;
+    }
 }
         .section h2 {
     color: #000 !important;
