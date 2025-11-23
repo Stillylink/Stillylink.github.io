@@ -14,19 +14,10 @@
     flex-wrap: wrap;
 }
 
-/* ===== Общая карточка ===== */
-.anon-wrapper {
-    display: flex;
-    gap: 30px;
-    justify-content: center;
-    margin-top: 30px;
-    flex-wrap: wrap;
-}
-
 /* ===== КАРТОЧКА ===== */
 .anon-card {
     width: 300px;
-    min-height: 320px;            /* меньше пустоты */
+    min-height: 260px;          /* БЫЛО 320px — убрал лишнюю высоту */
     border-radius: 14px;
     overflow: hidden;
     cursor: pointer;
@@ -34,7 +25,7 @@
     border: 1px solid #e0e0e0;
     display: flex;
     flex-direction: column;
-    background: #fafafa;          /* лёгкая мягкость */
+    background: #fafafa;
 }
 
 .anon-card:hover {
@@ -46,27 +37,32 @@
 .anon-card-top {
     background: #000;
     color: #fff;
-    padding: 22px 18px;
-    height: 110px;
+    padding: 18px 16px;
+    height: 85px;                /* БЫЛО 110px — стало компактнее */
     display: flex;
     justify-content: center;
     align-items: center;
     text-align: center;
 
-    font-size: 17px;
+    font-size: 18px;             /* чуть больше — выразительнее */
     font-weight: 600;
-    letter-spacing: 0.3px;        /* капля выразительности */
+    letter-spacing: 0.3px;
 }
 
 /* ===== НИЗ ===== */
 .anon-card-bottom {
     background: #fff;
-    color: #444;
-    padding: 18px 20px;
-    font-size: 14px;
-    line-height: 1.4;
-    text-align: center;
+    color: #333;
+    padding: 0 18px;
     flex: 1;
+
+    display: flex;               /* центрируем текст */
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+
+    font-size: 15px;
+    line-height: 1.35;
 }
 
 /* ===== МОБИЛЬНАЯ ВЕРСИЯ ===== */
@@ -75,18 +71,19 @@
     .anon-card {
         width: 100%;
         max-width: 330px;
-        min-height: 240px;        /* заметно ниже */
+        min-height: 230px;        /* меньше, чем на ПК */
     }
 
     .anon-card-top {
-        height: 85px;             /* заголовок компактнее */
-        font-size: 16px;
-        padding: 16px;
+        height: 75px;             /* компактнее */
+        font-size: 19px;          /* крупнее и читабельнее */
+        padding: 14px;
     }
 
     .anon-card-bottom {
-        padding: 14px 18px;
-        font-size: 13.5px;
+        font-size: 16px;          /* больше → не пусто */
+        padding: 10px 18px;
+        line-height: 1.42;
     }
 }
         .section h2 {
