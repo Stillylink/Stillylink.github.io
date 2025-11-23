@@ -54,7 +54,6 @@ body {
     margin-left: auto;
     display: flex;
     gap: 20px;
-    min-width: 120px;
 }
 
 .nav-links a {
