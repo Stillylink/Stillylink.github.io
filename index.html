@@ -101,25 +101,49 @@ const avatarLetter = document.querySelector(".user-avatar span");
 const userMenu = document.querySelector(".user-menu");
 const logoutBtn = document.getElementById("logoutBtn");
 
+    // === Локальное восстановление состояния ===
+const savedLogin = localStorage.getItem("isLoggedIn");
+const savedLetter = localStorage.getItem("avatarLetter");
+
+if (savedLogin === "true" && savedLetter) {
+    regBtn.classList.add("hidden");
+    avatar.classList.remove("hidden");
+    avatarLetter.textContent = savedLetter;
+}
+
 // --- Авторизация ---
 onAuthStateChanged(auth, user => {
     if (user) {
+        const letter = user.email?.charAt(0).toUpperCase() || "U";
+
+        // UI
         regBtn.classList.add("hidden");
         avatar.classList.remove("hidden");
-
-        const letter = user.email?.charAt(0).toUpperCase() || "U";
         avatarLetter.textContent = letter;
 
+        // Save locally
+        localStorage.setItem("isLoggedIn", "true");
+        localStorage.setItem("avatarLetter", letter);
+
     } else {
+        // UI
         regBtn.classList.remove("hidden");
         avatar.classList.add("hidden");
         userMenu.classList.remove("open");
+
+        // Clear local data
+        localStorage.removeItem("isLoggedIn");
+        localStorage.removeItem("avatarLetter");
     }
 });
 
 // --- Выход ---
 logoutBtn.onclick = (e) => {
     e.preventDefault();
+
+    localStorage.removeItem("isLoggedIn");
+    localStorage.removeItem("avatarLetter");
+
     signOut(auth).then(() => window.location.reload());
 };
 
