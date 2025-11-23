@@ -261,6 +261,7 @@ body {
     display: none !important;
 }
 /* ==== АВАТАРКА ПОЛЬЗОВАТЕЛЯ ==== */
+/* Аватарка не влияет на размер навбара */
 .user-avatar {
     width: 38px;
     height: 38px;
@@ -273,8 +274,18 @@ body {
     font-weight: bold;
     cursor: pointer;
     user-select: none;
-    margin-left: 20px;
+
+    position: absolute;    /* 🔥 главный фикс */
+    right: 20px;           /* ставим справа */
+    top: 50%;
+    transform: translateY(-50%);
 }
+
+/* скрытая аватарка */
+.user-avatar.hidden {
+    display: none !important;
+}
+
 /* ==== ВЫПАДАЮЩЕЕ МЕНЮ АВАТАРКИ ==== */
 .user-menu {
     display: none;
