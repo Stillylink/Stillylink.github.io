@@ -54,6 +54,7 @@ body {
     margin-left: auto;
     display: flex;
     gap: 20px;
+    min-width: 120px;
 }
 
 .nav-links a {
@@ -327,14 +328,6 @@ body {
         top: 55px;
     }
 }
-
-.avatar-placeholder {
-    width: 40px;      /* такая же ширина, как у .user-avatar */
-    height: 40px;
-    border-radius: 50%;
-    visibility: hidden; /* блок есть, но невидимый */
-}
-
 
 /* ======== ФУТЕР ======== */
 .footer {
