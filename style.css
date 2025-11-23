@@ -68,6 +68,17 @@ body {
     color: var(--accent);
 }
 
+.nav-right {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    margin-left: 20px; /* отодвигает от навигации */
+}
+
+.hidden {
+    display: none !important;
+}
+
 /* ======== КНОПКА БУРГЕР ======== */
 .nav-toggle {
     display: none;
