@@ -212,15 +212,27 @@ function toggleMenu() {
     menu.classList.toggle("open");
 }
 
-    function toggleUserMenu() {
+document.addEventListener("click", function(e) {
+    const menu = document.querySelector(".nav-links");
+    const avatar = document.querySelector(".user-avatar");
+    const toggle = document.querySelector(".nav-toggle");
+    if (!menu.classList.contains("open")) return;
+    if (menu.contains(e.target) || toggle.contains(e.target)) return;
+    menu.classList.remove("open");
+});
+
+<!-- ============== МЕНЮ АВАТАРКИ ============== -->
+function toggleUserMenu() {
     document.querySelector(".user-menu").classList.toggle("open");
 }
 
 document.addEventListener("click", function(e) {
-    const menu = document.querySelector(".nav-links");
-    const toggle = document.querySelector(".nav-toggle");
+    const menu = document.querySelector(".user-menu");
+    const avatar = document.querySelector(".user-avatar");
+
     if (!menu.classList.contains("open")) return;
-    if (menu.contains(e.target) || toggle.contains(e.target)) return;
+    if (menu.contains(e.target) || avatar.contains(e.target)) return;
+
     menu.classList.remove("open");
 });
 </script>
