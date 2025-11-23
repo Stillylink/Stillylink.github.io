@@ -11,12 +11,22 @@
 <header class="navbar">
     <div class="logo">StillyLink</div>
 
-     <nav class="nav-links">
+    <nav class="nav-links">
         <a href="/">Главная</a>
         <a href="/chats/">Чаты</a>
         <a href="../index.html#create-chat">Создать чат</a>
         <a href="/login/">Регистрация</a>
     </nav>
+
+    <div class="user-avatar hidden" onclick="toggleUserMenu()">
+        <span>U</span>
+    </div>
+
+    <div class="user-menu">
+        <a href="/profile/">Профиль</a>
+        <a href="/mychats/">Мои чаты</a>
+        <a href="/logout/">Выйти</a>
+    </div>
 
     <div class="nav-toggle" onclick="toggleMenu()">☰</div>
 </header>
@@ -120,6 +130,23 @@ document.querySelectorAll(".nav-links a").forEach(link => {
         document.querySelector(".nav-links").classList.remove("open");
         document.querySelector(".menu-overlay").classList.remove("show");
     });
+});
+</script>
+
+    <script>
+function toggleUserMenu() {
+    document.querySelector(".user-menu").classList.toggle("open");
+}
+
+document.addEventListener("click", function(e) {
+    const menu = document.querySelector(".user-menu");
+    const avatar = document.querySelector(".user-avatar");
+
+    if (!menu.classList.contains("open")) return;
+
+    if (menu.contains(e.target) || avatar.contains(e.target)) return;
+
+    menu.classList.remove("open");
 });
 </script>
 
