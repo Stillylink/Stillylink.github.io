@@ -14,8 +14,8 @@
     <nav class="nav-links">
         <a href="/">Главная</a>
         <a href="/chats/">Чаты</a>
-        <a href="../index.html#create-chat">Создать чат</a>
-        <a href="/login/">Регистрация</a>
+        <a href="/index.html#create-chat">Создать чат</a>
+        <a href="/login/" class="register-btn">Регистрация</a>
     </nav>
 
     <div class="user-avatar hidden" onclick="toggleUserMenu()">
@@ -25,13 +25,14 @@
     <div class="user-menu">
         <a href="/profile/">Профиль</a>
         <a href="/mychats/">Мои чаты</a>
-        <a href="/logout/">Выйти</a>
+        <a href="#" id="logoutBtn">Выйти</a>
     </div>
 
     <div class="nav-toggle" onclick="toggleMenu()">☰</div>
 </header>
+
 <div class="menu-overlay"></div>
-    
+
 <section class="hero">
     <h1>StillyLink</h1>
     <p>Общайся свободно. Без регистрации. Полная анонимность.</p>
@@ -43,9 +44,9 @@
     <h2>Создать новый чат</h2>
 
     <div class="card">
-        <input class="input" type="text" placeholder="Название чата">
-        <input class="input" type="text" placeholder="Ваш ник">
-        <button class="btn">Создать</button>
+        <input class="input" id="roomName" type="text" placeholder="Название чата">
+        <input class="input" id="userName" type="text" placeholder="Ваш ник">
+        <button class="btn" id="createBtn">Создать</button>
     </div>
 </section>
 
@@ -59,81 +60,108 @@
     </div>
 </section>
 
-
 <footer class="footer">
     <p>© 2025 StillyLink. Все права защищены.</p>
 </footer>
 
+<!-- ============== FIREBASE (ОДНОКРАТНАЯ ИНИЦИАЛИЗАЦИЯ) ============== -->
 <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
-    import { getFirestore, collection, addDoc, serverTimestamp }
-        from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
+import { 
+    getAuth,
+    onAuthStateChanged,
+    signOut
+} from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
 
-    const firebaseConfig = {
-        apiKey: "AIzaSyBWlR4QWdnbqXLKKaftEAzhXneTmV9xXX0",
-        authDomain: "stillylink-f1d0f.firebaseapp.com",
-        projectId: "stillylink-f1d0f",
-        storageBucket: "stillylink-f1d0f.firebasestorage.app",
-        messagingSenderId: "772070114710",
-        appId: "1:772070114710:web:939bce83e4d3be14bdc9b7",
-        measurementId: "G-N8FHLR5GFQ"
-    };
+import { 
+    getFirestore,
+    collection,
+    addDoc,
+    serverTimestamp
+} from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
 
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
+// --- CONFIG ---
+const firebaseConfig = {
+    apiKey: "AIzaSyBWlR4QWdnbqXLKKaftEAzhXneTmV9xXX0",
+    authDomain: "stillylink-f1d0f.firebaseapp.com",
+    projectId: "stillylink-f1d0f",
+    storageBucket: "stillylink-f1d0f.appspot.com",
+    messagingSenderId: "772070114710",
+    appId: "1:772070114710:web:939bce83e4d3be14bdc9b7"
+};
 
-    const createBtn = document.querySelector("#create-chat .btn");
-    const nameInput = document.querySelectorAll("#create-chat .input")[0];
-    const userInput = document.querySelectorAll("#create-chat .input")[1];
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
 
-    createBtn.onclick = async () => {
-        const roomName = nameInput.value.trim();
-        const userName = userInput.value.trim();
+// UI элементы
+const regBtn = document.querySelector(".register-btn");
+const avatar = document.querySelector(".user-avatar");
+const avatarLetter = document.querySelector(".user-avatar span");
+const userMenu = document.querySelector(".user-menu");
+const logoutBtn = document.getElementById("logoutBtn");
 
-        if (!roomName || !userName) {
-            alert("Заполните все поля");
-            return;
-        }
+// --- Авторизация ---
+onAuthStateChanged(auth, user => {
+    if (user) {
+        regBtn.classList.add("hidden");
+        avatar.classList.remove("hidden");
 
-        const docRef = await addDoc(collection(db, "rooms"), {
-            name: roomName,
-            createdAt: serverTimestamp()
-        });
+        const letter = user.email?.charAt(0).toUpperCase() || "U";
+        avatarLetter.textContent = letter;
 
-      window.location.href = `chat/?room=${docRef.id}&user=${encodeURIComponent(userName)}`;
-    };
+    } else {
+        regBtn.classList.remove("hidden");
+        avatar.classList.add("hidden");
+        userMenu.classList.remove("open");
+    }
+});
+
+// --- Выход ---
+logoutBtn.onclick = (e) => {
+    e.preventDefault();
+    signOut(auth).then(() => window.location.reload());
+};
+
+// --- Создание чата ---
+document.getElementById("createBtn").onclick = async () => {
+    const roomName = document.getElementById("roomName").value.trim();
+    const userName = document.getElementById("userName").value.trim();
+
+    if (!roomName || !userName) {
+        alert("Заполните все поля");
+        return;
+    }
+
+    const docRef = await addDoc(collection(db, "rooms"), {
+        name: roomName,
+        createdAt: serverTimestamp()
+    });
+
+    window.location.href = `chat/?room=${docRef.id}&user=${encodeURIComponent(userName)}`;
+};
 </script>
 
+<!-- ============== МЕНЮ НАВИГАЦИИ ============== -->
 <script>
 function toggleMenu() {
     const menu = document.querySelector(".nav-links");
-    const overlay = document.querySelector(".menu-overlay");
-
     menu.classList.toggle("open");
-    overlay.classList.toggle("show");
 }
 
 document.addEventListener("click", function(e) {
     const menu = document.querySelector(".nav-links");
     const toggle = document.querySelector(".nav-toggle");
-    const overlay = document.querySelector(".menu-overlay");
 
     if (!menu.classList.contains("open")) return;
-
     if (menu.contains(e.target) || toggle.contains(e.target)) return;
 
     menu.classList.remove("open");
-    overlay.classList.remove("show");
-});
-document.querySelectorAll(".nav-links a").forEach(link => {
-    link.addEventListener("click", () => {
-        document.querySelector(".nav-links").classList.remove("open");
-        document.querySelector(".menu-overlay").classList.remove("show");
-    });
 });
 </script>
 
-    <script>
+<!-- ============== МЕНЮ АВАТАРКИ ============== -->
+<script>
 function toggleUserMenu() {
     document.querySelector(".user-menu").classList.toggle("open");
 }
@@ -143,7 +171,6 @@ document.addEventListener("click", function(e) {
     const avatar = document.querySelector(".user-avatar");
 
     if (!menu.classList.contains("open")) return;
-
     if (menu.contains(e.target) || avatar.contains(e.target)) return;
 
     menu.classList.remove("open");
