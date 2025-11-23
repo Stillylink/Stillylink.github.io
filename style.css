@@ -34,7 +34,8 @@ body {
 .navbar {
     display: flex;
     align-items: center;
-    padding: 12px 20px;
+    height: 60px;        /* фиксированная высота */
+    padding: 0 20px;     /* только горизонтальный отступ */
     background: var(--bg-card);
     border-bottom: 1px solid var(--border);
     position: sticky;
