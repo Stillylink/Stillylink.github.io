@@ -1,577 +1,312 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Анонимный чат — Private</title>
-  <link rel="stylesheet" href="/style.css">
-  <style>
-    /* Локальные правки для страницы чата */
-    .private-container{
-      max-width: 980px;
-      margin: 24px auto;
-      display: flex;
-      flex-direction: column;
-      gap: 18px;
-      padding: 0 18px;
-    }
+<meta charset="UTF-8">
+<title>Анонимный чат — StillyLink</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="../style.css">
 
-    .chat-header{
-      display:flex;
-      align-items:center;
-      gap:12px;
-      background:var(--bg-card);
-      padding:12px 16px;
-      border-radius:10px;
-      border:1px solid var(--border);
-    }
-
-    .chat-header .title{
-      font-size:18px;
-      color:var(--accent);
-      font-weight:600;
-    }
-
-    .chat-actions{
-      margin-left:auto;
-      display:flex;
-      gap:10px;
-      align-items:center;
-    }
-
-    .finish-btn{ background:transparent; color:var(--text-secondary); border:1px solid var(--border); padding:8px 12px; border-radius:8px; cursor:pointer }
-    .finish-btn:hover{ color:var(--accent) }
-
-    .searching{
-      display:flex;
-      flex-direction:column;
-      align-items:center;
-      gap:14px;
-      padding:40px;
-      background:var(--bg-card);
-      border:1px solid var(--border);
-      border-radius:10px;
-      box-shadow:0 6px 18px rgba(0,0,0,0.08);
-    }
-
-    .spinner{
-      width:64px;height:64px;border-radius:50%;border:6px solid rgba(255,255,255,0.06);border-top-color:var(--accent);animation:spin 1s linear infinite;
-    }
-    @keyframes spin{to{transform:rotate(360deg)}}
-
-    .chat-window{
-      min-height:420px;
-      max-height:64vh;
-      display:flex;
-      flex-direction:column;
-      gap:12px;
-      border-radius:10px;
-      overflow:hidden;
-      border:1px solid var(--border);
-      background:linear-gradient(180deg,#0f1112,#0b0b0b);
-    }
-
-    .messages{
-      padding:18px;
-      overflow:auto;
-      flex:1 1 auto;
-      display:flex;
-      flex-direction:column;
-      gap:12px;
-    }
-
-    .message{
-      max-width:70%;
-      padding:10px 12px;
-      border-radius:12px;
-      background:var(--bg-card);
-      color:var(--text-main);
-      border:1px solid var(--border);
-      word-break:break-word;
-      box-shadow:0 2px 6px rgba(0,0,0,0.25);
-    }
-    .message.own{ margin-left:auto; background:linear-gradient(90deg,var(--accent),#2bd1ff); color:#000; }
-    .msg-row{ display:flex; gap:10px; align-items:flex-end }
-    .msg-row .avatar{ width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#000;color:#fff;font-weight:700 }
-    .msg-meta{ font-size:12px; color:var(--text-secondary); margin-top:6px }
-
-    .composer{
-      display:flex;
-      gap:8px;
-      align-items:flex-end;
-      padding:12px;
-      border-top:1px solid rgba(255,255,255,0.03);
-      background:linear-gradient(180deg,#0d0d0d,#0b0b0b);
-    }
-    .text-input{
-      flex:1 1 auto;
-      min-height:44px;
-      max-height:140px;
-      padding:10px 12px;
-      border-radius:10px;
-      resize:none;
-      border:1px solid var(--border);
-      background:#0f1112;color:var(--text-main);font-size:15px;outline:none
-    }
-    .tool-btn{ padding:8px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text-secondary);cursor:pointer }
-    .tool-btn:hover{ color:var(--accent) }
-
-    .emoji-panel{ position:absolute; bottom:76px; right:24px; background:var(--bg-card); border:1px solid var(--border); padding:8px; border-radius:8px; display:flex; gap:6px; flex-wrap:wrap; width:220px }
-
-    .modal-backdrop{ position:fixed; inset:0; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; z-index:9999 }
-    .modal{ background:var(--bg-card); padding:18px; border-radius:10px; border:1px solid var(--border); width:340px }
-    .modal h3{ color:var(--accent); margin-bottom:8px }
-    .modal p{ color:var(--text-secondary); margin-bottom:14px }
-    .modal .row{ display:flex; gap:8px; }
-
-    .end-screen{ padding:28px; display:flex; flex-direction:column; gap:12px; align-items:center }
-  </style>
+<style>
+.chat-wrapper {
+    max-width: 600px;
+    margin: 80px auto;
+    background: var(--bg-card);
+    padding: 20px;
+    border-radius: 16px;
+    display: none;
+    flex-direction: column;
+    height: 70vh;
+}
+.chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px;
+    color: #fff;
+}
+.message {
+    margin-bottom: 10px;
+    padding: 8px 12px;
+    border-radius: 10px;
+    max-width: 80%;
+}
+.me {
+    background: #3a57e8;
+    margin-left: auto;
+}
+.them {
+    background: #2a2c31;
+    margin-right: auto;
+}
+.chat-input {
+    display: flex;
+    gap: 10px;
+}
+.chat-input input {
+    flex: 1;
+}
+.searching-box {
+    margin-top: 120px;
+    text-align: center;
+    font-size: 20px;
+    color: #fff;
+}
+.end-buttons {
+    display: none;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 20px;
+}
+.btn-small {
+    padding: 10px;
+    border-radius: 10px;
+}
+.top-exit {
+    text-align: right;
+    margin-top: 80px;
+}
+.top-exit button {
+    background: #ff4f4f;
+    color: white;
+    padding: 6px 12px;
+    border-radius: 10px;
+    border: none;
+}
+</style>
 </head>
+
 <body>
+
 <header class="navbar">
-  <div class="logo">StillyLink</div>
-  <div class="nav-links" style="margin-left:auto">
-    <a href="/">Главная</a>
-    <a href="/anonymous/">Аноним</a>
-  </div>
+    <div class="logo">StillyLink</div>
 </header>
 
-<main class="private-container">
+<div class="top-exit">
+    <button id="endChatBtn">Завершить чат</button>
+</div>
 
-  <div class="chat-header">
-    <div class="title">Анонимный чат — 1 на 1</div>
-    <div class="chat-actions">
-      <div id="statusText" style="color:var(--text-secondary)">—</div>
-      <button class="finish-btn" id="finishBtn">Завершить чат</button>
+<div class="searching-box" id="searchingBox">
+    🔍 Поиск собеседника...
+</div>
+
+<div class="chat-wrapper" id="chatWrapper">
+    <div class="chat-messages" id="chatMessages"></div>
+
+    <div class="chat-input">
+        <input type="text" id="msgInput" placeholder="Введите сообщение...">
+        <button id="sendBtn" class="btn">➤</button>
     </div>
-  </div>
+</div>
 
-  <!-- Поисковый экран -->
-  <div id="searchScreen" class="searching hidden">
-    <div class="spinner"></div>
-    <div style="text-align:center">
-      <div style="font-weight:600; color:var(--accent)">Поиск собеседника...</div>
-      <div style="color:var(--text-secondary); margin-top:6px">Подбираем активного пользователя. Ожидайте</div>
-    </div>
-    <div style="display:flex;gap:10px">
-      <button class="btn" id="cancelSearch">Отменить</button>
-    </div>
-  </div>
+<div class="end-buttons" id="endButtons">
+    <button id="newChatBtn" class="btn-small">Начать новый чат</button>
+    <button id="exitBtn" class="btn-small">Выйти</button>
+</div>
 
-  <!-- Окно чата -->
-  <div id="chatWindow" class="chat-window hidden" aria-live="polite">
-    <div class="messages" id="messages" role="log" aria-live="polite"></div>
 
-    <div class="composer">
-      <input type="file" id="photoInput" accept="image/*" class="hidden">
-      <button title="Добавить фото" class="tool-btn" id="photoBtn">📷</button>
-      <button title="Emoji" class="tool-btn" id="emojiBtn">😊</button>
-      <textarea id="textInput" class="text-input" placeholder="Введите сообщение (Enter — отправить, Shift+Enter — новая строка)"></textarea>
-      <button id="sendBtn" class="btn" style="width:auto;padding:10px 14px">Отправить</button>
-    </div>
-  </div>
-
-  <!-- Экран после завершения -->
-  <div id="endScreen" class="card hidden end-screen">
-    <div style="font-size:18px;color:var(--accent);font-weight:700">Чат завершен</div>
-    <div style="color:var(--text-secondary)">Вы можете начать новый чат или выйти обратно на страницу анонимных.</div>
-    <div style="display:flex;gap:10px;margin-top:8px">
-      <button class="btn" id="newChatBtn">Начать новый чат</button>
-      <a class="btn" href="/anonymous/" id="exitBtn" style="background:transparent;color:var(--text-secondary);border:1px solid var(--border)">Выйти</a>
-    </div>
-  </div>
-
-  <!-- Модалка подтверждения завершения -->
-  <div id="modal" class="hidden">
-    <div class="modal-backdrop">
-      <div class="modal" role="dialog" aria-modal="true">
-        <h3>Завершить чат?</h3>
-        <p>После завершения беседа будет закрыта. Вы сможете начать новую или выйти.</p>
-        <div class="row" style="justify-content:flex-end">
-          <button class="tool-btn" id="modalCancel">Отмена</button>
-          <button class="btn" id="modalFinish">Завершить</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Простая панель эмодзи -->
-  <div id="emojiPanel" class="emoji-panel hidden" aria-hidden="true">
-    <button class="tool-btn emoji">😀</button>
-    <button class="tool-btn emoji">😂</button>
-    <button class="tool-btn emoji">😍</button>
-    <button class="tool-btn emoji">😢</button>
-    <button class="tool-btn emoji">😮</button>
-    <button class="tool-btn emoji">👍</button>
-    <button class="tool-btn emoji">🙏</button>
-    <button class="tool-btn emoji">🔥</button>
-    <button class="tool-btn emoji">🤝</button>
-    <button class="tool-btn emoji">🎉</button>
-  </div>
-
-</main>
-
-<footer class="footer">© StillyLink</footer>
-
+<!-- ================= FIREBASE ================= -->
 <script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
-  import {
-    getAuth,
-    signInAnonymously,
-    onAuthStateChanged
-  } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
-
-  import {
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
+import {
     getFirestore,
     collection,
-    doc,
-    setDoc,
     addDoc,
-    serverTimestamp,
-    query,
-    where,
-    orderBy,
-    limit,
-    onSnapshot,
-    runTransaction,
     deleteDoc,
     updateDoc,
+    getDoc,
     getDocs,
-    getDoc
-  } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
+    doc,
+    onSnapshot,
+    serverTimestamp
+} from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
 
-  const firebaseConfig = {
-      apiKey: "AIzaSyBWlR4QWdnbqXLKKaftEAzhXneTmV9xXX0",
-      authDomain: "stillylink-f1d0f.firebaseapp.com",
-      projectId: "stillylink-f1d0f",
-      storageBucket: "stillylink-f1d0f.appspot.com",
-      messagingSenderId: "772070114710",
-      appId: "1:772070114710:web:939bce83e4d3be14bdc9b7"
-  };
+const firebaseConfig = {
+    apiKey: "AIzaSyBWlR4QWdnbqXLKKaftEAzhXneTmV9xXX0",
+    authDomain: "stillylink-f1d0f.firebaseapp.com",
+    projectId: "stillylink-f1d0f",
+    storageBucket: "stillylink-f1d0f.appspot.com",
+    messagingSenderId: "772070114710",
+    appId: "1:772070114710:web:939bce83e4d3be14bdc9b7"
+};
 
-  const app = initializeApp(firebaseConfig);
-  const auth = getAuth(app);
-  const db = getFirestore(app);
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
 
-  const searchScreen = document.getElementById('searchScreen');
-  const chatWindow = document.getElementById('chatWindow');
-  const endScreen = document.getElementById('endScreen');
-  const messagesEl = document.getElementById('messages');
-  const textInput = document.getElementById('textInput');
-  const sendBtn = document.getElementById('sendBtn');
-  const finishBtn = document.getElementById('finishBtn');
-  const modal = document.getElementById('modal');
-  const modalCancel = document.getElementById('modalCancel');
-  const modalFinish = document.getElementById('modalFinish');
-  const newChatBtn = document.getElementById('newChatBtn');
-  const emojiBtn = document.getElementById('emojiBtn');
-  const emojiPanel = document.getElementById('emojiPanel');
-  const photoBtn = document.getElementById('photoBtn');
-  const photoInput = document.getElementById('photoInput');
-  const cancelSearch = document.getElementById('cancelSearch');
-  const statusText = document.getElementById('statusText');
 
-  let uid = null;
-  let myWaitingRef = null; 
-  let roomRef = null; 
-  let messagesUnsub = null; 
-  let waitingUnsub = null;
-  let roomUnsub = null; 
-  let connected = false;
-  let searching = false;
+// ======================================================
+// =============== Поиск собеседника ====================
+// ======================================================
+let roomId = null;
+let myId = Math.random().toString(36).substring(2, 10);
+let connected = false;
 
-  function show(el){ el.classList.remove('hidden'); }
-  function hide(el){ el.classList.add('hidden'); }
+async function findPartner() {
+    const queueRef = collection(db, "anonQueue");
 
-  onAuthStateChanged(auth, user => {
-    if (user) {
-      uid = user.uid;
-      statusText.textContent = 'В сети — ' + uid.slice(0,6);
-      startSearch();
+    // пытаемся найти свободного
+    const free = await getDocs(queueRef);
+    let found = null;
+
+    free.forEach(f => {
+        const d = f.data();
+        if (!d.busy) found = { id: f.id, ...d };
+    });
+
+    if (found) {
+        // соединяемся
+        roomId = found.room;
+        await updateDoc(doc(db, "anonQueue", found.id), { busy: true });
+        startChat(roomId, false);
     } else {
-      signInAnonymously(auth).catch(err => {
-        console.error('Auth error:', err);
-        alert('Ошибка авторизации (аноним). Проверьте консоль.');
-      });
-    }
-  });
-
-  function clearMessages(){ messagesEl.innerHTML = ''; }
-  function addMessageToUI(data){
-    const { sender, text, type, createdAt } = data;
-    const wrap = document.createElement('div');
-    wrap.className = 'msg-row';
-    const avatar = document.createElement('div');
-    avatar.className = 'avatar';
-    avatar.textContent = sender === uid ? 'Я' : 'Гость';
-    const msg = document.createElement('div');
-    msg.className = 'message' + (sender === uid ? ' own' : '');
-    if (type === 'image') {
-      const img = document.createElement('img');
-      img.src = text;
-      img.style.maxWidth = '320px';
-      img.style.borderRadius = '8px';
-      msg.appendChild(img);
-    } else {
-      msg.textContent = text;
-    }
-    const meta = document.createElement('div');
-    meta.className = 'msg-meta';
-    let time = '';
-    try {
-      if (createdAt && createdAt.toDate) time = createdAt.toDate().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
-      else time = new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
-    } catch(e){ time = ''; }
-    meta.textContent = time;
-    msg.appendChild(meta);
-    wrap.appendChild(avatar);
-    wrap.appendChild(msg);
-    messagesEl.appendChild(wrap);
-    messagesEl.scrollTop = messagesEl.scrollHeight;
-  }
-
-  async function sendMessageToRoom(text, type = 'text'){
-    if(!roomRef) return;
-    const messagesCol = collection(roomRef, 'messages');
-    await addDoc(messagesCol, {
-      sender: uid,
-      text,
-      type,
-      createdAt: serverTimestamp()
-    });
-  }
-
-  photoBtn.addEventListener('click', ()=> photoInput.click());
-  photoInput.addEventListener('change', (e)=>{
-    const file = e.target.files?.[0];
-    if(!file) return;
-    const reader = new FileReader();
-    reader.onload = function(ev){
-      const dataUrl = ev.target.result;
-      sendMessageToRoom(dataUrl, 'image').catch(console.error);
-    };
-    reader.readAsDataURL(file);
-    photoInput.value = '';
-  });
-
-  sendBtn.addEventListener('click', ()=>{
-    const txt = textInput.value.trim();
-    if(!txt) return;
-    sendMessageToRoom(txt, 'text').then(()=>{ textInput.value = ''; });
-  });
-
-  textInput.addEventListener('keydown', (e)=>{
-    if(e.key === 'Enter' && !e.shiftKey){
-      e.preventDefault();
-      sendBtn.click();
-    }
-  });
-
-  emojiBtn.addEventListener('click', (e)=>{
-    emojiPanel.classList.toggle('hidden');
-    emojiPanel.setAttribute('aria-hidden', emojiPanel.classList.contains('hidden'));
-  });
-  document.querySelectorAll('.emoji').forEach(b=>{
-    b.addEventListener('click', ()=>{
-      textInput.value += b.textContent;
-      textInput.focus();
-    });
-  });
-  document.addEventListener('click', (e)=>{
-    if(emojiPanel.classList.contains('hidden')) return;
-    if(e.target === emojiBtn || emojiPanel.contains(e.target)) return;
-    emojiPanel.classList.add('hidden');
-  });
-
-  async function startSearch(){
-    clearAllListenersAndState();
-    clearMessages();
-    searching = true;
-    connected = false;
-    show(searchScreen);
-    hide(chatWindow);
-    hide(endScreen);
-    statusText.textContent = 'Ищем собеседника...';
-
-    myWaitingRef = doc(collection(db, 'waiting'));
-    await setDoc(myWaitingRef, { uid, createdAt: serverTimestamp(), claimed: false });
-
-    const q = query(collection(db, 'waiting'), where('claimed', '==', false), where('uid', '!=', uid), orderBy('createdAt'), limit(1));
-    waitingUnsub = onSnapshot(q, async (snap) => {
-      if (!snap.empty) {
-        const otherDoc = snap.docs[0];
-        try {
-          await runTransaction(db, async (txn) => {
-            const otherRef = otherDoc.ref;
-            const otherSnap = await txn.get(otherRef);
-            const mineSnap = await txn.get(myWaitingRef);
-            if (!otherSnap.exists()) throw 'other gone';
-            if (!mineSnap.exists()) throw 'mine gone';
-            if (otherSnap.data().claimed === true) throw 'other claimed';
-            if (mineSnap.data().claimed === true) throw 'mine claimed';
-
-            const newRoomRef = doc(collection(db, 'rooms'));
-            const otherUid = otherSnap.data().uid;
-            txn.set(newRoomRef, {
-              participants: [uid, otherUid],
-              createdAt: serverTimestamp(),
-              closed: false
-            });
-            txn.update(otherRef, { claimed: true });
-            txn.update(myWaitingRef, { claimed: true });
-
-            return { roomId: newRoomRef.id };
-          }).then(async (res) => {
-            const createdRoomId = res.roomId;
-            roomRef = doc(db, 'rooms', createdRoomId);
-            await connectToRoom(roomRef);
-          }).catch(err => {
-            console.warn('Transaction failed or aborted:', err);
-          });
-
-        } catch (err) {
-          console.error('Matchmaking error:', err);
-        }
-      }
-    });
-  }
-
-  async function connectToRoom(roomDocumentRef){
-    try {
-      connected = true;
-      searching = false;
-      hide(searchScreen);
-      show(chatWindow);
-      hide(endScreen);
-      statusText.textContent = 'Соединено';
-
-      roomUnsub = onSnapshot(roomDocumentRef, snap => {
-        if(!snap.exists()) return;
-        const data = snap.data();
-        if(data.closed){
-          endChatUI();
-        }
-      });
-
-      const messagesCol = collection(roomDocumentRef, 'messages');
-      const msgsQuery = query(messagesCol, orderBy('createdAt'));
-      messagesUnsub = onSnapshot(msgsQuery, (snap) => {
-        messagesEl.innerHTML = '';
-        snap.docs.forEach(d => {
-          const data = d.data();
-          addMessageToUI(data);
+        // создаём новую комнату
+        const roomDoc = await addDoc(collection(db, "rooms"), {
+            created: serverTimestamp(),
+            activeUsers: 1
         });
-      });
 
-      roomRef = roomDocumentRef;
-    } catch(err){
-      console.error('connectToRoom error', err);
+        roomId = roomDoc.id;
+
+        // кладём в очередь
+        await addDoc(queueRef, {
+            room: roomId,
+            busy: false,
+            creator: myId
+        });
+
+        // слушаем изменения в очереди
+        free.forEach(() => {});
     }
-  }
-
-  function tryJoinFromURL(){
-    const url = new URL(location.href);
-    const roomId = url.searchParams.get('room');
-    if(roomId){
-      const rRef = doc(db, 'rooms', roomId);
-      runTransaction(db, async txn => {
-        const roomSnap = await txn.get(rRef);
-        if(!roomSnap.exists()) throw 'no room';
-        const data = roomSnap.data();
-        if(data.closed) throw 'closed';
-        const participants = data.participants || [];
-        if(!participants.includes(uid) && participants.length < 2){
-          participants.push(uid);
-          txn.update(rRef, { participants });
-        }
-        return true;
-      }).then(async () => {
-        await connectToRoom(rRef);
-      }).catch(err => {
-        console.warn('Failed to join from URL:', err);
-      });
-    }
-  }
-
-  async function finishChat(){
-    if(roomRef){
-      try {
-        await updateDoc(roomRef, { closed: true });
-      } catch(e){
-        console.warn('Error closing room:', e);
-      }
-    }
-    endChatUI();
-  }
-
-  function endChatUI(){
-    connected = false;
-    searching = false;
-    hide(searchScreen);
-    hide(chatWindow);
-    show(endScreen);
-    statusText.textContent = 'Чат завершен';
-    clearAllListenersAndState();
-  }
-
-async function cancelSearchHandler(){
-  searching = false;
-
-  if(myWaitingRef){
-    try { 
-      await deleteDoc(myWaitingRef); 
-    } catch(e){ 
-      console.warn('cancelSearch delete error', e); 
-    }
-    myWaitingRef = null;
-  }
-
-  if(waitingUnsub){ 
-    waitingUnsub(); 
-    waitingUnsub = null; 
-  }
-
-  hide(searchScreen);
-  show(endScreen);
-  statusText.textContent = 'Поиск отменён';
 }
 
-  async function clearAllListenersAndState(){
-    if(messagesUnsub){ messagesUnsub(); messagesUnsub = null; }
-    if(roomUnsub){ roomUnsub(); roomUnsub = null; }
-    if(waitingUnsub){ waitingUnsub(); waitingUnsub = null; }
-    if(myWaitingRef){
-      try {
-        const snap = await getDoc(myWaitingRef);
-        if(snap.exists()){
-          const d = snap.data();
-          if(!d.claimed) await deleteDoc(myWaitingRef);
-          else await deleteDoc(myWaitingRef).catch(()=>{}); 
-        }
-      } catch(e){
-        console.warn('clear waiting doc error', e);
-      }
-      myWaitingRef = null;
+findPartner();
+
+
+// ======================================================
+// =================== Старт чата =======================
+// ======================================================
+
+async function startChat(id, isCreator = true) {
+    connected = true;
+    roomId = id;
+    document.getElementById("searchingBox").style.display = "none";
+    document.getElementById("chatWrapper").style.display = "flex";
+
+    // подключение второго
+    const roomRef = doc(db, "rooms", roomId);
+    const snap = await getDoc(roomRef);
+    if (snap.exists()) {
+        await updateDoc(roomRef, {
+            activeUsers: (snap.data().activeUsers || 0) + 1
+        });
     }
-    roomRef = null;
-  }
 
-  finishBtn.addEventListener('click', ()=>{ modal.classList.remove('hidden'); });
-  modalCancel.addEventListener('click', ()=>{ modal.classList.add('hidden'); });
-  modalFinish.addEventListener('click', async ()=>{ modal.classList.add('hidden'); await finishChat(); });
+    // слушаем сообщения
+    const msgRef = collection(db, "rooms", roomId, "messages");
+    onSnapshot(msgRef, snapshot => {
+        const msgBox = document.getElementById("chatMessages");
+        msgBox.innerHTML = "";
 
-  newChatBtn.addEventListener('click', ()=>{ startSearch(); });
+        snapshot.forEach(m => {
+            const d = m.data();
+            const div = document.createElement("div");
+            div.className = "message " + (d.from === myId ? "me" : "them");
+            div.textContent = d.text;
+            msgBox.appendChild(div);
+        });
 
-  cancelSearch.addEventListener('click', cancelSearchHandler);
+        msgBox.scrollTop = msgBox.scrollHeight;
+    });
+}
 
-  setTimeout(tryJoinFromURL, 800);
 
- window.addEventListener('beforeunload', async () => {
-    // cleanup waiting doc so the other doesn't wait forever
-    if(myWaitingRef){
-      try { await deleteDoc(myWaitingRef); } catch(e){ /* ignore */ }
+// ======================================================
+// ================= Отправка сообщения =================
+// ======================================================
+document.getElementById("sendBtn").onclick = sendMessage;
+
+document.getElementById("msgInput").addEventListener("keypress", (e)=>{
+    if (e.key === "Enter") sendMessage();
+});
+
+async function sendMessage() {
+    const input = document.getElementById("msgInput");
+    const text = input.value.trim();
+    if (!text) return;
+
+    await addDoc(collection(db, "rooms", roomId, "messages"), {
+        text,
+        from: myId,
+        time: serverTimestamp()
+    });
+
+    input.value = "";
+}
+
+
+// ======================================================
+// =============== Завершить чат (без удаления) =========
+// ======================================================
+document.getElementById("endChatBtn").onclick = () => {
+    document.getElementById("chatWrapper").style.display = "none";
+    document.getElementById("endButtons").style.display = "flex";
+};
+
+
+// ======================================================
+// ========== Удаление комнаты + сообщений ==============
+// ======================================================
+async function deleteRoomCompletely() {
+    if (!roomId) return;
+
+    const roomRef = doc(db, "rooms", roomId);
+    const snap = await getDoc(roomRef);
+
+    if (!snap.exists()) return;
+
+    let users = snap.data().activeUsers || 1;
+    users--;
+
+    if (users <= 0) {
+        // удаляем сообщения
+        const msgs = await getDocs(collection(db, "rooms", roomId, "messages"));
+        msgs.forEach(async msg => {
+            await deleteDoc(doc(db, "rooms", roomId, "messages", msg.id));
+        });
+
+        // удаляем комнату
+        await deleteDoc(roomRef);
+
+        // чистим очередь
+        const q = await getDocs(collection(db, "anonQueue"));
+        q.forEach(async qdoc => {
+            let d = qdoc.data();
+            if (d.room === roomId) {
+                await deleteDoc(doc(db, "anonQueue", qdoc.id));
+            }
+        });
+    } else {
+        await updateDoc(roomRef, { activeUsers: users });
     }
-  });
+}
+
+
+// ======================================================
+// ================== Кнопка "Выйти" ====================
+// ======================================================
+document.getElementById("exitBtn").onclick = async () => {
+    await deleteRoomCompletely();
+    window.location.href = "/anonymous/";
+};
+
+
+// ======================================================
+// =========== Кнопка «Начать новый чат» ================
+// ======================================================
+document.getElementById("newChatBtn").onclick = async () => {
+    await deleteRoomCompletely();
+    window.location.reload();
+};
+
 </script>
+
 </body>
 </html>
