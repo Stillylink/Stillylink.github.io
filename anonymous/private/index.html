@@ -514,17 +514,27 @@
     clearAllListenersAndState();
   }
 
-  async function cancelSearchHandler(){
-    searching = false;
-    if(myWaitingRef){
-      try { await deleteDoc(myWaitingRef); } catch(e)
-      myWaitingRef = null;
+async function cancelSearchHandler(){
+  searching = false;
+
+  if(myWaitingRef){
+    try { 
+      await deleteDoc(myWaitingRef); 
+    } catch(e){ 
+      console.warn('cancelSearch delete error', e); 
     }
-    if(waitingUnsub){ waitingUnsub(); waitingUnsub = null; }
-    hide(searchScreen);
-    show(endScreen);
-    statusText.textContent = 'Поиск отменён';
+    myWaitingRef = null;
   }
+
+  if(waitingUnsub){ 
+    waitingUnsub(); 
+    waitingUnsub = null; 
+  }
+
+  hide(searchScreen);
+  show(endScreen);
+  statusText.textContent = 'Поиск отменён';
+}
 
   async function clearAllListenersAndState(){
     if(messagesUnsub){ messagesUnsub(); messagesUnsub = null; }
