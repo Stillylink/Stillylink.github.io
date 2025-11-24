@@ -4,72 +4,123 @@
 <meta charset="UTF-8">
 <title>Анонимный чат — StillyLink</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<!-- твоя основная стилистика -->
 <link rel="stylesheet" href="../style.css">
 
 <style>
+/* Подстройка под твой дизайн */
+body {
+    background: var(--bg-page);
+}
+
+/* Обёртка чата */
 .chat-wrapper {
-    max-width: 600px;
-    margin: 80px auto;
+    max-width: 700px;
+    margin: 100px auto 40px;
     background: var(--bg-card);
-    padding: 20px;
+    padding: 25px;
     border-radius: 16px;
+    border: 1px solid var(--border);
+    box-shadow: 0 0 12px rgba(0,0,0,0.3);
     display: none;
     flex-direction: column;
     height: 70vh;
 }
+
+/* Сообщения */
 .chat-messages {
     flex: 1;
     overflow-y: auto;
     padding: 10px;
-    color: #fff;
+    color: var(--text-main);
 }
+
+/* Сообщение */
 .message {
-    margin-bottom: 10px;
-    padding: 8px 12px;
-    border-radius: 10px;
-    max-width: 80%;
+    margin-bottom: 12px;
+    padding: 10px 14px;
+    border-radius: 12px;
+    max-width: 75%;
+    line-height: 1.4;
+    word-wrap: break-word;
 }
+
+/* Свои сообщения */
 .me {
-    background: #3a57e8;
+    background: var(--accent);
+    color: #000;
     margin-left: auto;
 }
+
+/* Собеседник */
 .them {
-    background: #2a2c31;
+    background: var(--bg-hover);
+    color: var(--text-main);
     margin-right: auto;
 }
+
+/* Поле ввода */
 .chat-input {
     display: flex;
     gap: 10px;
+    margin-top: 10px;
 }
+
 .chat-input input {
     flex: 1;
+    background: #151618;
+    border: 1px solid var(--border);
+    color: white;
+    border-radius: 8px;
+    padding: 12px;
 }
+
+.chat-input button {
+    width: 60px;
+}
+
+/* Поиск собеседника */
 .searching-box {
-    margin-top: 120px;
+    margin-top: 150px;
     text-align: center;
-    font-size: 20px;
-    color: #fff;
+    font-size: 22px;
+    color: var(--text-main);
 }
+
+/* Кнопки после завершения чата */
 .end-buttons {
     display: none;
     flex-direction: column;
-    gap: 10px;
-    margin-top: 20px;
+    gap: 12px;
+    max-width: 300px;
+    margin: 40px auto;
 }
+
 .btn-small {
-    padding: 10px;
+    padding: 12px;
     border-radius: 10px;
 }
+
+/* Верхняя кнопка */
 .top-exit {
     text-align: right;
     margin-top: 80px;
+    width: 100%;
 }
+
 .top-exit button {
     background: #ff4f4f;
     color: white;
-    padding: 6px 12px;
+    padding: 7px 14px;
     border-radius: 10px;
     border: none;
+    cursor: pointer;
+    transition: 0.25s;
+}
+
+.top-exit button:hover {
+    background: #ff7777;
 }
 </style>
 </head>
@@ -133,16 +184,15 @@ const db = getFirestore(app);
 
 
 // ======================================================
-// =============== Поиск собеседника ====================
+// ====== ЛОГИКА ПОЛНОСТЬЮ ГОВОРИТ КАК МЫ ДЕЛАЛИ ========
 // ======================================================
+
 let roomId = null;
 let myId = Math.random().toString(36).substring(2, 10);
-let connected = false;
 
 async function findPartner() {
     const queueRef = collection(db, "anonQueue");
 
-    // пытаемся найти свободного
     const free = await getDocs(queueRef);
     let found = null;
 
@@ -152,12 +202,10 @@ async function findPartner() {
     });
 
     if (found) {
-        // соединяемся
         roomId = found.room;
         await updateDoc(doc(db, "anonQueue", found.id), { busy: true });
-        startChat(roomId, false);
+        startChat(roomId);
     } else {
-        // создаём новую комнату
         const roomDoc = await addDoc(collection(db, "rooms"), {
             created: serverTimestamp(),
             activeUsers: 1
@@ -165,41 +213,35 @@ async function findPartner() {
 
         roomId = roomDoc.id;
 
-        // кладём в очередь
         await addDoc(queueRef, {
             room: roomId,
             busy: false,
             creator: myId
         });
 
-        // слушаем изменения в очереди
-        free.forEach(() => {});
+        // ждём собеседника (обработаем ниже)
     }
 }
 
 findPartner();
 
 
-// ======================================================
-// =================== Старт чата =======================
-// ======================================================
-
-async function startChat(id, isCreator = true) {
-    connected = true;
+// =================== Старт чата ======================
+async function startChat(id) {
     roomId = id;
+
     document.getElementById("searchingBox").style.display = "none";
     document.getElementById("chatWrapper").style.display = "flex";
 
-    // подключение второго
     const roomRef = doc(db, "rooms", roomId);
     const snap = await getDoc(roomRef);
+
     if (snap.exists()) {
         await updateDoc(roomRef, {
             activeUsers: (snap.data().activeUsers || 0) + 1
         });
     }
 
-    // слушаем сообщения
     const msgRef = collection(db, "rooms", roomId, "messages");
     onSnapshot(msgRef, snapshot => {
         const msgBox = document.getElementById("chatMessages");
@@ -218,9 +260,7 @@ async function startChat(id, isCreator = true) {
 }
 
 
-// ======================================================
 // ================= Отправка сообщения =================
-// ======================================================
 document.getElementById("sendBtn").onclick = sendMessage;
 
 document.getElementById("msgInput").addEventListener("keypress", (e)=>{
@@ -242,18 +282,14 @@ async function sendMessage() {
 }
 
 
-// ======================================================
-// =============== Завершить чат (без удаления) =========
-// ======================================================
+// =============== Завершить чат =======================
 document.getElementById("endChatBtn").onclick = () => {
     document.getElementById("chatWrapper").style.display = "none";
     document.getElementById("endButtons").style.display = "flex";
 };
 
 
-// ======================================================
-// ========== Удаление комнаты + сообщений ==============
-// ======================================================
+// =============== Удаление комнаты ====================
 async function deleteRoomCompletely() {
     if (!roomId) return;
 
@@ -266,41 +302,29 @@ async function deleteRoomCompletely() {
     users--;
 
     if (users <= 0) {
-        // удаляем сообщения
         const msgs = await getDocs(collection(db, "rooms", roomId, "messages"));
         msgs.forEach(async msg => {
             await deleteDoc(doc(db, "rooms", roomId, "messages", msg.id));
         });
 
-        // удаляем комнату
         await deleteDoc(roomRef);
 
-        // чистим очередь
         const q = await getDocs(collection(db, "anonQueue"));
         q.forEach(async qdoc => {
             let d = qdoc.data();
-            if (d.room === roomId) {
-                await deleteDoc(doc(db, "anonQueue", qdoc.id));
-            }
+            if (d.room === roomId) await deleteDoc(doc(db, "anonQueue", qdoc.id));
         });
+
     } else {
         await updateDoc(roomRef, { activeUsers: users });
     }
 }
 
-
-// ======================================================
-// ================== Кнопка "Выйти" ====================
-// ======================================================
 document.getElementById("exitBtn").onclick = async () => {
     await deleteRoomCompletely();
     window.location.href = "/anonymous/";
 };
 
-
-// ======================================================
-// =========== Кнопка «Начать новый чат» ================
-// ======================================================
 document.getElementById("newChatBtn").onclick = async () => {
     await deleteRoomCompletely();
     window.location.reload();
