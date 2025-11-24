@@ -336,7 +336,6 @@
       // if we have saved room -> try to rejoin
       const saved = loadRoomFromStorage();
       if(saved.roomId){
-        // try join existing room (safe): check that room exists and participant array includes us or has vacancy
         const rRef = doc(db, 'rooms', saved.roomId);
         tryJoinSavedRoom(rRef, saved.partnerId).catch(err=>{
           console.warn('Failed to join saved room, starting search', err);
@@ -611,12 +610,11 @@
 
       // presence: create/update my presence doc and start heartbeat
       await setMyPresence();
-      presenceUnsub = onSnapshot(collection(roomRef, 'presence'), async (snap) => {
+      const presCol = collection(roomRef, 'presence');
+      presenceUnsub = onSnapshot(presCol, async (snap) => {
         // if presence collection changes, check participants presence
-        // if no presence docs (both gone) -> delete room
         const docs = snap.docs.map(d=>({ id: d.id, data: d.data() }));
         const now = Date.now();
-        // find stale presence (lastSeen older than threshold)
         const alive = docs.filter(d => {
           const ls = d.data.lastSeen?.toMillis ? d.data.lastSeen.toMillis() : (d.data.lastSeen ? new Date(d.data.lastSeen).getTime() : 0);
           return (now - ls) < PRESENCE_STALE_MS;
@@ -624,13 +622,9 @@
 
         // if no alive docs -> both offline -> delete room
         if(alive.length === 0){
-          // best-effort: delete messages and room
           try {
-            await fullRoomCleanup(); // will delete room if this client is last or both gone
+            await fullRoomCleanup();
           } catch(e){/* ignore */}
-        } else if(alive.length === 1) {
-          // one user left; keep room but UI can show "partner left" if needed
-          // we'll not auto-start new search automatically — user can press new chat
         }
       });
 
@@ -668,14 +662,12 @@
         startSearch();
         return;
       }
-      // if room closed -> start search
       const data = rSnap.data();
       if(data.closed){
         clearRoomStorage();
         startSearch();
         return;
       }
-      // join room: if participants doesn't include us and space available, add
       await runTransaction(db, async txn => {
         const roomSnap = await txn.get(rRef);
         if(!roomSnap.exists()) throw 'no room';
@@ -685,10 +677,9 @@
           txn.update(rRef, { participants: parts });
         }
       });
-      // connect
       roomRef = rRef;
       roomId = rRef.id;
-      partnerId = savedPartner; // may be null; room listener will update
+      partnerId = savedPartner;
       await connectToRoom(roomRef);
     } catch(e){
       console.warn('tryJoinSavedRoom failed', e);
@@ -703,9 +694,7 @@
   async function finishChat(){
     if(roomRef){
       try {
-        // mark closed so other client ends immediately
         await updateDoc(roomRef, { closed: true });
-        // attempt full cleanup (delete messages & room if this client was last)
         await fullRoomCleanup();
       } catch(e){
         console.warn('Error closing room:', e);
@@ -716,7 +705,6 @@
   }
 
   function endChatUI(){
-    // stop heartbeats & listeners
     connectedCleanup();
     connectedStopUI();
     statusText.textContent = 'Чат завершен';
@@ -748,7 +736,6 @@
     if(presenceUnsub){ presenceUnsub(); presenceUnsub = null; }
     if(presenceHeartbeatInterval){ clearInterval(presenceHeartbeatInterval); presenceHeartbeatInterval = null; }
 
-    // remove my waiting doc if present
     if(myWaitingRef){
       try {
         const snap = await getDoc(myWaitingRef);
@@ -813,9 +800,7 @@
         await deleteDoc(myWaitingRef).catch(()=>{});
       }
       if(roomRef && uid){
-        // remove presence doc
         await deleteDoc(doc(roomRef, 'presence', uid)).catch(()=>{});
-        // attempt to remove self from participants and maybe delete room/messages
         try {
           const rSnap = await getDoc(roomRef);
           if(rSnap.exists()){
