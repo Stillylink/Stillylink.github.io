@@ -7,6 +7,8 @@
   <link rel="stylesheet" href="/style.css">
   <style>
     /* Локальные правки для страницы чата */
+    :root { -webkit-text-size-adjust: 100%; }
+
     .private-container{
       max-width: 980px;
       margin: 24px auto;
@@ -76,7 +78,7 @@
       overflow:auto;
       flex:1 1 auto;
       display:flex;
-      flex-direction:column;
+      flex-direction:column; /* важное: обычный порядок сверху->вниз */
       gap:12px;
     }
 
@@ -90,8 +92,13 @@
       word-break:break-word;
       box-shadow:0 2px 6px rgba(0,0,0,0.25);
     }
-    .message.own{ margin-left:auto; background:linear-gradient(90deg,var(--accent),#2bd1ff); color:#000; }
+    .message.own{ background:linear-gradient(90deg,var(--accent),#2bd1ff); color:#000; }
+
+    /* Обёртка строки сообщения — управляет порядком аватар/текст */
     .msg-row{ display:flex; gap:10px; align-items:flex-end }
+    .msg-row.own { flex-direction: row-reverse; } /* мои сообщения — аватар справа */
+    .msg-row.other { flex-direction: row; }       /* чужие — аватар слева */
+
     .msg-row .avatar{ width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#000;color:#fff;font-weight:700 }
     .msg-meta{ font-size:12px; color:var(--text-secondary); margin-top:6px }
 
@@ -111,7 +118,7 @@
       border-radius:10px;
       resize:none;
       border:1px solid var(--border);
-      background:#0f1112;color:var(--text-main);font-size:15px;outline:none
+      background:#0f1112;color:var(--text-main);font-size:16px;outline:none; /* 16px чтобы мобильные не приближали */
     }
     .tool-btn{ padding:8px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text-secondary);cursor:pointer }
     .tool-btn:hover{ color:var(--accent) }
@@ -125,6 +132,14 @@
     .modal .row{ display:flex; gap:8px; }
 
     .end-screen{ padding:28px; display:flex; flex-direction:column; gap:12px; align-items:center }
+    /* убираем авто-зум при фокусе на iOS/Android */
+    input, textarea, .text-input { font-size:16px !important; -webkit-text-size-adjust:100%; }
+
+    @media (max-width: 480px) {
+      .messages { padding:12px; gap:10px; }
+      .message { max-width:85%; }
+      .emoji-panel { right:12px; left:auto; bottom:80px; width:180px; }
+    }
   </style>
 </head>
 <body>
@@ -230,6 +245,7 @@
     serverTimestamp,
     query,
     where,
+    orderBy,
     limit,
     onSnapshot,
     runTransaction,
@@ -271,12 +287,12 @@
   const statusText = document.getElementById('statusText');
 
   let uid = null;
-  let myWaitingRef = null; 
+  let myWaitingRef = null;
   let myWaitingUnsub = null;
-  let roomRef = null; 
-  let messagesUnsub = null; 
+  let roomRef = null;
+  let messagesUnsub = null;
   let waitingUnsub = null;
-  let roomUnsub = null; 
+  let roomUnsub = null;
   let connected = false;
   let searching = false;
 
@@ -300,12 +316,16 @@
   function addMessageToUI(data){
     const { sender, text, type, createdAt } = data;
     const wrap = document.createElement('div');
-    wrap.className = 'msg-row';
+    // add class on wrapper so we can flip avatar/message order
+    const isOwn = sender === uid;
+    wrap.className = 'msg-row ' + (isOwn ? 'own' : 'other');
+
     const avatar = document.createElement('div');
     avatar.className = 'avatar';
-    avatar.textContent = sender === uid ? 'Я' : 'Гость';
+    avatar.textContent = isOwn ? 'Я' : 'Гость';
+
     const msg = document.createElement('div');
-    msg.className = 'message' + (sender === uid ? ' own' : '');
+    msg.className = 'message' + (isOwn ? ' own' : '');
     if (type === 'image') {
       const img = document.createElement('img');
       img.src = text;
@@ -315,6 +335,7 @@
     } else {
       msg.textContent = text;
     }
+
     const meta = document.createElement('div');
     meta.className = 'msg-meta';
     let time = '';
@@ -324,9 +345,14 @@
     } catch(e){ time = ''; }
     meta.textContent = time;
     msg.appendChild(meta);
+
+    // order: avatar + msg  (css will reorder for .own)
     wrap.appendChild(avatar);
     wrap.appendChild(msg);
+
     messagesEl.appendChild(wrap);
+
+    // always scroll to bottom (most recent at bottom)
     messagesEl.scrollTop = messagesEl.scrollHeight;
   }
 
@@ -492,10 +518,9 @@
         }
       });
 
-      // messages listener
+      // messages listener (ordered chronologically)
       const messagesCol = collection(roomDocumentRef, 'messages');
-      // ordering messages by createdAt is ok here (single-field)
-      const msgsQuery = query(messagesCol, /*orderBy('createdAt')*/); // optional: keep simple to avoid index; if you want chronological, uncomment and create index if needed
+      const msgsQuery = query(messagesCol, orderBy('createdAt'));
       messagesUnsub = onSnapshot(msgsQuery, (snap) => {
         messagesEl.innerHTML = '';
         snap.docs.forEach(d => {
@@ -560,10 +585,10 @@
     searching = false;
 
     if(myWaitingRef){
-      try { 
-        await deleteDoc(myWaitingRef); 
-      } catch(e){ 
-        console.warn('cancelSearch delete error', e); 
+      try {
+        await deleteDoc(myWaitingRef);
+      } catch(e){
+        console.warn('cancelSearch delete error', e);
       }
       myWaitingRef = null;
     }
@@ -573,9 +598,9 @@
       myWaitingUnsub = null;
     }
 
-    if(waitingUnsub){ 
-      waitingUnsub(); 
-      waitingUnsub = null; 
+    if(waitingUnsub){
+      waitingUnsub();
+      waitingUnsub = null;
     }
 
     hide(searchScreen);
@@ -618,8 +643,10 @@
       const data = rSnap.data();
       const participants = data.participants || [];
 
-      // if <=1 participants left — delete messages + room
-      if(participants.length <= 1){
+      // remove self from participants
+      const newParts = participants.filter(p => p !== uid);
+
+      if(newParts.length === 0){
         // delete messages
         const msgsSnap = await getDocs(collection(roomRef, 'messages'));
         for(const m of msgsSnap.docs){
@@ -628,14 +655,39 @@
         // delete room
         await deleteDoc(roomRef);
       } else {
-        // if more than 1, try to remove this uid from participants
-        const newParts = participants.filter(p => p !== uid);
+        // update participants set without this user
         await updateDoc(roomRef, { participants: newParts });
       }
     } catch(e){
       console.warn('fullRoomCleanup error', e);
     }
   }
+
+  // on unload: remove self from participants (so other won't be stuck), and delete waiting doc
+  window.addEventListener('beforeunload', async (ev) => {
+    try {
+      if(myWaitingRef){
+        await deleteDoc(myWaitingRef).catch(()=>{});
+      }
+      if(roomRef){
+        // attempt best-effort removal (don't block unload)
+        const rSnap = await getDoc(roomRef);
+        if(rSnap.exists()){
+          const parts = rSnap.data().participants || [];
+          const newParts = parts.filter(p => p !== uid);
+          if(newParts.length === 0){
+            const msgsSnap = await getDocs(collection(roomRef, 'messages'));
+            for(const m of msgsSnap.docs) await deleteDoc(m.ref).catch(()=>{});
+            await deleteDoc(roomRef).catch(()=>{});
+          } else {
+            await updateDoc(roomRef, { participants: newParts }).catch(()=>{});
+          }
+        }
+      }
+    } catch(e){
+      // ignore; best-effort only
+    }
+  });
 
   // buttons & handlers
   finishBtn.addEventListener('click', ()=>{ modal.classList.remove('hidden'); });
@@ -660,13 +712,6 @@
   });
 
   setTimeout(tryJoinFromURL, 800);
-
-  window.addEventListener('beforeunload', async () => {
-    // cleanup waiting doc so the other doesn't wait forever
-    if(myWaitingRef){
-      try { await deleteDoc(myWaitingRef); } catch(e){ /* ignore */ }
-    }
-  });
 </script>
 </body>
 </html>
