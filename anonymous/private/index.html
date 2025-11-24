@@ -703,7 +703,7 @@
 
   cancelSearch.addEventListener('click', cancelSearchHandler);
 
-  // exit link behavior (delete room/messages if needed then navigate)
+  // exit link behavior
   document.getElementById('exitBtn').addEventListener('click', async function(e){
     e.preventDefault();
     await fullRoomCleanup();
