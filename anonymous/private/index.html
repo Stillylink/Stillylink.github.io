@@ -6,7 +6,7 @@
   <title>Анонимный чат — Private</title>
   <link rel="stylesheet" href="/style.css">
   <style>
-    /* (тот же CSS, что у тебя) */
+    /* Локальные правки для страницы чата */
     :root { -webkit-text-size-adjust: 100%; }
 
     .private-container{
@@ -78,7 +78,7 @@
       overflow:auto;
       flex:1 1 auto;
       display:flex;
-      flex-direction:column; /* важное: обычный порядок сверху->вниз */
+      flex-direction:column;
       gap:12px;
     }
 
@@ -95,8 +95,8 @@
     .message.own{ background:linear-gradient(90deg,var(--accent),#2bd1ff); color:#000; }
 
     .msg-row{ display:flex; gap:10px; align-items:flex-end }
-    .msg-row.own { flex-direction: row-reverse; }
-    .msg-row.other { flex-direction: row; }
+    .msg-row.own { flex-direction: row-reverse; } /* мои сообщения — аватар справа */
+    .msg-row.other { flex-direction: row; }       /* чужие — аватар слева */
 
     .msg-row .avatar{ width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#000;color:#fff;font-weight:700 }
     .msg-meta{ font-size:12px; color:var(--text-secondary); margin-top:6px }
@@ -131,6 +131,7 @@
     .modal .row{ display:flex; gap:8px; }
 
     .end-screen{ padding:28px; display:flex; flex-direction:column; gap:12px; align-items:center }
+
     input, textarea, .text-input { font-size:16px !important; -webkit-text-size-adjust:100%; }
 
     @media (max-width: 480px) {
@@ -159,6 +160,7 @@
     </div>
   </div>
 
+  <!-- Поисковый экран -->
   <div id="searchScreen" class="searching hidden">
     <div class="spinner"></div>
     <div style="text-align:center">
@@ -170,6 +172,7 @@
     </div>
   </div>
 
+  <!-- Окно чата -->
   <div id="chatWindow" class="chat-window hidden" aria-live="polite">
     <div class="messages" id="messages" role="log" aria-live="polite"></div>
 
@@ -182,6 +185,7 @@
     </div>
   </div>
 
+  <!-- Экран после завершения -->
   <div id="endScreen" class="card hidden end-screen">
     <div style="font-size:18px;color:var(--accent);font-weight:700">Чат завершен</div>
     <div style="color:var(--text-secondary)">Вы можете начать новый чат или выйти обратно на страницу анонимных.</div>
@@ -191,6 +195,7 @@
     </div>
   </div>
 
+  <!-- Модалка подтверждения завершения -->
   <div id="modal" class="hidden">
     <div class="modal-backdrop">
       <div class="modal" role="dialog" aria-modal="true">
@@ -204,6 +209,7 @@
     </div>
   </div>
 
+  <!-- Простая панель эмодзи -->
   <div id="emojiPanel" class="emoji-panel hidden" aria-hidden="true">
     <button class="tool-btn emoji">😀</button>
     <button class="tool-btn emoji">😂</button>
@@ -245,10 +251,7 @@
     deleteDoc,
     updateDoc,
     getDocs,
-    getDoc,
-    arrayRemove,
-    arrayUnion,
-    Timestamp
+    getDoc
   } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
 
   const firebaseConfig = {
@@ -264,7 +267,7 @@
   const auth = getAuth(app);
   const db = getFirestore(app);
 
-  /* UI elems */
+  // UI refs
   const searchScreen = document.getElementById('searchScreen');
   const chatWindow = document.getElementById('chatWindow');
   const endScreen = document.getElementById('endScreen');
@@ -282,28 +285,77 @@
   const photoInput = document.getElementById('photoInput');
   const cancelSearch = document.getElementById('cancelSearch');
   const statusText = document.getElementById('statusText');
+  const exitBtn = document.getElementById('exitBtn');
 
-  /* state */
+  // state
   let uid = null;
-  let sessionId = null;               // id текущей сессии (uid + random)
-  let sessionHeartbeatInterval = null;
   let myWaitingRef = null;
   let myWaitingUnsub = null;
-  let roomRef = null;                 // DocumentReference to current room
+  let roomRef = null;
+  let roomId = null;
+  let partnerId = null;
   let messagesUnsub = null;
   let waitingUnsub = null;
   let roomUnsub = null;
-  let sessionUnsub = null;            // слушатель сессий для текущей комнаты
-  let connected = false;
-  let searching = false;
+  let presenceUnsub = null;
+  let presenceHeartbeatInterval = null;
 
-  const HEARTBEAT_MS = 10000;         // обновляем ts каждые 10 сек
-  const STALE_THRESHOLD_MS = 25000;   // считаем сессию "мертвой" после 25 сек
+  // constants
+  const PRESENCE_PING_INTERVAL = 8000; // ms
+  const PRESENCE_STALE_MS = 25000; // if partner's lastSeen older than this -> considered offline
 
   function show(el){ el.classList.remove('hidden'); }
   function hide(el){ el.classList.add('hidden'); }
 
-  /* --- UI helpers --- */
+  // save / restore room in storage
+  function saveRoomToStorage(rId, pId){
+    if(rId) localStorage.setItem('roomId', rId);
+    else localStorage.removeItem('roomId');
+    if(pId) localStorage.setItem('partnerId', pId);
+    else localStorage.removeItem('partnerId');
+  }
+  function loadRoomFromStorage(){
+    return {
+      roomId: localStorage.getItem('roomId'),
+      partnerId: localStorage.getItem('partnerId')
+    };
+  }
+  function clearRoomStorage(){
+    localStorage.removeItem('roomId');
+    localStorage.removeItem('partnerId');
+  }
+
+  // ------------------------
+  // Authentication & startup
+  // ------------------------
+  onAuthStateChanged(auth, user => {
+    if (user) {
+      uid = user.uid;
+      statusText.textContent = 'В сети — ' + uid.slice(0,6);
+
+      // if we have saved room -> try to rejoin
+      const saved = loadRoomFromStorage();
+      if(saved.roomId){
+        // try join existing room (safe): check that room exists and participant array includes us or has vacancy
+        const rRef = doc(db, 'rooms', saved.roomId);
+        tryJoinSavedRoom(rRef, saved.partnerId).catch(err=>{
+          console.warn('Failed to join saved room, starting search', err);
+          startSearch();
+        });
+      } else {
+        startSearch();
+      }
+    } else {
+      signInAnonymously(auth).catch(err => {
+        console.error('Auth error:', err);
+        alert('Ошибка авторизации (аноним). Проверьте консоль.');
+      });
+    }
+  });
+
+  // ------------------------
+  // UI helpers
+  // ------------------------
   function clearMessages(){ messagesEl.innerHTML = ''; }
   function addMessageToUI(data){
     const { sender, text, type, createdAt } = data;
@@ -339,12 +391,15 @@
 
     wrap.appendChild(avatar);
     wrap.appendChild(msg);
-
     messagesEl.appendChild(wrap);
+
+    // scroll to bottom
     messagesEl.scrollTop = messagesEl.scrollHeight;
   }
 
-  /* --- Message sending --- */
+  // ------------------------
+  // Send message
+  // ------------------------
   async function sendMessageToRoom(text, type = 'text'){
     if(!roomRef) return;
     const messagesCol = collection(roomRef, 'messages');
@@ -398,82 +453,45 @@
     emojiPanel.classList.add('hidden');
   });
 
-  /* --- Presence (sessions) --- */
-  // create a short-lived session doc and heartbeat it
-  async function startSession(roomId = null){
-    sessionId = uid + '_' + Math.random().toString(36).slice(2,10);
-    const sRef = doc(collection(db, 'sessions'), sessionId);
-    await setDoc(sRef, {
-      uid,
-      roomId: roomId || null,
-      ts: serverTimestamp()
-    });
-    // heartbeat interval
-    sessionHeartbeatInterval = setInterval(async ()=>{
-      try {
-        await updateDoc(sRef, { ts: serverTimestamp(), roomId: roomId || null });
-      } catch(e){
-        // ignore
-      }
-    }, HEARTBEAT_MS);
-    // on unload try remove
-    window.addEventListener('beforeunload', cleanupSessionImmediately);
-    window.addEventListener('pagehide', cleanupSessionImmediately);
-  }
-
-  async function cleanupSessionImmediately(){
-    if(!sessionId) return;
-    try {
-      const sRef = doc(db, 'sessions', sessionId);
-      await deleteDoc(sRef).catch(()=>{});
-    } catch(e){}
-    clearInterval(sessionHeartbeatInterval);
-    sessionHeartbeatInterval = null;
-    sessionId = null;
-  }
-
-  /* --- Matchmaking / Search --- */
+  // ------------------------
+  // matchmaking / waiting
+  // ------------------------
   async function startSearch(){
-    // clear previous
-    await clearAllListenersAndState();
+    // guard: if already have room saved, don't search
+    const saved = loadRoomFromStorage();
+    if(saved.roomId){
+      console.log('have saved room, skipping search');
+      return;
+    }
+
+    clearAllListenersAndState();
     clearMessages();
-    searching = true;
-    connected = false;
     show(searchScreen);
     hide(chatWindow);
     hide(endScreen);
     statusText.textContent = 'Ищем собеседника...';
 
-    // ensure we don't already belong to an open room (safety)
-    const existingRoom = await findOpenRoomForUid();
-    if(existingRoom){
-      roomRef = doc(db, 'rooms', existingRoom.id);
-      await connectToRoom(roomRef);
-      return;
-    }
-
-    // create waiting doc
+    // create my waiting doc (client-generated id)
     myWaitingRef = doc(collection(db, 'waiting'));
     await setDoc(myWaitingRef, { uid, createdAt: serverTimestamp(), claimed: false, roomId: null });
 
+    // listen own waiting doc for when it's claimed (other side created room)
     myWaitingUnsub = onSnapshot(myWaitingRef, (snap) => {
       if(!snap.exists()) return;
       const data = snap.data();
       if(data.claimed && data.roomId){
-        // joined by other side or transaction set roomId
-        try {
-          roomRef = doc(db, 'rooms', data.roomId);
-          connectToRoom(roomRef);
-        } catch(e){
-          console.error('connect from myWaitingRef error', e);
-        }
+        roomId = data.roomId;
+        roomRef = doc(db, 'rooms', roomId);
+        saveRoomToStorage(roomId, null); // partner will be discovered
+        connectToRoom(roomRef).catch(console.warn);
       }
     });
 
-    // listen for other waiting docs
-    const q = query(collection(db, 'waiting'), where('claimed', '==', false), limit(1));
+    // watch for other waiting docs and try to match
+    const q = query(collection(db, 'waiting'), where('claimed', '==', false), limit(5));
     waitingUnsub = onSnapshot(q, async (snap) => {
       if (!snap.empty) {
+        // find first doc that is not ourselves
         let otherDoc = null;
         for (const d of snap.docs) {
           const data = d.data();
@@ -503,6 +521,7 @@
               closed: false
             });
 
+            // mark both waiting docs claimed and write roomId so both clients can connect
             txn.update(otherRef, { claimed: true, roomId: newRoomRef.id });
             txn.update(myWaitingRef, { claimed: true, roomId: newRoomRef.id });
 
@@ -510,7 +529,9 @@
           });
 
           if(result && result.roomId){
-            roomRef = doc(db, 'rooms', result.roomId);
+            roomId = result.roomId;
+            roomRef = doc(db, 'rooms', roomId);
+            saveRoomToStorage(roomId, null);
             await connectToRoom(roomRef);
           }
         } catch (err) {
@@ -520,200 +541,196 @@
     });
   }
 
-  // helper: find open room where uid is participant
-  async function findOpenRoomForUid(){
-    const q = query(collection(db, 'rooms'), where('participants', 'array-contains', uid), limit(1));
-    const rs = await getDocs(q);
-    if(!rs.empty){
-      const r = rs.docs[0];
-      const d = r.data();
-      if(d.closed) return null;
-      return r;
-    }
-    return null;
-  }
-
-  /* --- Connect to room: messages listener, room health monitoring --- */
+  // ------------------------
+  // Connect / presence / messages listener
+  // ------------------------
   async function connectToRoom(roomDocumentRef){
     try {
       if(!roomDocumentRef) return;
-      if(connected) return;
+      if(roomId && roomId !== roomDocumentRef.id){
+        // switching rooms: cleanup previous
+        await clearAllListenersAndState();
+      }
 
-      connected = true;
-      searching = false;
+      // avoid double connect
+      if(roomRef && roomRef.path === roomDocumentRef.path && presenceUnsub) {
+        console.log('already connected to room');
+        return;
+      }
+
+      roomRef = roomDocumentRef;
+      roomId = roomDocumentRef.id;
+      saveRoomToStorage(roomId, partnerId);
+
+      // show chat UI
       hide(searchScreen);
       show(chatWindow);
       hide(endScreen);
       statusText.textContent = 'Соединено';
 
-      // ensure we have a session attached to this room
-      await startSession(roomDocumentRef.id);
+      // Ensure we are listed as participant (best-effort)
+      try {
+        await runTransaction(db, async txn => {
+          const rSnap = await txn.get(roomRef);
+          if(!rSnap.exists()) throw 'room gone';
+          const data = rSnap.data();
+          const parts = data.participants || [];
+          if(!parts.includes(uid) && parts.length < 2){
+            parts.push(uid);
+            txn.update(roomRef, { participants: parts });
+          }
+        });
+      } catch(e){
+        // ignore
+      }
 
-      // attach room metadata listener
-      roomUnsub = onSnapshot(roomDocumentRef, snap => {
+      // subscribe room metadata to detect closed flag
+      roomUnsub = onSnapshot(roomRef, (snap) => {
         if(!snap.exists()) return;
         const data = snap.data();
         if(data.closed){
+          // someone closed chat -> end it
           endChatUI();
+        } else {
+          // record partnerId if possible
+          const participants = data.participants || [];
+          partnerId = participants.find(p => p !== uid) || null;
+          saveRoomToStorage(roomId, partnerId);
         }
       });
 
-      // messages listener
-      const messagesCol = collection(roomDocumentRef, 'messages');
+      // messages listener (chronological order)
+      const messagesCol = collection(roomRef, 'messages');
       const msgsQuery = query(messagesCol, orderBy('createdAt'));
       messagesUnsub = onSnapshot(msgsQuery, (snap) => {
         messagesEl.innerHTML = '';
         snap.docs.forEach(d => {
-          const data = d.data();
-          addMessageToUI(data);
+          addMessageToUI(d.data());
         });
       });
 
-      // start monitoring sessions for this room to detect stale participants
-      monitorRoomHealth(roomDocumentRef);
+      // presence: create/update my presence doc and start heartbeat
+      await setMyPresence();
+      presenceUnsub = onSnapshot(collection(roomRef, 'presence'), async (snap) => {
+        // if presence collection changes, check participants presence
+        // if no presence docs (both gone) -> delete room
+        const docs = snap.docs.map(d=>({ id: d.id, data: d.data() }));
+        const now = Date.now();
+        // find stale presence (lastSeen older than threshold)
+        const alive = docs.filter(d => {
+          const ls = d.data.lastSeen?.toMillis ? d.data.lastSeen.toMillis() : (d.data.lastSeen ? new Date(d.data.lastSeen).getTime() : 0);
+          return (now - ls) < PRESENCE_STALE_MS;
+        });
 
-      // save ref
-      roomRef = roomDocumentRef;
-      // persist roomId locally so reload resumes quickly
-      localStorage.setItem('stilly_roomId', roomDocumentRef.id);
+        // if no alive docs -> both offline -> delete room
+        if(alive.length === 0){
+          // best-effort: delete messages and room
+          try {
+            await fullRoomCleanup(); // will delete room if this client is last or both gone
+          } catch(e){/* ignore */}
+        } else if(alive.length === 1) {
+          // one user left; keep room but UI can show "partner left" if needed
+          // we'll not auto-start new search automatically — user can press new chat
+        }
+      });
 
     } catch(err){
       console.error('connectToRoom error', err);
     }
   }
 
-  // Monitor sessions for this room and run cleanup transaction if somebody is stale.
-  // This keeps participants array consistent with active sessions.
-  function monitorRoomHealth(roomDocumentRef){
-    // unsubscribe previous if any
-    if(sessionUnsub) { sessionUnsub(); sessionUnsub = null; }
+  // mark own presence and start heartbeat
+  async function setMyPresence(){
+    if(!roomRef || !uid) return;
+    const presRef = doc(roomRef, 'presence', uid);
+    try {
+      await setDoc(presRef, { lastSeen: serverTimestamp() });
+    } catch(e){
+      console.warn('set presence failed', e);
+    }
+    // heartbeat
+    if(presenceHeartbeatInterval) clearInterval(presenceHeartbeatInterval);
+    presenceHeartbeatInterval = setInterval(async ()=>{
+      try {
+        await updateDoc(presRef, { lastSeen: serverTimestamp() });
+      } catch(e){
+        // ignore
+      }
+    }, PRESENCE_PING_INTERVAL);
+  }
 
-    const sQuery = query(collection(db, 'sessions'), where('roomId', '==', roomDocumentRef.id));
-    sessionUnsub = onSnapshot(sQuery, async (snap) => {
-      const now = Date.now();
-      const activeUids = new Set();
-
-      snap.docs.forEach(d => {
-        const data = d.data();
-        // ts may be a Firestore Timestamp
-        let ts = data.ts;
-        let tsMs = 0;
-        if (ts && ts.toMillis) tsMs = ts.toMillis();
-        else if (ts instanceof Object && ts._seconds) tsMs = (ts._seconds * 1000);
-        if (tsMs && (now - tsMs) < STALE_THRESHOLD_MS) {
-          activeUids.add(data.uid);
+  // try rejoin saved room (on load)
+  async function tryJoinSavedRoom(rRef, savedPartner){
+    try {
+      const rSnap = await getDoc(rRef);
+      if(!rSnap.exists()) {
+        clearRoomStorage();
+        startSearch();
+        return;
+      }
+      // if room closed -> start search
+      const data = rSnap.data();
+      if(data.closed){
+        clearRoomStorage();
+        startSearch();
+        return;
+      }
+      // join room: if participants doesn't include us and space available, add
+      await runTransaction(db, async txn => {
+        const roomSnap = await txn.get(rRef);
+        if(!roomSnap.exists()) throw 'no room';
+        const parts = roomSnap.data().participants || [];
+        if(!parts.includes(uid) && parts.length < 2){
+          parts.push(uid);
+          txn.update(rRef, { participants: parts });
         }
       });
-
-      // Also include ourselves (we have active session)
-      if(sessionId) activeUids.add(uid);
-
-      // run transaction to reconcile room participants with activeUids
-      try {
-        await runTransaction(db, async (txn) => {
-          const rSnap = await txn.get(roomDocumentRef);
-          if(!rSnap.exists()) return;
-          const data = rSnap.data();
-          let participants = data.participants || [];
-          // keep only participants that have an active session
-          const newParticipants = participants.filter(p => activeUids.has(p));
-          if (newParticipants.length === participants.length) return; // nothing changed
-
-          if(newParticipants.length === 0){
-            // delete all messages and room
-            const msgsSnap = await getDocs(collection(roomDocumentRef, 'messages'));
-            for(const m of msgsSnap.docs){
-              await txn.delete(m.ref);
-            }
-            txn.delete(roomDocumentRef);
-          } else {
-            txn.update(roomDocumentRef, { participants: newParticipants });
-          }
-        });
-      } catch(e){
-        // ignore race conditions
-      }
-    });
+      // connect
+      roomRef = rRef;
+      roomId = rRef.id;
+      partnerId = savedPartner; // may be null; room listener will update
+      await connectToRoom(roomRef);
+    } catch(e){
+      console.warn('tryJoinSavedRoom failed', e);
+      clearRoomStorage();
+      startSearch();
+    }
   }
 
-  /* --- Try resume from localStorage or URL --- */
-  async function tryResumeOrJoinFromURL(){
-    // 1) resume from localStorage
-    const stored = localStorage.getItem('stilly_roomId');
-    if(stored){
-      const rRef = doc(db, 'rooms', stored);
-      const rSnap = await getDoc(rRef);
-      if(rSnap.exists()){
-        const d = rSnap.data();
-        if(!d.closed && (d.participants || []).includes(uid)){
-          roomRef = rRef;
-          await connectToRoom(rRef);
-          return;
-        } else {
-          // cleanup stale local
-          localStorage.removeItem('stilly_roomId');
-        }
-      } else {
-        localStorage.removeItem('stilly_roomId');
-      }
-    }
-
-    // 2) try join from ?room=ID
-    const url = new URL(location.href);
-    const roomId = url.searchParams.get('room');
-    if(roomId){
-      const rRef = doc(db, 'rooms', roomId);
-      try {
-        await runTransaction(db, async txn => {
-          const roomSnap = await txn.get(rRef);
-          if(!roomSnap.exists()) throw 'no room';
-          const data = roomSnap.data();
-          if(data.closed) throw 'closed';
-          const participants = data.participants || [];
-          if(!participants.includes(uid) && participants.length < 2){
-            participants.push(uid);
-            txn.update(rRef, { participants });
-          }
-          return true;
-        });
-        await connectToRoom(rRef);
-        return;
-      } catch(err){
-        console.warn('Failed to join from URL:', err);
-      }
-    }
-
-    // 3) if nothing to resume — start normal search
-    await startSearch();
-  }
-
-  /* --- Finishing & cleanup --- */
+  // ------------------------
+  // Finish / cleanup
+  // ------------------------
   async function finishChat(){
     if(roomRef){
       try {
+        // mark closed so other client ends immediately
         await updateDoc(roomRef, { closed: true });
+        // attempt full cleanup (delete messages & room if this client was last)
+        await fullRoomCleanup();
       } catch(e){
         console.warn('Error closing room:', e);
       }
     }
+    clearRoomStorage();
     endChatUI();
   }
 
   function endChatUI(){
-    connected = false;
-    searching = false;
+    // stop heartbeats & listeners
+    connectedCleanup();
+    connectedStopUI();
+    statusText.textContent = 'Чат завершен';
+  }
+
+  function connectedStopUI(){
     hide(searchScreen);
     hide(chatWindow);
     show(endScreen);
-    statusText.textContent = 'Чат завершен';
-    clearAllListenersAndState();
-    localStorage.removeItem('stilly_roomId');
   }
 
   async function cancelSearchHandler(){
-    searching = false;
     if(myWaitingRef){
-      try { await deleteDoc(myWaitingRef); } catch(e){ }
+      try { await deleteDoc(myWaitingRef); } catch(e){/*ignore*/ }
       myWaitingRef = null;
     }
     if(myWaitingUnsub){ myWaitingUnsub(); myWaitingUnsub = null; }
@@ -728,8 +745,10 @@
     if(roomUnsub){ roomUnsub(); roomUnsub = null; }
     if(waitingUnsub){ waitingUnsub(); waitingUnsub = null; }
     if(myWaitingUnsub){ myWaitingUnsub(); myWaitingUnsub = null; }
-    if(sessionUnsub){ sessionUnsub(); sessionUnsub = null; }
+    if(presenceUnsub){ presenceUnsub(); presenceUnsub = null; }
+    if(presenceHeartbeatInterval){ clearInterval(presenceHeartbeatInterval); presenceHeartbeatInterval = null; }
 
+    // remove my waiting doc if present
     if(myWaitingRef){
       try {
         const snap = await getDoc(myWaitingRef);
@@ -746,68 +765,85 @@
       }
       myWaitingRef = null;
     }
+    // remove my presence doc (best-effort)
+    if(roomRef && uid){
+      try { await deleteDoc(doc(roomRef, 'presence', uid)).catch(()=>{}); } catch(e){/*ignore*/ }
+    }
 
-    // stop session heartbeat & remove session doc
-    await cleanupSessionImmediately();
-
-    // don't null roomRef here — use fullRoomCleanup if needed
     messagesEl.innerHTML = '';
+    roomRef = null; roomId = null; partnerId = null;
   }
 
-  async function fullRoomCleanup() {
+  // deletes messages subcollection and room document if appropriate
+  async function fullRoomCleanup(){
     if(!roomRef) return;
     try {
       const rSnap = await getDoc(roomRef);
-      if(!rSnap.exists()) { roomRef = null; return; }
+      if(!rSnap.exists()) return;
       const data = rSnap.data();
       const participants = data.participants || [];
+
+      // remove self from participants list (best-effort)
       const newParts = participants.filter(p => p !== uid);
 
       if(newParts.length === 0){
         // delete messages
         const msgsSnap = await getDocs(collection(roomRef, 'messages'));
         for(const m of msgsSnap.docs){
-          await deleteDoc(m.ref);
+          await deleteDoc(m.ref).catch(()=>{});
         }
-        await deleteDoc(roomRef);
+        // delete presence docs
+        const presSnap = await getDocs(collection(roomRef, 'presence'));
+        for(const p of presSnap.docs) await deleteDoc(p.ref).catch(()=>{});
+        // delete room
+        await deleteDoc(roomRef).catch(()=>{});
       } else {
-        await updateDoc(roomRef, { participants: newParts });
+        // update participants set without this user
+        await updateDoc(roomRef, { participants: newParts }).catch(()=>{});
       }
     } catch(e){
       console.warn('fullRoomCleanup error', e);
-    } finally {
-      roomRef = null;
-      localStorage.removeItem('stilly_roomId');
     }
   }
 
-  // best-effort cleanup on unload: remove waiting and remove self from participants
+  // called when unloading page - best-effort
   window.addEventListener('beforeunload', async (ev) => {
     try {
       if(myWaitingRef){
         await deleteDoc(myWaitingRef).catch(()=>{});
       }
-      if(roomRef){
-        // attempt to remove self from participants; if last => delete messages+room
-        const rSnap = await getDoc(roomRef);
-        if(rSnap.exists()){
-          const parts = rSnap.data().participants || [];
-          const newParts = parts.filter(p => p !== uid);
-          if(newParts.length === 0){
-            const msgsSnap = await getDocs(collection(roomRef, 'messages'));
-            for(const m of msgsSnap.docs) await deleteDoc(m.ref).catch(()=>{});
-            await deleteDoc(roomRef).catch(()=>{});
-          } else {
-            await updateDoc(roomRef, { participants: newParts }).catch(()=>{});
+      if(roomRef && uid){
+        // remove presence doc
+        await deleteDoc(doc(roomRef, 'presence', uid)).catch(()=>{});
+        // attempt to remove self from participants and maybe delete room/messages
+        try {
+          const rSnap = await getDoc(roomRef);
+          if(rSnap.exists()){
+            const parts = rSnap.data().participants || [];
+            const newParts = parts.filter(p => p !== uid);
+            if(newParts.length === 0){
+              const msgsSnap = await getDocs(collection(roomRef, 'messages'));
+              for(const m of msgsSnap.docs) await deleteDoc(m.ref).catch(()=>{});
+              await deleteDoc(roomRef).catch(()=>{});
+            } else {
+              await updateDoc(roomRef, { participants: newParts }).catch(()=>{});
+            }
           }
-        }
+        } catch(e){}
       }
-    } catch(e){
-      // ignore; best-effort only
-    }
+    } catch(e){}
   });
 
-  /* --- Buttons & handlers --- */
+  function connectedCleanup(){
+    if(messagesUnsub){ messagesUnsub(); messagesUnsub = null; }
+    if(roomUnsub){ roomUnsub(); roomUnsub = null; }
+    if(presenceUnsub){ presenceUnsub(); presenceUnsub = null; }
+    if(presenceHeartbeatInterval){ clearInterval(presenceHeartbeatInterval); presenceHeartbeatInterval = null; }
+  }
+
+  // ------------------------
+  // Buttons & handlers
+  // ------------------------
   finishBtn.addEventListener('click', ()=>{ modal.classList.remove('hidden'); });
   modalCancel.addEventListener('click', ()=>{ modal.classList.add('hidden'); });
   modalFinish.addEventListener('click', async ()=>{ modal.classList.add('hidden'); await finishChat(); });
@@ -815,32 +851,30 @@
   newChatBtn.addEventListener('click', async ()=>{ 
     await fullRoomCleanup();
     await clearAllListenersAndState();
+    clearRoomStorage();
     startSearch();
   });
 
   cancelSearch.addEventListener('click', cancelSearchHandler);
 
-  document.getElementById('exitBtn').addEventListener('click', async function(e){
+  exitBtn.addEventListener('click', async function(e){
     e.preventDefault();
     await fullRoomCleanup();
     await clearAllListenersAndState();
+    clearRoomStorage();
     window.location.href = '/anonymous/';
   });
 
-  /* --- Auth and initial resume --- */
-  onAuthStateChanged(auth, async user => {
-    if (user) {
-      uid = user.uid;
-      statusText.textContent = 'В сети — ' + uid.slice(0,6);
-      // try resume or join from URL or start search
-      await tryResumeOrJoinFromURL();
-    } else {
-      signInAnonymously(auth).catch(err => {
-        console.error('Auth error:', err);
-        alert('Ошибка авторизации (аноним). Проверьте консоль.');
-      });
+  // try join by explicit ?room=ID param on load
+  function tryJoinFromURL(){
+    const url = new URL(location.href);
+    const rId = url.searchParams.get('room');
+    if(rId){
+      const rRef = doc(db, 'rooms', rId);
+      tryJoinSavedRoom(rRef, null).catch(()=>startSearch());
     }
-  });
+  }
+  setTimeout(tryJoinFromURL, 600);
 
 </script>
 </body>
