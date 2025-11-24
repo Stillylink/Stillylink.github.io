@@ -230,7 +230,6 @@
     serverTimestamp,
     query,
     where,
-    orderBy,
     limit,
     onSnapshot,
     runTransaction,
@@ -415,10 +414,21 @@
     });
 
     // listen for other waiting docs to attempt to match
-    const q = query(collection(db, 'waiting'), where('claimed', '==', false), where('uid', '!=', uid), orderBy('createdAt'), limit(1));
+    // <<< NOTE: this query avoids problematic combinations that require composite index
+    const q = query(collection(db, 'waiting'), where('claimed', '==', false), limit(1));
+
     waitingUnsub = onSnapshot(q, async (snap) => {
       if (!snap.empty) {
-        const otherDoc = snap.docs[0];
+        // find first doc that is not ourselves
+        let otherDoc = null;
+        for (const d of snap.docs) {
+          const data = d.data();
+          if (data.uid && data.uid === uid) continue;
+          otherDoc = d;
+          break;
+        }
+        if (!otherDoc) return; // only myself in results
+
         try {
           // Transaction: create room and mark both waiting docs claimed + set roomId on both
           const result = await runTransaction(db, async (txn) => {
@@ -484,7 +494,8 @@
 
       // messages listener
       const messagesCol = collection(roomDocumentRef, 'messages');
-      const msgsQuery = query(messagesCol, orderBy('createdAt'));
+      // ordering messages by createdAt is ok here (single-field)
+      const msgsQuery = query(messagesCol, /*orderBy('createdAt')*/); // optional: keep simple to avoid index; if you want chronological, uncomment and create index if needed
       messagesUnsub = onSnapshot(msgsQuery, (snap) => {
         messagesEl.innerHTML = '';
         snap.docs.forEach(d => {
@@ -611,9 +622,6 @@
       if(participants.length <= 1){
         // delete messages
         const msgsSnap = await getDocs(collection(roomRef, 'messages'));
-        const deletes = msgsSnap.docs.map(m => deleteDoc(doc(roomRef.path + '/messages/' + m.id)));
-        // Above doc(...) usage isn't ideal — instead delete by path using deleteDoc(m.ref)
-        // We'll do proper deletes below:
         for(const m of msgsSnap.docs){
           await deleteDoc(m.ref);
         }
