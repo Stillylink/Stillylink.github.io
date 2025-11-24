@@ -2,333 +2,409 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<title>Анонимный чат — StillyLink</title>
+<title>Анонимный Чат — StillyLink</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<!-- твоя основная стилистика -->
-<link rel="stylesheet" href="../style.css">
-
 <style>
-/* Подстройка под твой дизайн */
+/* ======== СТИЛИ НА СТИЛЬ ВАШЕГО САЙТА ======== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: Arial, sans-serif;
+}
+
+:root {
+    --bg-dark: #111214;
+    --bg-page: #1a1c1f;
+    --bg-card: #16181c;
+    --text-light: #ffffff;
+    --text-gray: #a7a7a7;
+    --accent: #3a82f7;
+}
+
 body {
-    background: var(--bg-page);
-}
-
-/* Обёртка чата */
-.chat-wrapper {
-    max-width: 700px;
-    margin: 100px auto 40px;
-    background: var(--bg-card);
-    padding: 25px;
-    border-radius: 16px;
-    border: 1px solid var(--border);
-    box-shadow: 0 0 12px rgba(0,0,0,0.3);
-    display: none;
+    background-color: var(--bg-page);
+    color: var(--text-light);
+    height: 100vh;
+    display: flex;
     flex-direction: column;
-    height: 70vh;
 }
 
-/* Сообщения */
-.chat-messages {
+/* HEADER */
+.header {
+    width: 100%;
+    background: var(--bg-dark);
+    padding: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.header .exit-btn {
+    color: #ff6666;
+    cursor: pointer;
+    font-size: 16px;
+    text-decoration: none;
+}
+
+/* ЧАТ */
+.chat-container {
     flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.messages {
+    flex: 1;
+    padding: 15px;
     overflow-y: auto;
-    padding: 10px;
-    color: var(--text-main);
 }
 
-/* Сообщение */
 .message {
-    margin-bottom: 12px;
+    max-width: 70%;
     padding: 10px 14px;
+    margin-bottom: 10px;
     border-radius: 12px;
-    max-width: 75%;
     line-height: 1.4;
-    word-wrap: break-word;
+    word-break: break-word;
 }
 
-/* Свои сообщения */
 .me {
     background: var(--accent);
-    color: #000;
+    color: white;
     margin-left: auto;
 }
 
-/* Собеседник */
-.them {
-    background: var(--bg-hover);
-    color: var(--text-main);
-    margin-right: auto;
+.other {
+    background: var(--bg-card);
 }
 
-/* Поле ввода */
-.chat-input {
+/* ВВОД */
+.input-area {
+    padding: 12px;
+    background: var(--bg-dark);
     display: flex;
     gap: 10px;
-    margin-top: 10px;
 }
 
-.chat-input input {
+.input-area input {
     flex: 1;
-    background: #151618;
-    border: 1px solid var(--border);
+    padding: 12px;
+    background: #222;
     color: white;
     border-radius: 8px;
-    padding: 12px;
+    outline: none;
+    border: 1px solid #333;
 }
 
-.chat-input button {
-    width: 60px;
-}
-
-/* Поиск собеседника */
-.searching-box {
-    margin-top: 150px;
-    text-align: center;
-    font-size: 22px;
-    color: var(--text-main);
-}
-
-/* Кнопки после завершения чата */
-.end-buttons {
-    display: none;
-    flex-direction: column;
-    gap: 12px;
-    max-width: 300px;
-    margin: 40px auto;
-}
-
-.btn-small {
-    padding: 12px;
-    border-radius: 10px;
-}
-
-/* Верхняя кнопка */
-.top-exit {
-    text-align: right;
-    margin-top: 80px;
-    width: 100%;
-}
-
-.top-exit button {
-    background: #ff4f4f;
+.input-area button {
+    padding: 10px 16px;
+    border-radius: 8px;
+    background: var(--accent);
     color: white;
-    padding: 7px 14px;
+    border: none;
+    cursor: pointer;
+}
+
+/* ЗАВЕРШЕНИЕ ЧАТА */
+.center-box {
+    text-align: center;
+    margin-top: 30px;
+}
+
+.center-box button,
+.center-box a {
+    background: var(--accent);
+    padding: 12px 20px;
+    border-radius: 12px;
+    display: block;
+    width: 200px;
+    margin: 10px auto;
+    color: white;
+    text-decoration: none;
+}
+
+.hidden {
+    display: none;
+}
+
+/* POPUP CONFIRM */
+.confirm-popup {
+    position: fixed;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    background: var(--bg-card);
+    padding: 20px;
+    border-radius: 14px;
+    display: none;
+    width: 260px;
+    text-align: center;
+}
+
+.confirm-popup button {
+    margin-top: 15px;
+    width: 100%;
+    padding: 10px;
     border-radius: 10px;
     border: none;
     cursor: pointer;
-    transition: 0.25s;
 }
 
-.top-exit button:hover {
-    background: #ff7777;
+.confirm-popup .cancel {
+    background: #444;
+    color: white;
+}
+
+.confirm-popup .end {
+    background: #ff4444;
+    color: white;
 }
 </style>
 </head>
 
 <body>
 
-<header class="navbar">
-    <div class="logo">StillyLink</div>
+<!-- HEADER -->
+<header class="header">
+    <div style="font-size: 18px;">StillyLink Chat</div>
+    <a class="exit-btn" id="exitBtn">Выйти</a>
 </header>
 
-<div class="top-exit">
-    <button id="endChatBtn">Завершить чат</button>
+<!-- ПОИСК СОБЕСЕДНИКА -->
+<div id="searching" class="center-box">
+    <h2>Поиск собеседника...</h2>
 </div>
 
-<div class="searching-box" id="searchingBox">
-    🔍 Поиск собеседника...
-</div>
+<!-- ЧАТ -->
+<div id="chatBox" class="chat-container hidden">
+    <div class="messages" id="messages"></div>
 
-<div class="chat-wrapper" id="chatWrapper">
-    <div class="chat-messages" id="chatMessages"></div>
-
-    <div class="chat-input">
-        <input type="text" id="msgInput" placeholder="Введите сообщение...">
-        <button id="sendBtn" class="btn">➤</button>
+    <div class="input-area">
+        <button id="imgBtn">📷</button>
+        <input id="msgInput" type="text" placeholder="Напишите сообщение...">
+        <button id="sendBtn">➤</button>
     </div>
 </div>
 
-<div class="end-buttons" id="endButtons">
-    <button id="newChatBtn" class="btn-small">Начать новый чат</button>
-    <button id="exitBtn" class="btn-small">Выйти</button>
+<!-- ПОСЛЕ ЗАВЕРШЕНИЯ -->
+<div id="afterEnd" class="center-box hidden">
+    <h2>Чат завершён</h2>
+    <button id="newChatBtn">Начать новый</button>
+    <a href="/anonymous/">Выйти</a>
+</div>
+
+<!-- POPUP -->
+<div class="confirm-popup" id="confirmPopup">
+    <div style="font-size: 18px;">Завершить чат?</div>
+    <button class="end" id="confirmEnd">Завершить</button>
+    <button class="cancel" id="cancelEnd">Отмена</button>
 </div>
 
 
-<!-- ================= FIREBASE ================= -->
+<!-- FIREBASE -->
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
 import {
-    getFirestore,
-    collection,
-    addDoc,
-    deleteDoc,
-    updateDoc,
-    getDoc,
-    getDocs,
-    doc,
-    onSnapshot,
-    serverTimestamp
-} from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
+    initializeApp
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+    getFirestore, doc, setDoc, getDoc, deleteDoc,
+    updateDoc, onSnapshot, addDoc, collection, getDocs
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const firebaseConfig = {
-    apiKey: "AIzaSyBWlR4QWdnbqXLKKaftEAzhXneTmV9xXX0",
-    authDomain: "stillylink-f1d0f.firebaseapp.com",
-    projectId: "stillylink-f1d0f",
-    storageBucket: "stillylink-f1d0f.appspot.com",
-    messagingSenderId: "772070114710",
-    appId: "1:772070114710:web:939bce83e4d3be14bdc9b7"
+    apiKey: "AIzaSyDwn8NtOD5KKOFMx1ZzfR6jpkBh7jaCgFc",
+    authDomain: "stillylink-firebase.firebaseapp.com",
+    projectId: "stillylink-firebase",
+    storageBucket: "stillylink-firebase.appspot.com",
+    messagingSenderId: "350881944745",
+    appId: "1:350881944745:web:61cacd2eea2b679dd9146f"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
+/* VARIABLES */
+let myId = Math.random().toString(36).slice(2);
+let roomRef = null;
+let roomUnsub = null;
+let msgUnsub = null;
 
-// ======================================================
-// ====== ЛОГИКА ПОЛНОСТЬЮ ГОВОРИТ КАК МЫ ДЕЛАЛИ ========
-// ======================================================
+/* ELEMENTS */
+const searching = document.getElementById("searching");
+const chatBox = document.getElementById("chatBox");
+const messagesDiv = document.getElementById("messages");
+const afterEnd = document.getElementById("afterEnd");
 
-let roomId = null;
-let myId = Math.random().toString(36).substring(2, 10);
+const sendBtn = document.getElementById("sendBtn");
+const msgInput = document.getElementById("msgInput");
 
-async function findPartner() {
-    const queueRef = collection(db, "anonQueue");
+const exitBtn = document.getElementById("exitBtn");
+const newChatBtn = document.getElementById("newChatBtn");
 
-    const free = await getDocs(queueRef);
-    let found = null;
+const confirmPopup = document.getElementById("confirmPopup");
+const confirmEnd = document.getElementById("confirmEnd");
+const cancelEnd = document.getElementById("cancelEnd");
 
-    free.forEach(f => {
-        const d = f.data();
-        if (!d.busy) found = { id: f.id, ...d };
+
+/* START SEARCH */
+async function startSearch() {
+
+    searching.classList.remove("hidden");
+    chatBox.classList.add("hidden");
+    afterEnd.classList.add("hidden");
+
+    // 1) Попытка найти свободную комнату
+    const roomsSnap = await getDocs(collection(db, "rooms"));
+    let freeRoom = null;
+
+    roomsSnap.forEach(r => {
+        const d = r.data();
+        if (d.participants.length === 1) freeRoom = r;
     });
 
-    if (found) {
-        roomId = found.room;
-        await updateDoc(doc(db, "anonQueue", found.id), { busy: true });
-        startChat(roomId);
-    } else {
-        const roomDoc = await addDoc(collection(db, "rooms"), {
-            created: serverTimestamp(),
-            activeUsers: 1
+    if (freeRoom) {
+        roomRef = doc(db, "rooms", freeRoom.id);
+        await updateDoc(roomRef, {
+            participants: [...freeRoom.data().participants, myId]
         });
-
-        roomId = roomDoc.id;
-
-        await addDoc(queueRef, {
-            room: roomId,
-            busy: false,
-            creator: myId
-        });
-
-        // ждём собеседника (обработаем ниже)
+        startRoomListener();
+        return;
     }
+
+    // 2) Создаём новую комнату
+    const newRoom = doc(collection(db, "rooms"));
+    roomRef = newRoom;
+
+    await setDoc(roomRef, {
+        participants: [myId],
+        created: Date.now()
+    });
+
+    startRoomListener();
 }
 
-findPartner();
 
+/* ROOM LISTENER */
+function startRoomListener() {
+    roomUnsub = onSnapshot(roomRef, async (snap) => {
+        if (!snap.exists()) return;
+        const data = snap.data();
 
-// =================== Старт чата ======================
-async function startChat(id) {
-    roomId = id;
+        if (data.participants.length === 2) {
+            searching.classList.add("hidden");
+            chatBox.classList.remove("hidden");
 
-    document.getElementById("searchingBox").style.display = "none";
-    document.getElementById("chatWrapper").style.display = "flex";
+            startMessagesListener();
+        }
+    });
+}
 
-    const roomRef = doc(db, "rooms", roomId);
-    const snap = await getDoc(roomRef);
+/* MESSAGES LISTENER */
+function startMessagesListener() {
+    const msgsRef = collection(roomRef, "messages");
 
-    if (snap.exists()) {
-        await updateDoc(roomRef, {
-            activeUsers: (snap.data().activeUsers || 0) + 1
-        });
-    }
-
-    const msgRef = collection(db, "rooms", roomId, "messages");
-    onSnapshot(msgRef, snapshot => {
-        const msgBox = document.getElementById("chatMessages");
-        msgBox.innerHTML = "";
+    msgUnsub = onSnapshot(msgsRef, (snapshot) => {
+        messagesDiv.innerHTML = "";
 
         snapshot.forEach(m => {
             const d = m.data();
             const div = document.createElement("div");
-            div.className = "message " + (d.from === myId ? "me" : "them");
-            div.textContent = d.text;
-            msgBox.appendChild(div);
+            div.classList.add("message");
+            div.classList.add(d.sender === myId ? "me" : "other");
+            div.innerText = d.text;
+            messagesDiv.appendChild(div);
         });
 
-        msgBox.scrollTop = msgBox.scrollHeight;
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
     });
 }
 
 
-// ================= Отправка сообщения =================
-document.getElementById("sendBtn").onclick = sendMessage;
+/* SEND MESSAGE */
+sendBtn.onclick = async () => {
+    if (!msgInput.value.trim()) return;
 
-document.getElementById("msgInput").addEventListener("keypress", (e)=>{
-    if (e.key === "Enter") sendMessage();
-});
+    const text = msgInput.value;
+    msgInput.value = "";
 
-async function sendMessage() {
-    const input = document.getElementById("msgInput");
-    const text = input.value.trim();
-    if (!text) return;
-
-    await addDoc(collection(db, "rooms", roomId, "messages"), {
+    await addDoc(collection(roomRef, "messages"), {
+        sender: myId,
         text,
-        from: myId,
-        time: serverTimestamp()
+        time: Date.now()
     });
-
-    input.value = "";
-}
-
-
-// =============== Завершить чат =======================
-document.getElementById("endChatBtn").onclick = () => {
-    document.getElementById("chatWrapper").style.display = "none";
-    document.getElementById("endButtons").style.display = "flex";
 };
 
 
-// =============== Удаление комнаты ====================
-async function deleteRoomCompletely() {
-    if (!roomId) return;
+/* CLEAR ALL LISTENERS */
+async function clearAllState() {
+    if (roomUnsub) roomUnsub();
+    if (msgUnsub) msgUnsub();
 
-    const roomRef = doc(db, "rooms", roomId);
+    roomUnsub = null;
+    msgUnsub = null;
+}
+
+
+/* CLEANUP ROOM COMPLETELY */
+async function fullRoomCleanup() {
+    if (!roomRef) return;
+
     const snap = await getDoc(roomRef);
-
     if (!snap.exists()) return;
 
-    let users = snap.data().activeUsers || 1;
-    users--;
+    const data = snap.data();
+    const part = data.participants || [];
 
-    if (users <= 0) {
-        const msgs = await getDocs(collection(db, "rooms", roomId, "messages"));
-        msgs.forEach(async msg => {
-            await deleteDoc(doc(db, "rooms", roomId, "messages", msg.id));
-        });
+    if (part.length <= 1) {
+        // удалить сообщения
+        const msgs = await getDocs(collection(roomRef, "messages"));
+        for (const m of msgs.docs) await deleteDoc(m.ref);
 
+        // удалить комнату
         await deleteDoc(roomRef);
-
-        const q = await getDocs(collection(db, "anonQueue"));
-        q.forEach(async qdoc => {
-            let d = qdoc.data();
-            if (d.room === roomId) await deleteDoc(doc(db, "anonQueue", qdoc.id));
-        });
-
-    } else {
-        await updateDoc(roomRef, { activeUsers: users });
     }
 }
 
-document.getElementById("exitBtn").onclick = async () => {
-    await deleteRoomCompletely();
-    window.location.href = "/anonymous/";
+
+/* EXIT */
+exitBtn.onclick = async () => {
+    await fullRoomCleanup();
+    await clearAllState();
+    location.href = "/anonymous/";
 };
 
-document.getElementById("newChatBtn").onclick = async () => {
-    await deleteRoomCompletely();
-    window.location.reload();
+
+/* CONFIRM POPUP */
+exitBtn.addEventListener("click", (e) => {
+    e.preventDefault();
+    confirmPopup.style.display = "block";
+});
+
+cancelEnd.onclick = () => {
+    confirmPopup.style.display = "none";
 };
+
+confirmEnd.onclick = async () => {
+    confirmPopup.style.display = "none";
+    await fullRoomCleanup();
+    await clearAllState();
+
+    chatBox.classList.add("hidden");
+    afterEnd.classList.remove("hidden");
+};
+
+
+/* NEW CHAT */
+newChatBtn.onclick = async () => {
+    await fullRoomCleanup();
+    await clearAllState();
+    startSearch();
+};
+
+
+/* LAUNCH */
+startSearch();
 
 </script>
 
