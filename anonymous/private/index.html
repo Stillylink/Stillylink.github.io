@@ -556,15 +556,12 @@
 
   setTimeout(tryJoinFromURL, 800);
 
-window.addEventListener('beforeunload', async () => {
-  if (myWaitingRef) {
-    try { 
-      await deleteDoc(myWaitingRef); 
-    } catch(e) {
-      console.warn('Delete waitingRef on unload error', e);
+ window.addEventListener('beforeunload', async () => {
+    // cleanup waiting doc so the other doesn't wait forever
+    if(myWaitingRef){
+      try { await deleteDoc(myWaitingRef); } catch(e){ /* ignore */ }
     }
-  }
-});
+  });
 </script>
 </body>
 </html>
