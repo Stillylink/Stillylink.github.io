@@ -300,9 +300,16 @@
   let presenceUnsub = null;
   let presenceHeartbeatInterval = null;
 
+  // waiting heartbeat state
+  let waitingHeartbeatInterval = null;
+  let cleanupWaitingInterval = null;
+
   // constants
   const PRESENCE_PING_INTERVAL = 8000; // ms
   const PRESENCE_STALE_MS = 25000; // if partner's lastSeen older than this -> considered offline
+
+  const WAITING_HEARTBEAT_INTERVAL = 8000;
+  const WAITING_STALE_MS = 30000; // 30s
 
   function show(el){ el.classList.remove('hidden'); }
   function hide(el){ el.classList.add('hidden'); }
@@ -453,8 +460,62 @@
   });
 
   // ------------------------
-  // matchmaking / waiting
+  // Waiting + heartbeat helpers & improved matchmaking
   // ------------------------
+
+  // helper: start heartbeat for my waiting doc
+  async function startWaitingHeartbeat() {
+    if (!myWaitingRef || !uid) return;
+    try {
+      // set initial lastSeen
+      await updateDoc(myWaitingRef, { lastSeen: serverTimestamp() }).catch(async (err) => {
+        // if update fails, set with merge
+        await setDoc(myWaitingRef, { uid, createdAt: serverTimestamp(), claimed: false, roomId: null, lastSeen: serverTimestamp() }, { merge: true });
+      });
+    } catch (e) {
+      // ignore
+    }
+
+    if (waitingHeartbeatInterval) clearInterval(waitingHeartbeatInterval);
+    waitingHeartbeatInterval = setInterval(async () => {
+      try {
+        await updateDoc(myWaitingRef, { lastSeen: serverTimestamp() });
+      } catch (e) {
+        // ignore
+      }
+    }, WAITING_HEARTBEAT_INTERVAL);
+
+    // start periodic cleanup of stale waiters (best-effort)
+    if (cleanupWaitingInterval) clearInterval(cleanupWaitingInterval);
+    cleanupWaitingInterval = setInterval(cleanupStaleWaitingDocs, 30000);
+  }
+
+  // helper: stop waiting heartbeat & clear intervals
+  function stopWaitingHeartbeat() {
+    if (waitingHeartbeatInterval) { clearInterval(waitingHeartbeatInterval); waitingHeartbeatInterval = null; }
+    if (cleanupWaitingInterval) { clearInterval(cleanupWaitingInterval); cleanupWaitingInterval = null; }
+  }
+
+  // cleanup stale waiting docs (client-side best-effort)
+  async function cleanupStaleWaitingDocs() {
+    try {
+      const q = query(collection(db, 'waiting'), orderBy('lastSeen'), limit(50));
+      const snap = await getDocs(q);
+      const now = Date.now();
+      for (const d of snap.docs) {
+        const data = d.data();
+        const ls = data.lastSeen?.toMillis ? data.lastSeen.toMillis() : (data.lastSeen ? new Date(data.lastSeen).getTime() : 0);
+        const claimed = !!data.claimed;
+        if (!claimed && ls && (now - ls) > WAITING_STALE_MS) {
+          try { await deleteDoc(d.ref); } catch(e){ /* ignore */ }
+        }
+      }
+    } catch (e) {
+      // ignore errors — this is best-effort
+    }
+  }
+
+  // improved startSearch: reuse existing waiting by uid, heartbeat, and skip stale others during match
   async function startSearch(){
     // guard: if already have room saved, don't search
     const saved = loadRoomFromStorage();
@@ -470,31 +531,55 @@
     hide(endScreen);
     statusText.textContent = 'Ищем собеседника...';
 
-    // create my waiting doc (client-generated id)
-    myWaitingRef = doc(collection(db, 'waiting'));
-    await setDoc(myWaitingRef, { uid, createdAt: serverTimestamp(), claimed: false, roomId: null });
+    // Try to reuse an existing waiting doc for this uid (in case previous one still exists)
+    try {
+      const qMy = query(collection(db, 'waiting'), where('uid', '==', uid), where('claimed', '==', false), limit(1));
+      const snap = await getDocs(qMy);
+      if (!snap.empty) {
+        // reuse first found
+        myWaitingRef = snap.docs[0].ref;
+        await setDoc(myWaitingRef, { uid, claimed: false, roomId: null }, { merge: true });
+      } else {
+        // create my waiting doc (client-generated id)
+        myWaitingRef = doc(collection(db, 'waiting'));
+        await setDoc(myWaitingRef, { uid, createdAt: serverTimestamp(), claimed: false, roomId: null, lastSeen: serverTimestamp() });
+      }
+    } catch (e) {
+      // fallback: create
+      myWaitingRef = doc(collection(db, 'waiting'));
+      await setDoc(myWaitingRef, { uid, createdAt: serverTimestamp(), claimed: false, roomId: null, lastSeen: serverTimestamp() });
+    }
 
     // listen own waiting doc for when it's claimed (other side created room)
+    if (myWaitingUnsub) myWaitingUnsub();
     myWaitingUnsub = onSnapshot(myWaitingRef, (snap) => {
       if(!snap.exists()) return;
       const data = snap.data();
       if(data.claimed && data.roomId){
         roomId = data.roomId;
         roomRef = doc(db, 'rooms', roomId);
-        saveRoomToStorage(roomId, null); // partner will be discovered
+        saveRoomToStorage(roomId, null); // partner will be discovered in room doc
         connectToRoom(roomRef).catch(console.warn);
       }
     });
 
+    // start heartbeat to keep lastSeen updated
+    startWaitingHeartbeat();
+
     // watch for other waiting docs and try to match
-    const q = query(collection(db, 'waiting'), where('claimed', '==', false), limit(5));
+    const q = query(collection(db, 'waiting'), where('claimed', '==', false), limit(20));
+    if (waitingUnsub) waitingUnsub();
     waitingUnsub = onSnapshot(q, async (snap) => {
       if (!snap.empty) {
-        // find first doc that is not ourselves
+        // find first doc that is not ourselves and not stale
+        const now = Date.now();
         let otherDoc = null;
         for (const d of snap.docs) {
           const data = d.data();
           if (data.uid && data.uid === uid) continue;
+          const ls = data.lastSeen?.toMillis ? data.lastSeen.toMillis() : (data.lastSeen ? new Date(data.lastSeen).getTime() : (data.createdAt?.toMillis ? data.createdAt.toMillis() : 0));
+          // skip stale waiters
+          if (!ls || (now - ls) > WAITING_STALE_MS) continue;
           otherDoc = d;
           break;
         }
@@ -510,6 +595,11 @@
             if (!mineSnap.exists()) throw 'mine gone';
             if (otherSnap.data().claimed === true) throw 'other claimed';
             if (mineSnap.data().claimed === true) throw 'mine claimed';
+
+            // ensure other is not stale at transaction time
+            const otherLast = otherSnap.data().lastSeen;
+            const otherLastMs = otherLast?.toMillis ? otherLast.toMillis() : (otherLast ? new Date(otherLast).getTime() : 0);
+            if (!otherLastMs || (Date.now() - otherLastMs) > WAITING_STALE_MS) throw 'other stale';
 
             const newRoomRef = doc(collection(db, 'rooms'));
             const otherUid = otherSnap.data().uid;
@@ -531,6 +621,8 @@
             roomId = result.roomId;
             roomRef = doc(db, 'rooms', roomId);
             saveRoomToStorage(roomId, null);
+            // stop heartbeat for waiting (we'll create presence in room)
+            stopWaitingHeartbeat();
             await connectToRoom(roomRef);
           }
         } catch (err) {
@@ -735,6 +827,7 @@
     if(myWaitingUnsub){ myWaitingUnsub(); myWaitingUnsub = null; }
     if(presenceUnsub){ presenceUnsub(); presenceUnsub = null; }
     if(presenceHeartbeatInterval){ clearInterval(presenceHeartbeatInterval); presenceHeartbeatInterval = null; }
+    stopWaitingHeartbeat();
 
     if(myWaitingRef){
       try {
@@ -796,6 +889,7 @@
   // called when unloading page - best-effort
   window.addEventListener('beforeunload', async (ev) => {
     try {
+      stopWaitingHeartbeat();
       if(myWaitingRef){
         await deleteDoc(myWaitingRef).catch(()=>{});
       }
