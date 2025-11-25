@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="ru">
 <head>
@@ -340,14 +341,50 @@
           console.warn('Failed to join saved room, starting search', err);
           startSearch();
         });
-      } else {
-        startSearch();
-      }
+      
     } else {
+      // Anonymous auth fallback
       signInAnonymously(auth).catch(err => {
-        console.error('Auth error:', err);
-        alert('Ошибка авторизации (аноним). Проверьте консоль.');
+        console.warn('Anonymous auth failed, using local UID fallback');
+        let local = localStorage.getItem('localUid');
+        if(!local){
+            local = 'anon_' + Math.random().toString(36).slice(2);
+            localStorage.setItem('localUid', local);
+        }
+        uid = local;
+        statusText.textContent = 'Аноним — ' + uid.slice(0,6);
+        const saved = loadRoomFromStorage();
+        if(saved.roomId){
+            const rRef = doc(db, 'rooms', saved.roomId);
+            tryJoinSavedRoom(rRef, saved.partnerId).catch(()=> startSearch());
+        } else {
+            startSearch();
+        }
       });
+    }
+
+    
+    } else {
+      // Anonymous auth fallback
+      signInAnonymously(auth).catch(err => {
+        console.warn('Anonymous auth failed, using local UID fallback');
+        let local = localStorage.getItem('localUid');
+        if(!local){
+            local = 'anon_' + Math.random().toString(36).slice(2);
+            localStorage.setItem('localUid', local);
+        }
+        uid = local;
+        statusText.textContent = 'Аноним — ' + uid.slice(0,6);
+        const saved = loadRoomFromStorage();
+        if(saved.roomId){
+            const rRef = doc(db, 'rooms', saved.roomId);
+            tryJoinSavedRoom(rRef, saved.partnerId).catch(()=> startSearch());
+        } else {
+            startSearch();
+        }
+      });
+    }
+);
     }
   });
 
@@ -370,9 +407,28 @@
       img.style.maxWidth = '320px';
       img.style.borderRadius = '8px';
       msg.appendChild(img);
+    
     } else {
-      msg.textContent = text;
+      // Anonymous auth fallback
+      signInAnonymously(auth).catch(err => {
+        console.warn('Anonymous auth failed, using local UID fallback');
+        let local = localStorage.getItem('localUid');
+        if(!local){
+            local = 'anon_' + Math.random().toString(36).slice(2);
+            localStorage.setItem('localUid', local);
+        }
+        uid = local;
+        statusText.textContent = 'Аноним — ' + uid.slice(0,6);
+        const saved = loadRoomFromStorage();
+        if(saved.roomId){
+            const rRef = doc(db, 'rooms', saved.roomId);
+            tryJoinSavedRoom(rRef, saved.partnerId).catch(()=> startSearch());
+        } else {
+            startSearch();
+        }
+      });
     }
+
 
     const meta = document.createElement('div');
     meta.className = 'msg-meta';
@@ -514,10 +570,28 @@
         // reuse first found
         myWaitingRef = snap.docs[0].ref;
         await setDoc(myWaitingRef, { uid, claimed: false, roomId: null }, { merge: true });
-      } else {
-        // create my waiting doc (client-generated id)
-        myWaitingRef = doc(collection(db, 'waiting'));
-        await setDoc(myWaitingRef, { uid, createdAt: serverTimestamp(), claimed: false, roomId: null, lastSeen: serverTimestamp() });
+      
+    } else {
+      // Anonymous auth fallback
+      signInAnonymously(auth).catch(err => {
+        console.warn('Anonymous auth failed, using local UID fallback');
+        let local = localStorage.getItem('localUid');
+        if(!local){
+            local = 'anon_' + Math.random().toString(36).slice(2);
+            localStorage.setItem('localUid', local);
+        }
+        uid = local;
+        statusText.textContent = 'Аноним — ' + uid.slice(0,6);
+        const saved = loadRoomFromStorage();
+        if(saved.roomId){
+            const rRef = doc(db, 'rooms', saved.roomId);
+            tryJoinSavedRoom(rRef, saved.partnerId).catch(()=> startSearch());
+        } else {
+            startSearch();
+        }
+      });
+    }
+);
       }
     } catch (e) {
       // fallback: create
@@ -648,12 +722,28 @@
         if(data.closed){
           // someone closed chat -> end it
           endChatUI();
-        } else {
-          // record partnerId if possible
-          const participants = data.participants || [];
-          partnerId = participants.find(p => p !== uid) || null;
-          saveRoomToStorage(roomId, partnerId);
+        
+    } else {
+      // Anonymous auth fallback
+      signInAnonymously(auth).catch(err => {
+        console.warn('Anonymous auth failed, using local UID fallback');
+        let local = localStorage.getItem('localUid');
+        if(!local){
+            local = 'anon_' + Math.random().toString(36).slice(2);
+            localStorage.setItem('localUid', local);
         }
+        uid = local;
+        statusText.textContent = 'Аноним — ' + uid.slice(0,6);
+        const saved = loadRoomFromStorage();
+        if(saved.roomId){
+            const rRef = doc(db, 'rooms', saved.roomId);
+            tryJoinSavedRoom(rRef, saved.partnerId).catch(()=> startSearch());
+        } else {
+            startSearch();
+        }
+      });
+    }
+
       });
 
       // messages listener (chronological order)
@@ -796,8 +886,28 @@
           const d = snap.data();
           if(!d.claimed) {
             await deleteDoc(myWaitingRef);
-          } else {
-            await deleteDoc(myWaitingRef).catch(()=>{});
+          
+    } else {
+      // Anonymous auth fallback
+      signInAnonymously(auth).catch(err => {
+        console.warn('Anonymous auth failed, using local UID fallback');
+        let local = localStorage.getItem('localUid');
+        if(!local){
+            local = 'anon_' + Math.random().toString(36).slice(2);
+            localStorage.setItem('localUid', local);
+        }
+        uid = local;
+        statusText.textContent = 'Аноним — ' + uid.slice(0,6);
+        const saved = loadRoomFromStorage();
+        if(saved.roomId){
+            const rRef = doc(db, 'rooms', saved.roomId);
+            tryJoinSavedRoom(rRef, saved.partnerId).catch(()=> startSearch());
+        } else {
+            startSearch();
+        }
+      });
+    }
+);
           }
         }
       } catch(e){
@@ -837,9 +947,28 @@
         for(const p of presSnap.docs) await deleteDoc(p.ref).catch(()=>{});
         // delete room
         await deleteDoc(roomRef).catch(()=>{});
-      } else {
-        // update participants set without this user
-        await updateDoc(roomRef, { participants: newParts }).catch(()=>{});
+      
+    } else {
+      // Anonymous auth fallback
+      signInAnonymously(auth).catch(err => {
+        console.warn('Anonymous auth failed, using local UID fallback');
+        let local = localStorage.getItem('localUid');
+        if(!local){
+            local = 'anon_' + Math.random().toString(36).slice(2);
+            localStorage.setItem('localUid', local);
+        }
+        uid = local;
+        statusText.textContent = 'Аноним — ' + uid.slice(0,6);
+        const saved = loadRoomFromStorage();
+        if(saved.roomId){
+            const rRef = doc(db, 'rooms', saved.roomId);
+            tryJoinSavedRoom(rRef, saved.partnerId).catch(()=> startSearch());
+        } else {
+            startSearch();
+        }
+      });
+    }
+).catch(()=>{});
       }
     } catch(e){
       console.warn('fullRoomCleanup error', e);
@@ -864,8 +993,28 @@
               const msgsSnap = await getDocs(collection(roomRef, 'messages'));
               for(const m of msgsSnap.docs) await deleteDoc(m.ref).catch(()=>{});
               await deleteDoc(roomRef).catch(()=>{});
-            } else {
-              await updateDoc(roomRef, { participants: newParts }).catch(()=>{});
+            
+    } else {
+      // Anonymous auth fallback
+      signInAnonymously(auth).catch(err => {
+        console.warn('Anonymous auth failed, using local UID fallback');
+        let local = localStorage.getItem('localUid');
+        if(!local){
+            local = 'anon_' + Math.random().toString(36).slice(2);
+            localStorage.setItem('localUid', local);
+        }
+        uid = local;
+        statusText.textContent = 'Аноним — ' + uid.slice(0,6);
+        const saved = loadRoomFromStorage();
+        if(saved.roomId){
+            const rRef = doc(db, 'rooms', saved.roomId);
+            tryJoinSavedRoom(rRef, saved.partnerId).catch(()=> startSearch());
+        } else {
+            startSearch();
+        }
+      });
+    }
+).catch(()=>{});
             }
           }
         } catch(e){}
@@ -901,7 +1050,6 @@
     window.location.href = '/anonymous/';
   });
 
-  // try join by explicit ?room=ID param on load
   function tryJoinFromURL(){
     const url = new URL(location.href);
     const rId = url.searchParams.get('room');
