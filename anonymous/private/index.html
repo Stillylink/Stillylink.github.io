@@ -345,11 +345,8 @@
       }
     } else {
       signInAnonymously(auth).catch(err => {
-        console.warn('Аноним Firebase недоступен, используем гостевой режим');
-        uid = "guest_" + Math.random().toString(36).slice(2);
-        statusText.textContent = 'Гость';
-        startSearch();
-      });
+        console.error('Auth error:', err);
+        alert('Ошибка авторизации (аноним). Проверьте консоль.');
       });
     }
   });
