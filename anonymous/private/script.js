@@ -37,24 +37,24 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-const searchScreen  = document.getElementById('searchScreen');
-const chatWindow    = document.getElementById('chatWindow');
-const endScreen     = document.getElementById('endScreen');
-const messagesEl    = document.getElementById('messages');
-const textInput     = document.getElementById('textInput');
-const sendBtn       = document.getElementById('sendBtn');
-const finishBtn     = document.getElementById('finishBtn');
-const modal         = document.getElementById('modal');
-const modalCancel   = document.getElementById('modalCancel');
-const modalFinish   = document.getElementById('modalFinish');
-const newChatBtn    = document.getElementById('newChatBtn');
-const emojiBtn      = document.getElementById('emojiBtn');
-const emojiPanel    = document.getElementById('emojiPanel');
-const photoBtn      = document.getElementById('photoBtn');
-const photoInput    = document.getElementById('photoInput');
-const cancelSearch  = document.getElementById('cancelSearch');
-const statusText    = document.getElementById('statusText');
-const exitBtn       = document.getElementById('exitBtn');
+  const searchScreen = document.getElementById('searchScreen');
+  const chatWindow = document.getElementById('chatWindow');
+  const endScreen = document.getElementById('endScreen');
+  const messagesEl = document.getElementById('messages');
+  const textInput = document.getElementById('textInput');
+  const sendBtn = document.getElementById('sendBtn');
+  const finishBtn = document.getElementById('finishBtn');
+  const modal = document.getElementById('modal');
+  const modalCancel = document.getElementById('modalCancel');
+  const modalFinish = document.getElementById('modalFinish');
+  const newChatBtn = document.getElementById('newChatBtn');
+  const emojiBtn = document.getElementById('emojiBtn');
+  const emojiPanel = document.getElementById('emojiPanel');
+  const photoBtn = document.getElementById('photoBtn');
+  const photoInput = document.getElementById('photoInput');
+  const cancelSearch = document.getElementById('cancelSearch');
+  const statusText = document.getElementById('statusText');
+  const exitBtn = document.getElementById('exitBtn');
 
 const regBtn      = document.querySelector(".register-btn");
 const avatar      = document.querySelector(".user-avatar");
@@ -132,30 +132,32 @@ document.addEventListener("click", e => {
 
 
 // =================== ХРАНИЛИЩЕ КОМНАТЫ ===================
-function saveRoomToStorage(rId, pId){
-    if (rId) localStorage.setItem("roomId", rId);
-    else localStorage.removeItem("roomId");
+  function saveRoomToStorage(rId, pId){
+    if(rId) localStorage.setItem('roomId', rId);
+    else localStorage.removeItem('roomId');
+    if(pId) localStorage.setItem('partnerId', pId);
+    else localStorage.removeItem('partnerId');
+  }
 
-    if (pId) localStorage.setItem("partnerId", pId);
-    else localStorage.removeItem("partnerId");
-}
-
-function loadRoomFromStorage(){
+  function loadRoomFromStorage(){
     return {
-        roomId: localStorage.getItem("roomId"),
-        partnerId: localStorage.getItem("partnerId")
+      roomId: localStorage.getItem('roomId'),
+      partnerId: localStorage.getItem('partnerId')
     };
-}
+  }
 
-function clearRoomStorage(){
-    localStorage.removeItem("roomId");
-    localStorage.removeItem("partnerId");
-}
+  function clearRoomStorage(){
+    localStorage.removeItem('roomId');
+    localStorage.removeItem('partnerId');
+  }
 // =========================================================
 
 
 onAuthStateChanged(auth, user => {
     if (user) {
+        uid = user.uid;
+        statusText.textContent = 'В сети — ' + uid.slice(0,6);
+        
         const letter = user.email?.charAt(0).toUpperCase() || "U";
 
         regBtn?.classList.add("hidden");
@@ -189,7 +191,7 @@ onAuthStateChanged(auth, user => {
     }
 });
 
-  function clearMessages(){ messagesEl.innerHTML = ''; }
+function clearMessages(){ messagesEl.innerHTML = ''; }
   function addMessageToUI(data){
     const { sender, text, type, createdAt } = data;
     const wrap = document.createElement('div');
