@@ -1,1 +1,683 @@
+ import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
+  import {
+    getAuth,
+    signInAnonymously,
+    onAuthStateChanged
+  } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
 
+  import {
+    getFirestore,
+    collection,
+    doc,
+    setDoc,
+    addDoc,
+    serverTimestamp,
+    query,
+    where,
+    orderBy,
+    limit,
+    onSnapshot,
+    runTransaction,
+    deleteDoc,
+    updateDoc,
+    getDocs,
+    getDoc
+  } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+      apiKey: "AIzaSyBWlR4QWdnbqXLKKaftEAzhXneTmV9xXX0",
+      authDomain: "stillylink-f1d0f.firebaseapp.com",
+      projectId: "stillylink-f1d0f",
+      storageBucket: "stillylink-f1d0f.appspot.com",
+      messagingSenderId: "772070114710",
+      appId: "1:772070114710:web:939bce83e4d3be14bdc9b7"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+
+  const searchScreen = document.getElementById('searchScreen');
+  const chatWindow = document.getElementById('chatWindow');
+  const endScreen = document.getElementById('endScreen');
+  const messagesEl = document.getElementById('messages');
+  const textInput = document.getElementById('textInput');
+  const sendBtn = document.getElementById('sendBtn');
+  const finishBtn = document.getElementById('finishBtn');
+  const modal = document.getElementById('modal');
+  const modalCancel = document.getElementById('modalCancel');
+  const modalFinish = document.getElementById('modalFinish');
+  const newChatBtn = document.getElementById('newChatBtn');
+  const emojiBtn = document.getElementById('emojiBtn');
+  const emojiPanel = document.getElementById('emojiPanel');
+  const photoBtn = document.getElementById('photoBtn');
+  const photoInput = document.getElementById('photoInput');
+  const cancelSearch = document.getElementById('cancelSearch');
+  const statusText = document.getElementById('statusText');
+  const exitBtn = document.getElementById('exitBtn');
+
+  let uid = null;
+  let myWaitingRef = null;
+  let myWaitingUnsub = null;
+  let roomRef = null;
+  let roomId = null;
+  let partnerId = null;
+  let messagesUnsub = null;
+  let waitingUnsub = null;
+  let roomUnsub = null;
+  let presenceUnsub = null;
+  let presenceHeartbeatInterval = null;
+
+  let waitingHeartbeatInterval = null;
+  let cleanupWaitingInterval = null;
+
+  const PRESENCE_PING_INTERVAL = 8000; // ms
+  const PRESENCE_STALE_MS = 25000; // if partner's lastSeen older than this -> considered offline
+
+  const WAITING_HEARTBEAT_INTERVAL = 8000;
+  const WAITING_STALE_MS = 30000; // 30s
+
+  function show(el){ el.classList.remove('hidden'); }
+  function hide(el){ el.classList.add('hidden'); }
+
+  function saveRoomToStorage(rId, pId){
+    if(rId) localStorage.setItem('roomId', rId);
+    else localStorage.removeItem('roomId');
+    if(pId) localStorage.setItem('partnerId', pId);
+    else localStorage.removeItem('partnerId');
+  }
+  function loadRoomFromStorage(){
+    return {
+      roomId: localStorage.getItem('roomId'),
+      partnerId: localStorage.getItem('partnerId')
+    };
+  }
+  function clearRoomStorage(){
+    localStorage.removeItem('roomId');
+    localStorage.removeItem('partnerId');
+  }
+
+  onAuthStateChanged(auth, user => {
+    if (user) {
+      uid = user.uid;
+      statusText.textContent = 'В сети — ' + uid.slice(0,6);
+
+      // if we have saved room -> try to rejoin
+      const saved = loadRoomFromStorage();
+      if(saved.roomId){
+        const rRef = doc(db, 'rooms', saved.roomId);
+        tryJoinSavedRoom(rRef, saved.partnerId).catch(err=>{
+          console.warn('Failed to join saved room, starting search', err);
+          startSearch();
+        });
+      } else {
+        startSearch();
+      }
+    } else {
+      signInAnonymously(auth).catch(err => {
+        console.error('Auth error:', err);
+        alert('Ошибка авторизации (аноним). Проверьте консоль.');
+      });
+    }
+  });
+
+  function clearMessages(){ messagesEl.innerHTML = ''; }
+  function addMessageToUI(data){
+    const { sender, text, type, createdAt } = data;
+    const wrap = document.createElement('div');
+    const isOwn = sender === uid;
+    wrap.className = 'msg-row ' + (isOwn ? 'own' : 'other');
+
+    const avatar = document.createElement('div');
+    avatar.className = 'avatar';
+    avatar.textContent = isOwn ? 'Я' : 'Гость';
+
+    const msg = document.createElement('div');
+    msg.className = 'message' + (isOwn ? ' own' : '');
+    if (type === 'image') {
+      const img = document.createElement('img');
+      img.src = text;
+      img.style.maxWidth = '320px';
+      img.style.borderRadius = '8px';
+      msg.appendChild(img);
+    } else {
+      msg.textContent = text;
+    }
+
+    const meta = document.createElement('div');
+    meta.className = 'msg-meta';
+    let time = '';
+    try {
+      if (createdAt && createdAt.toDate) time = createdAt.toDate().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+      else time = new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+    } catch(e){ time = ''; }
+    meta.textContent = time;
+    msg.appendChild(meta);
+
+    wrap.appendChild(avatar);
+    wrap.appendChild(msg);
+    messagesEl.appendChild(wrap);
+
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+
+  async function sendMessageToRoom(text, type = 'text'){
+    if(!roomRef) return;
+    const messagesCol = collection(roomRef, 'messages');
+    await addDoc(messagesCol, {
+      sender: uid,
+      text,
+      type,
+      createdAt: serverTimestamp()
+    });
+  }
+
+  photoBtn.addEventListener('click', ()=> photoInput.click());
+  photoInput.addEventListener('change', (e)=>{
+    const file = e.target.files?.[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = function(ev){
+      const dataUrl = ev.target.result;
+      sendMessageToRoom(dataUrl, 'image').catch(console.error);
+    };
+    reader.readAsDataURL(file);
+    photoInput.value = '';
+  });
+
+  sendBtn.addEventListener('click', ()=>{
+    const txt = textInput.value.trim();
+    if(!txt) return;
+    sendMessageToRoom(txt, 'text').then(()=>{ textInput.value = ''; });
+  });
+
+  textInput.addEventListener('keydown', (e)=>{
+    if(e.key === 'Enter' && !e.shiftKey){
+      e.preventDefault();
+      sendBtn.click();
+    }
+  });
+
+  emojiBtn.addEventListener('click', (e)=>{
+    emojiPanel.classList.toggle('hidden');
+    emojiPanel.setAttribute('aria-hidden', emojiPanel.classList.contains('hidden'));
+  });
+  document.querySelectorAll('.emoji').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      textInput.value += b.textContent;
+      textInput.focus();
+    });
+  });
+  document.addEventListener('click', (e)=>{
+    if(emojiPanel.classList.contains('hidden')) return;
+    if(e.target === emojiBtn || emojiPanel.contains(e.target)) return;
+    emojiPanel.classList.add('hidden');
+  });
+
+  async function startWaitingHeartbeat() {
+    if (!myWaitingRef || !uid) return;
+    try {
+      // set initial lastSeen
+      await updateDoc(myWaitingRef, { lastSeen: serverTimestamp() }).catch(async (err) => {
+        // if update fails, set with merge
+        await setDoc(myWaitingRef, { uid, createdAt: serverTimestamp(), claimed: false, roomId: null, lastSeen: serverTimestamp() }, { merge: true });
+      });
+    } catch (e) {
+      // ignore
+    }
+
+    if (waitingHeartbeatInterval) clearInterval(waitingHeartbeatInterval);
+    waitingHeartbeatInterval = setInterval(async () => {
+      try {
+        await updateDoc(myWaitingRef, { lastSeen: serverTimestamp() });
+      } catch (e) {
+        // ignore
+      }
+    }, WAITING_HEARTBEAT_INTERVAL);
+
+    if (cleanupWaitingInterval) clearInterval(cleanupWaitingInterval);
+    cleanupWaitingInterval = setInterval(cleanupStaleWaitingDocs, 30000);
+  }
+
+  function stopWaitingHeartbeat() {
+    if (waitingHeartbeatInterval) { clearInterval(waitingHeartbeatInterval); waitingHeartbeatInterval = null; }
+    if (cleanupWaitingInterval) { clearInterval(cleanupWaitingInterval); cleanupWaitingInterval = null; }
+  }
+
+  async function cleanupStaleWaitingDocs() {
+    try {
+      const q = query(collection(db, 'waiting'), orderBy('lastSeen'), limit(50));
+      const snap = await getDocs(q);
+      const now = Date.now();
+      for (const d of snap.docs) {
+        const data = d.data();
+        const ls = data.lastSeen?.toMillis ? data.lastSeen.toMillis() : (data.lastSeen ? new Date(data.lastSeen).getTime() : 0);
+        const claimed = !!data.claimed;
+        if (!claimed && ls && (now - ls) > WAITING_STALE_MS) {
+          try { await deleteDoc(d.ref); } catch(e){ /* ignore */ }
+        }
+      }
+    } catch (e) {
+      // ignore errors — this is best-effort
+    }
+  }
+
+  async function startSearch(){
+    // guard: if already have room saved, don't search
+    const saved = loadRoomFromStorage();
+    if(saved.roomId){
+      console.log('have saved room, skipping search');
+      return;
+    }
+
+    clearAllListenersAndState();
+    clearMessages();
+    show(searchScreen);
+    hide(chatWindow);
+    hide(endScreen);
+    statusText.textContent = 'Ищем собеседника...';
+
+    try {
+      const qMy = query(collection(db, 'waiting'), where('uid', '==', uid), where('claimed', '==', false), limit(1));
+      const snap = await getDocs(qMy);
+      if (!snap.empty) {
+        // reuse first found
+        myWaitingRef = snap.docs[0].ref;
+        await setDoc(myWaitingRef, { uid, claimed: false, roomId: null }, { merge: true });
+      } else {
+        // create my waiting doc (client-generated id)
+        myWaitingRef = doc(collection(db, 'waiting'));
+        await setDoc(myWaitingRef, { uid, createdAt: serverTimestamp(), claimed: false, roomId: null, lastSeen: serverTimestamp() });
+      }
+    } catch (e) {
+      // fallback: create
+      myWaitingRef = doc(collection(db, 'waiting'));
+      await setDoc(myWaitingRef, { uid, createdAt: serverTimestamp(), claimed: false, roomId: null, lastSeen: serverTimestamp() });
+    }
+
+    if (myWaitingUnsub) myWaitingUnsub();
+    myWaitingUnsub = onSnapshot(myWaitingRef, (snap) => {
+      if(!snap.exists()) return;
+      const data = snap.data();
+      if(data.claimed && data.roomId){
+        roomId = data.roomId;
+        roomRef = doc(db, 'rooms', roomId);
+        saveRoomToStorage(roomId, null); // partner will be discovered in room doc
+        connectToRoom(roomRef).catch(console.warn);
+      }
+    });
+
+    startWaitingHeartbeat();
+
+    const q = query(collection(db, 'waiting'), where('claimed', '==', false), limit(20));
+    if (waitingUnsub) waitingUnsub();
+    waitingUnsub = onSnapshot(q, async (snap) => {
+      if (!snap.empty) {
+        // find first doc that is not ourselves and not stale
+        const now = Date.now();
+        let otherDoc = null;
+        for (const d of snap.docs) {
+          const data = d.data();
+          if (data.uid && data.uid === uid) continue;
+          const ls = data.lastSeen?.toMillis ? data.lastSeen.toMillis() : (data.lastSeen ? new Date(data.lastSeen).getTime() : (data.createdAt?.toMillis ? data.createdAt.toMillis() : 0));
+          // skip stale waiters
+          if (!ls || (now - ls) > WAITING_STALE_MS) continue;
+          otherDoc = d;
+          break;
+        }
+        if (!otherDoc) return;
+
+        try {
+          const result = await runTransaction(db, async (txn) => {
+            const otherRef = otherDoc.ref;
+            const otherSnap = await txn.get(otherRef);
+            const mineSnap = await txn.get(myWaitingRef);
+
+            if (!otherSnap.exists()) throw 'other gone';
+            if (!mineSnap.exists()) throw 'mine gone';
+            if (otherSnap.data().claimed === true) throw 'other claimed';
+            if (mineSnap.data().claimed === true) throw 'mine claimed';
+
+            // ensure other is not stale at transaction time
+            const otherLast = otherSnap.data().lastSeen;
+            const otherLastMs = otherLast?.toMillis ? otherLast.toMillis() : (otherLast ? new Date(otherLast).getTime() : 0);
+            if (!otherLastMs || (Date.now() - otherLastMs) > WAITING_STALE_MS) throw 'other stale';
+
+            const newRoomRef = doc(collection(db, 'rooms'));
+            const otherUid = otherSnap.data().uid;
+
+            txn.set(newRoomRef, {
+              participants: [uid, otherUid],
+              createdAt: serverTimestamp(),
+              closed: false
+            });
+
+            txn.update(otherRef, { claimed: true, roomId: newRoomRef.id });
+            txn.update(myWaitingRef, { claimed: true, roomId: newRoomRef.id });
+
+            return { roomId: newRoomRef.id };
+          });
+
+          if(result && result.roomId){
+            roomId = result.roomId;
+            roomRef = doc(db, 'rooms', roomId);
+            saveRoomToStorage(roomId, null);
+            // stop heartbeat for waiting (we'll create presence in room)
+            stopWaitingHeartbeat();
+            await connectToRoom(roomRef);
+          }
+        } catch (err) {
+          console.warn('Matchmaking transaction error:', err);
+        }
+      }
+    });
+  }
+
+  async function connectToRoom(roomDocumentRef){
+    try {
+      if(!roomDocumentRef) return;
+      if(roomId && roomId !== roomDocumentRef.id){
+        // switching rooms: cleanup previous
+        await clearAllListenersAndState();
+      }
+
+      // avoid double connect
+      if(roomRef && roomRef.path === roomDocumentRef.path && presenceUnsub) {
+        console.log('already connected to room');
+        return;
+      }
+
+      roomRef = roomDocumentRef;
+      roomId = roomDocumentRef.id;
+      saveRoomToStorage(roomId, partnerId);
+
+      hide(searchScreen);
+      show(chatWindow);
+      hide(endScreen);
+      statusText.textContent = 'Соединено';
+
+      try {
+        await runTransaction(db, async txn => {
+          const rSnap = await txn.get(roomRef);
+          if(!rSnap.exists()) throw 'room gone';
+          const data = rSnap.data();
+          const parts = data.participants || [];
+          if(!parts.includes(uid) && parts.length < 2){
+            parts.push(uid);
+            txn.update(roomRef, { participants: parts });
+          }
+        });
+      } catch(e){
+        // ignore
+      }
+
+      // subscribe room metadata to detect closed flag
+      roomUnsub = onSnapshot(roomRef, (snap) => {
+        if(!snap.exists()) return;
+        const data = snap.data();
+        if(data.closed){
+          // someone closed chat -> end it
+          endChatUI();
+        } else {
+          // record partnerId if possible
+          const participants = data.participants || [];
+          partnerId = participants.find(p => p !== uid) || null;
+          saveRoomToStorage(roomId, partnerId);
+        }
+      });
+
+      // messages listener (chronological order)
+      const messagesCol = collection(roomRef, 'messages');
+      const msgsQuery = query(messagesCol, orderBy('createdAt'));
+      messagesUnsub = onSnapshot(msgsQuery, (snap) => {
+        messagesEl.innerHTML = '';
+        snap.docs.forEach(d => {
+          addMessageToUI(d.data());
+        });
+      });
+
+      await setMyPresence();
+      const presCol = collection(roomRef, 'presence');
+      presenceUnsub = onSnapshot(presCol, async (snap) => {
+        // if presence collection changes, check participants presence
+        const docs = snap.docs.map(d=>({ id: d.id, data: d.data() }));
+        const now = Date.now();
+        const alive = docs.filter(d => {
+          const ls = d.data.lastSeen?.toMillis ? d.data.lastSeen.toMillis() : (d.data.lastSeen ? new Date(d.data.lastSeen).getTime() : 0);
+          return (now - ls) < PRESENCE_STALE_MS;
+        });
+
+        if(alive.length === 0){
+          try {
+            await fullRoomCleanup();
+          } catch(e){/* ignore */}
+        }
+      });
+
+    } catch(err){
+      console.error('connectToRoom error', err);
+    }
+  }
+  
+  async function setMyPresence(){
+    if(!roomRef || !uid) return;
+    const presRef = doc(roomRef, 'presence', uid);
+    try {
+      await setDoc(presRef, { lastSeen: serverTimestamp() });
+    } catch(e){
+      console.warn('set presence failed', e);
+    }
+    // heartbeat
+    if(presenceHeartbeatInterval) clearInterval(presenceHeartbeatInterval);
+    presenceHeartbeatInterval = setInterval(async ()=>{
+      try {
+        await updateDoc(presRef, { lastSeen: serverTimestamp() });
+      } catch(e){
+        // ignore
+      }
+    }, PRESENCE_PING_INTERVAL);
+  }
+
+  // try rejoin saved room (on load)
+  async function tryJoinSavedRoom(rRef, savedPartner){
+    try {
+      const rSnap = await getDoc(rRef);
+      if(!rSnap.exists()) {
+        clearRoomStorage();
+        startSearch();
+        return;
+      }
+      const data = rSnap.data();
+      if(data.closed){
+        clearRoomStorage();
+        startSearch();
+        return;
+      }
+      await runTransaction(db, async txn => {
+        const roomSnap = await txn.get(rRef);
+        if(!roomSnap.exists()) throw 'no room';
+        const parts = roomSnap.data().participants || [];
+        if(!parts.includes(uid) && parts.length < 2){
+          parts.push(uid);
+          txn.update(rRef, { participants: parts });
+        }
+      });
+      roomRef = rRef;
+      roomId = rRef.id;
+      partnerId = savedPartner;
+      await connectToRoom(roomRef);
+    } catch(e){
+      console.warn('tryJoinSavedRoom failed', e);
+      clearRoomStorage();
+      startSearch();
+    }
+  }
+
+  async function finishChat(){
+    if(roomRef){
+      try {
+        await updateDoc(roomRef, { closed: true });
+        await fullRoomCleanup();
+      } catch(e){
+        console.warn('Error closing room:', e);
+      }
+    }
+    clearRoomStorage();
+    endChatUI();
+  }
+
+  function endChatUI(){
+    connectedCleanup();
+    connectedStopUI();
+    statusText.textContent = 'Чат завершен';
+  }
+
+  function connectedStopUI(){
+    hide(searchScreen);
+    hide(chatWindow);
+    show(endScreen);
+  }
+
+  async function cancelSearchHandler(){
+    if(myWaitingRef){
+      try { await deleteDoc(myWaitingRef); } catch(e){/*ignore*/ }
+      myWaitingRef = null;
+    }
+    if(myWaitingUnsub){ myWaitingUnsub(); myWaitingUnsub = null; }
+    if(waitingUnsub){ waitingUnsub(); waitingUnsub = null; }
+    hide(searchScreen);
+    show(endScreen);
+    statusText.textContent = 'Поиск отменён';
+  }
+
+  async function clearAllListenersAndState(){
+    if(messagesUnsub){ messagesUnsub(); messagesUnsub = null; }
+    if(roomUnsub){ roomUnsub(); roomUnsub = null; }
+    if(waitingUnsub){ waitingUnsub(); waitingUnsub = null; }
+    if(myWaitingUnsub){ myWaitingUnsub(); myWaitingUnsub = null; }
+    if(presenceUnsub){ presenceUnsub(); presenceUnsub = null; }
+    if(presenceHeartbeatInterval){ clearInterval(presenceHeartbeatInterval); presenceHeartbeatInterval = null; }
+    stopWaitingHeartbeat();
+
+    if(myWaitingRef){
+      try {
+        const snap = await getDoc(myWaitingRef);
+        if(snap.exists()){
+          const d = snap.data();
+          if(!d.claimed) {
+            await deleteDoc(myWaitingRef);
+          } else {
+            await deleteDoc(myWaitingRef).catch(()=>{});
+          }
+        }
+      } catch(e){
+        console.warn('clear waiting doc error', e);
+      }
+      myWaitingRef = null;
+    }
+    // remove my presence doc (best-effort)
+    if(roomRef && uid){
+      try { await deleteDoc(doc(roomRef, 'presence', uid)).catch(()=>{}); } catch(e){/*ignore*/ }
+    }
+
+    messagesEl.innerHTML = '';
+    roomRef = null; roomId = null; partnerId = null;
+  }
+
+  // deletes messages subcollection and room document if appropriate
+  async function fullRoomCleanup(){
+    if(!roomRef) return;
+    try {
+      const rSnap = await getDoc(roomRef);
+      if(!rSnap.exists()) return;
+      const data = rSnap.data();
+      const participants = data.participants || [];
+
+      // remove self from participants list (best-effort)
+      const newParts = participants.filter(p => p !== uid);
+
+      if(newParts.length === 0){
+        // delete messages
+        const msgsSnap = await getDocs(collection(roomRef, 'messages'));
+        for(const m of msgsSnap.docs){
+          await deleteDoc(m.ref).catch(()=>{});
+        }
+        // delete presence docs
+        const presSnap = await getDocs(collection(roomRef, 'presence'));
+        for(const p of presSnap.docs) await deleteDoc(p.ref).catch(()=>{});
+        // delete room
+        await deleteDoc(roomRef).catch(()=>{});
+      } else {
+        // update participants set without this user
+        await updateDoc(roomRef, { participants: newParts }).catch(()=>{});
+      }
+    } catch(e){
+      console.warn('fullRoomCleanup error', e);
+    }
+  }
+
+  // called when unloading page - best-effort
+  window.addEventListener('beforeunload', async (ev) => {
+    try {
+      stopWaitingHeartbeat();
+      if(myWaitingRef){
+        await deleteDoc(myWaitingRef).catch(()=>{});
+      }
+      if(roomRef && uid){
+        await deleteDoc(doc(roomRef, 'presence', uid)).catch(()=>{});
+        try {
+          const rSnap = await getDoc(roomRef);
+          if(rSnap.exists()){
+            const parts = rSnap.data().participants || [];
+            const newParts = parts.filter(p => p !== uid);
+            if(newParts.length === 0){
+              const msgsSnap = await getDocs(collection(roomRef, 'messages'));
+              for(const m of msgsSnap.docs) await deleteDoc(m.ref).catch(()=>{});
+              await deleteDoc(roomRef).catch(()=>{});
+            } else {
+              await updateDoc(roomRef, { participants: newParts }).catch(()=>{});
+            }
+          }
+        } catch(e){}
+      }
+    } catch(e){}
+  });
+
+  function connectedCleanup(){
+    if(messagesUnsub){ messagesUnsub(); messagesUnsub = null; }
+    if(roomUnsub){ roomUnsub(); roomUnsub = null; }
+    if(presenceUnsub){ presenceUnsub(); presenceUnsub = null; }
+    if(presenceHeartbeatInterval){ clearInterval(presenceHeartbeatInterval); presenceHeartbeatInterval = null; }
+  }
+
+  finishBtn.addEventListener('click', ()=>{ modal.classList.remove('hidden'); });
+  modalCancel.addEventListener('click', ()=>{ modal.classList.add('hidden'); });
+  modalFinish.addEventListener('click', async ()=>{ modal.classList.add('hidden'); await finishChat(); });
+
+  newChatBtn.addEventListener('click', async ()=>{ 
+    await fullRoomCleanup();
+    await clearAllListenersAndState();
+    clearRoomStorage();
+    startSearch();
+  });
+
+  cancelSearch.addEventListener('click', cancelSearchHandler);
+
+  exitBtn.addEventListener('click', async function(e){
+    e.preventDefault();
+    await fullRoomCleanup();
+    await clearAllListenersAndState();
+    clearRoomStorage();
+    window.location.href = '/anonymous/';
+  });
+
+  // try join by explicit ?room=ID param on load
+  function tryJoinFromURL(){
+    const url = new URL(location.href);
+    const rId = url.searchParams.get('room');
+    if(rId){
+      const rRef = doc(db, 'rooms', rId);
+      tryJoinSavedRoom(rRef, null).catch(()=>startSearch());
+    }
+  }
+  setTimeout(tryJoinFromURL, 600);
