@@ -14,11 +14,27 @@
 
 <body>
 <header class="navbar">
-  <div class="logo">StillyLink</div>
-  <div class="nav-links" style="margin-left:auto">
-    <a href="/">Главная</a>
-    <a href="/anonymous/">Аноним</a>
-  </div>
+    <div class="logo">StillyLink</div>
+
+    <nav class="nav-links">
+        <a href="/">Главная</a>
+        <a href="/chats/">Чаты</a>
+        <a href="/#create-chat">Создать чат</a>
+        <a href="/anonymous/">Анонимное общение</a>
+        <a href="/login/" class="register-btn">Регистрация</a>
+    </nav>
+
+    <div class="user-avatar hidden" onclick="toggleUserMenu()">
+        <span>U</span>
+    </div>
+
+    <div class="user-menu">
+        <a href="/profile/">Профиль</a>
+        <a href="/mychats/">Мои чаты</a>
+        <a href="#" id="logoutBtn">Выйти</a>
+    </div>
+    
+    <div class="nav-toggle" onclick="toggleMenu()">☰</div>
 </header>
 
 <main class="private-container">
