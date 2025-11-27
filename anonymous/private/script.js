@@ -105,6 +105,49 @@ document.addEventListener("click", e => {
     userMenu.classList.remove("open");
 });
 
+
+  let uid = null;
+  let myWaitingRef = null;
+  let myWaitingUnsub = null;
+  let roomRef = null;
+  let roomId = null;
+  let partnerId = null;
+  let messagesUnsub = null;
+  let waitingUnsub = null;
+  let roomUnsub = null;
+  let presenceUnsub = null;
+  let presenceHeartbeatInterval = null;
+
+  let waitingHeartbeatInterval = null;
+  let cleanupWaitingInterval = null;
+
+  const PRESENCE_PING_INTERVAL = 8000; // ms
+  const PRESENCE_STALE_MS = 25000; // if partner's lastSeen older than this -> considered offline
+
+  const WAITING_HEARTBEAT_INTERVAL = 8000;
+  const WAITING_STALE_MS = 30000; // 30s
+
+  function show(el){ el.classList.remove('hidden'); }
+  function hide(el){ el.classList.add('hidden'); }
+
+
+  function saveRoomToStorage(rId, pId){
+    if(rId) localStorage.setItem('roomId', rId);
+    else localStorage.removeItem('roomId');
+    if(pId) localStorage.setItem('partnerId', pId);
+    else localStorage.removeItem('partnerId');
+  }
+  function loadRoomFromStorage(){
+    return {
+      roomId: localStorage.getItem('roomId'),
+      partnerId: localStorage.getItem('partnerId')
+    };
+  }
+  function clearRoomStorage(){
+    localStorage.removeItem('roomId');
+    localStorage.removeItem('partnerId');
+  }
+
 onAuthStateChanged(auth, user => {
     if (user) {
         const letter = user.email?.charAt(0).toUpperCase() || "U";
