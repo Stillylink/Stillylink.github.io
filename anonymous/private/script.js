@@ -129,30 +129,53 @@ window.toggleUserMenu = toggleUserMenu;
     localStorage.removeItem('partnerId');
   }
 
-  onAuthStateChanged(auth, user => {
+ onAuthStateChanged(auth, user => {
     if (user) {
-      uid = user.uid;
-      statusText.textContent = 'В сети — ' + uid.slice(0,6);
+        uid = user.uid;
 
-      // if we have saved room -> try to rejoin
-      const saved = loadRoomFromStorage();
-      if(saved.roomId){
-        const rRef = doc(db, 'rooms', saved.roomId);
-        tryJoinSavedRoom(rRef, saved.partnerId).catch(err=>{
-          console.warn('Failed to join saved room, starting search', err);
-          startSearch();
-        });
-      } else {
-        startSearch();
-      }
+        const regBtn = document.querySelector(".register-btn");
+        const avatar = document.querySelector(".user-avatar");
+        const avatarLetter = document.querySelector(".user-avatar span");
+        const userMenu = document.querySelector(".user-menu");
+
+        regBtn?.classList.add("hidden");
+        avatar?.classList.remove("hidden");
+
+        const letter = user.email?.charAt(0).toUpperCase() || "U";
+        avatarLetter.textContent = letter;
+
+        localStorage.setItem("userAvatarLetter", letter);
+
+        statusText.textContent = 'В сети — ' + uid.slice(0,6);
+
+        const saved = loadRoomFromStorage();
+        if(saved.roomId){
+            const rRef = doc(db, 'rooms', saved.roomId);
+            tryJoinSavedRoom(rRef, saved.partnerId).catch(err=>{
+                console.warn('Failed to join saved room, starting search', err);
+                startSearch();
+            });
+        } else {
+            startSearch();
+        }
+
     } else {
-      signInAnonymously(auth).catch(err => {
-        console.error('Auth error:', err);
-        alert('Ошибка авторизации (аноним). Проверьте консоль.');
-      });
-    }
-  });
+        signInAnonymously(auth).catch(err => {
+            console.error('Auth error:', err);
+            alert('Ошибка авторизации (аноним). Проверьте консоль.');
+        });
 
+        const regBtn = document.querySelector(".register-btn");
+        const avatar = document.querySelector(".user-avatar");
+        const userMenu = document.querySelector(".user-menu");
+
+        regBtn?.classList.remove("hidden");
+        avatar?.classList.add("hidden");
+        userMenu?.classList.remove("open");
+
+        localStorage.removeItem("userAvatarLetter");
+    }
+});
   function clearMessages(){ messagesEl.innerHTML = ''; }
   function addMessageToUI(data){
     const { sender, text, type, createdAt } = data;
