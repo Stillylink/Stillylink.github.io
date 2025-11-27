@@ -70,6 +70,8 @@ document.addEventListener("click", function(e) {
     menu.classList.remove("open");
 });
 
+window.toggleMenu = toggleMenu;
+
 function toggleUserMenu() {
     document.querySelector(".user-menu").classList.toggle("open");
 }
@@ -83,6 +85,8 @@ document.addEventListener("click", function(e) {
 
     menu.classList.remove("open");
 });
+
+window.toggleUserMenu = toggleUserMenu;
 
   let uid = null;
   let myWaitingRef = null;
