@@ -55,6 +55,34 @@
   const cancelSearch = document.getElementById('cancelSearch');
   const statusText = document.getElementById('statusText');
   const exitBtn = document.getElementById('exitBtn');
+  const avatar = document.querySelector(".user-avatar");
+
+function toggleMenu() {
+    const menu = document.querySelector(".nav-links");
+    menu.classList.toggle("open");
+}
+
+document.addEventListener("click", function(e) {
+    const menu = document.querySelector(".nav-links");
+    const toggle = document.querySelector(".nav-toggle");
+    if (!menu.classList.contains("open")) return;
+    if (menu.contains(e.target) || toggle.contains(e.target)) return;
+    menu.classList.remove("open");
+});
+
+function toggleUserMenu() {
+    document.querySelector(".user-menu").classList.toggle("open");
+}
+
+document.addEventListener("click", function(e) {
+    const menu = document.querySelector(".user-menu");
+    const avatar = document.querySelector(".user-avatar");
+
+    if (!menu.classList.contains("open")) return;
+    if (menu.contains(e.target) || avatar.contains(e.target)) return;
+
+    menu.classList.remove("open");
+});
 
   let uid = null;
   let myWaitingRef = null;
