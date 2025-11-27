@@ -131,22 +131,28 @@ document.addEventListener("click", e => {
   function hide(el){ el.classList.add('hidden'); }
 
 
-  function saveRoomToStorage(rId, pId){
-    if(rId) localStorage.setItem('roomId', rId);
-    else localStorage.removeItem('roomId');
-    if(pId) localStorage.setItem('partnerId', pId);
-    else localStorage.removeItem('partnerId');
-  }
-  function loadRoomFromStorage(){
+// =================== ХРАНИЛИЩЕ КОМНАТЫ ===================
+function saveRoomToStorage(rId, pId){
+    if (rId) localStorage.setItem("roomId", rId);
+    else localStorage.removeItem("roomId");
+
+    if (pId) localStorage.setItem("partnerId", pId);
+    else localStorage.removeItem("partnerId");
+}
+
+function loadRoomFromStorage(){
     return {
-      roomId: localStorage.getItem('roomId'),
-      partnerId: localStorage.getItem('partnerId')
+        roomId: localStorage.getItem("roomId"),
+        partnerId: localStorage.getItem("partnerId")
     };
-  }
-  function clearRoomStorage(){
-    localStorage.removeItem('roomId');
-    localStorage.removeItem('partnerId');
-  }
+}
+
+function clearRoomStorage(){
+    localStorage.removeItem("roomId");
+    localStorage.removeItem("partnerId");
+}
+// =========================================================
+
 
 onAuthStateChanged(auth, user => {
     if (user) {
