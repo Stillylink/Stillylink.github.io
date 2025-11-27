@@ -168,12 +168,15 @@ onAuthStateChanged(auth, user => {
 
         // тут твоя логика поиска комнаты
         const saved = loadRoomFromStorage();
-        if (saved.roomId) {
-            const rRef = doc(db, "rooms", saved.roomId);
-            tryJoinSavedRoom(rRef, saved.partnerId).catch(() => startSearch());
-        } else {
-            startSearch();
-        }
+      if(saved.roomId){
+        const rRef = doc(db, 'rooms', saved.roomId);
+        tryJoinSavedRoom(rRef, saved.partnerId).catch(err=>{
+          console.warn('Failed to join saved room, starting search', err);
+          startSearch();
+        });
+      } else {
+        startSearch();
+      }
 
     } else {
         regBtn?.classList.remove("hidden");
