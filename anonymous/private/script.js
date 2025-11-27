@@ -1,11 +1,11 @@
- import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
-  import {
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
+import {
     getAuth,
     signInAnonymously,
     onAuthStateChanged
-  } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
+} from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
 
-  import {
+import {
     getFirestore,
     collection,
     doc,
@@ -22,160 +22,121 @@
     updateDoc,
     getDocs,
     getDoc
-  } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
+} from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
 
-  const firebaseConfig = {
-      apiKey: "AIzaSyBWlR4QWdnbqXLKKaftEAzhXneTmV9xXX0",
-      authDomain: "stillylink-f1d0f.firebaseapp.com",
-      projectId: "stillylink-f1d0f",
-      storageBucket: "stillylink-f1d0f.appspot.com",
-      messagingSenderId: "772070114710",
-      appId: "1:772070114710:web:939bce83e4d3be14bdc9b7"
-  };
+const firebaseConfig = {
+    apiKey: "AIzaSyBWlR4QWdnbqXLKKaftEAzhXneTmV9xXX0",
+    authDomain: "stillylink-f1d0f.firebaseapp.com",
+    projectId: "stillylink-f1d0f",
+    storageBucket: "stillylink-f1d0f.appspot.com",
+    messagingSenderId: "772070114710",
+    appId: "1:772070114710:web:939bce83e4d3be14bdc9b7"
+};
 
-  const app = initializeApp(firebaseConfig);
-  const auth = getAuth(app);
-  const db = getFirestore(app);
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
 
-  const searchScreen = document.getElementById('searchScreen');
-  const chatWindow = document.getElementById('chatWindow');
-  const endScreen = document.getElementById('endScreen');
-  const messagesEl = document.getElementById('messages');
-  const textInput = document.getElementById('textInput');
-  const sendBtn = document.getElementById('sendBtn');
-  const finishBtn = document.getElementById('finishBtn');
-  const modal = document.getElementById('modal');
-  const modalCancel = document.getElementById('modalCancel');
-  const modalFinish = document.getElementById('modalFinish');
-  const newChatBtn = document.getElementById('newChatBtn');
-  const emojiBtn = document.getElementById('emojiBtn');
-  const emojiPanel = document.getElementById('emojiPanel');
-  const photoBtn = document.getElementById('photoBtn');
-  const photoInput = document.getElementById('photoInput');
-  const cancelSearch = document.getElementById('cancelSearch');
-  const statusText = document.getElementById('statusText');
-  const exitBtn = document.getElementById('exitBtn');
-  const avatar = document.querySelector(".user-avatar");
+const searchScreen  = document.getElementById('searchScreen');
+const chatWindow    = document.getElementById('chatWindow');
+const endScreen     = document.getElementById('endScreen');
+const messagesEl    = document.getElementById('messages');
+const textInput     = document.getElementById('textInput');
+const sendBtn       = document.getElementById('sendBtn');
+const finishBtn     = document.getElementById('finishBtn');
+const modal         = document.getElementById('modal');
+const modalCancel   = document.getElementById('modalCancel');
+const modalFinish   = document.getElementById('modalFinish');
+const newChatBtn    = document.getElementById('newChatBtn');
+const emojiBtn      = document.getElementById('emojiBtn');
+const emojiPanel    = document.getElementById('emojiPanel');
+const photoBtn      = document.getElementById('photoBtn');
+const photoInput    = document.getElementById('photoInput');
+const cancelSearch  = document.getElementById('cancelSearch');
+const statusText    = document.getElementById('statusText');
+const exitBtn       = document.getElementById('exitBtn');
+
+const regBtn      = document.querySelector(".register-btn");
+const avatar      = document.querySelector(".user-avatar");
+const avatarLetter = document.querySelector(".user-avatar span");
+const userMenu     = document.querySelector(".user-menu");
+const logoutBtn    = document.getElementById("logoutBtn");
+
+window.addEventListener("DOMContentLoaded", () => {
+    const savedAvatar = localStorage.getItem("userAvatarLetter");
+
+    if (savedAvatar) {
+        regBtn?.classList.add("hidden");
+        avatar?.classList.remove("hidden");
+        avatarLetter.textContent = savedAvatar;
+    }
+
+    logoutBtn?.addEventListener("click", e => {
+        e.preventDefault();
+        localStorage.removeItem("userAvatarLetter");
+        window.location.href = "/login/";
+    });
+});
 
 function toggleMenu() {
     const menu = document.querySelector(".nav-links");
     menu.classList.toggle("open");
 }
-
-document.addEventListener("click", function(e) {
-    const menu = document.querySelector(".nav-links");
-    const toggle = document.querySelector(".nav-toggle");
-    if (!menu.classList.contains("open")) return;
-    if (menu.contains(e.target) || toggle.contains(e.target)) return;
-    menu.classList.remove("open");
-});
-
 window.toggleMenu = toggleMenu;
 
-function toggleUserMenu() {
-    document.querySelector(".user-menu").classList.toggle("open");
-}
-
-document.addEventListener("click", function(e) {
-    const menu = document.querySelector(".user-menu");
-    const avatar = document.querySelector(".user-avatar");
+document.addEventListener("click", e => {
+    const menu   = document.querySelector(".nav-links");
+    const toggle = document.querySelector(".nav-toggle");
 
     if (!menu.classList.contains("open")) return;
-    if (menu.contains(e.target) || avatar.contains(e.target)) return;
+    if (menu.contains(e.target) || toggle.contains(e.target)) return;
 
     menu.classList.remove("open");
 });
 
+function toggleUserMenu() {
+    userMenu.classList.toggle("open");
+}
 window.toggleUserMenu = toggleUserMenu;
 
-  let uid = null;
-  let myWaitingRef = null;
-  let myWaitingUnsub = null;
-  let roomRef = null;
-  let roomId = null;
-  let partnerId = null;
-  let messagesUnsub = null;
-  let waitingUnsub = null;
-  let roomUnsub = null;
-  let presenceUnsub = null;
-  let presenceHeartbeatInterval = null;
+document.addEventListener("click", e => {
+    if (!userMenu.classList.contains("open")) return;
+    if (userMenu.contains(e.target) || avatar.contains(e.target)) return;
+    userMenu.classList.remove("open");
+});
 
-  let waitingHeartbeatInterval = null;
-  let cleanupWaitingInterval = null;
-
-  const PRESENCE_PING_INTERVAL = 8000; // ms
-  const PRESENCE_STALE_MS = 25000; // if partner's lastSeen older than this -> considered offline
-
-  const WAITING_HEARTBEAT_INTERVAL = 8000;
-  const WAITING_STALE_MS = 30000; // 30s
-
-  function show(el){ el.classList.remove('hidden'); }
-  function hide(el){ el.classList.add('hidden'); }
-
-  function saveRoomToStorage(rId, pId){
-    if(rId) localStorage.setItem('roomId', rId);
-    else localStorage.removeItem('roomId');
-    if(pId) localStorage.setItem('partnerId', pId);
-    else localStorage.removeItem('partnerId');
-  }
-  function loadRoomFromStorage(){
-    return {
-      roomId: localStorage.getItem('roomId'),
-      partnerId: localStorage.getItem('partnerId')
-    };
-  }
-  function clearRoomStorage(){
-    localStorage.removeItem('roomId');
-    localStorage.removeItem('partnerId');
-  }
-
- onAuthStateChanged(auth, user => {
+onAuthStateChanged(auth, user => {
     if (user) {
-        uid = user.uid;
-
-        const regBtn = document.querySelector(".register-btn");
-        const avatar = document.querySelector(".user-avatar");
-        const avatarLetter = document.querySelector(".user-avatar span");
-        const userMenu = document.querySelector(".user-menu");
+        const letter = user.email?.charAt(0).toUpperCase() || "U";
 
         regBtn?.classList.add("hidden");
         avatar?.classList.remove("hidden");
-
-        const letter = user.email?.charAt(0).toUpperCase() || "U";
         avatarLetter.textContent = letter;
 
         localStorage.setItem("userAvatarLetter", letter);
 
-        statusText.textContent = 'В сети — ' + uid.slice(0,6);
+        statusText.textContent = "В сети — " + user.uid.slice(0, 6);
 
+        // тут твоя логика поиска комнаты
         const saved = loadRoomFromStorage();
-        if(saved.roomId){
-            const rRef = doc(db, 'rooms', saved.roomId);
-            tryJoinSavedRoom(rRef, saved.partnerId).catch(err=>{
-                console.warn('Failed to join saved room, starting search', err);
-                startSearch();
-            });
+        if (saved.roomId) {
+            const rRef = doc(db, "rooms", saved.roomId);
+            tryJoinSavedRoom(rRef, saved.partnerId).catch(() => startSearch());
         } else {
             startSearch();
         }
 
     } else {
-        signInAnonymously(auth).catch(err => {
-            console.error('Auth error:', err);
-            alert('Ошибка авторизации (аноним). Проверьте консоль.');
-        });
-
-        const regBtn = document.querySelector(".register-btn");
-        const avatar = document.querySelector(".user-avatar");
-        const userMenu = document.querySelector(".user-menu");
-
         regBtn?.classList.remove("hidden");
         avatar?.classList.add("hidden");
         userMenu?.classList.remove("open");
 
         localStorage.removeItem("userAvatarLetter");
+
+        signInAnonymously(auth);
     }
 });
+
   function clearMessages(){ messagesEl.innerHTML = ''; }
   function addMessageToUI(data){
     const { sender, text, type, createdAt } = data;
