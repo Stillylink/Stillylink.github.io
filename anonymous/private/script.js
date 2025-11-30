@@ -347,37 +347,6 @@ function clearMessages(){ messagesEl.innerHTML = ''; }
     hide(endScreen);
     statusText.textContent = 'Ищем собеседника...';
 
-      // === Попытка восстановить старый waiting-док ===
-const oldWaitingId = localStorage.getItem("waitingId");
-if (oldWaitingId) {
-    const oldRef = doc(db, "waiting", oldWaitingId);
-    const oldSnap = await getDoc(oldRef);
-
-    if (oldSnap.exists()) {
-        console.log("Восстанавливаем старый waiting:", oldWaitingId);
-        myWaitingRef = oldRef;
-
-        // обновим, чтобы не считался устаревшим
-        await updateDoc(myWaitingRef, { lastSeen: serverTimestamp(), claimed: false });
-
-        // запуск наблюдателя
-        if (myWaitingUnsub) myWaitingUnsub();
-        myWaitingUnsub = onSnapshot(myWaitingRef, (snap) => {
-            if(!snap.exists()) return;
-            const data = snap.data();
-            if(data.claimed && data.roomId){
-                roomId = data.roomId;
-                roomRef = doc(db, 'rooms', roomId);
-                saveRoomToStorage(roomId, null);
-                connectToRoom(roomRef).catch(console.warn);
-            }
-        });
-
-        startWaitingHeartbeat();
-        return; // ВАЖНО: не создавать новый waiting-док!
-    }
-}
-
     try {
       const qMy = query(collection(db, 'waiting'), where('uid', '==', uid), where('claimed', '==', false), limit(1));
       const snap = await getDocs(qMy);
@@ -390,7 +359,6 @@ if (oldWaitingId) {
         myWaitingRef = doc(collection(db, 'waiting'));
         await setDoc(myWaitingRef, { uid, createdAt: serverTimestamp(), claimed: false, roomId: null, lastSeen: serverTimestamp() });
       }
-        localStorage.setItem("waitingId", myWaitingRef.id);
     } catch (e) {
       // fallback: create
       myWaitingRef = doc(collection(db, 'waiting'));
@@ -456,8 +424,6 @@ if (oldWaitingId) {
 
             txn.update(otherRef, { claimed: true, roomId: newRoomRef.id });
             txn.update(myWaitingRef, { claimed: true, roomId: newRoomRef.id });
-
-            localStorage.removeItem("waitingId");
 
             return { roomId: newRoomRef.id };
           });
@@ -646,7 +612,6 @@ if (oldWaitingId) {
     if(myWaitingRef){
       try { await deleteDoc(myWaitingRef); } catch(e){/*ignore*/ }
       myWaitingRef = null;
-        localStorage.removeItem("waitingId");
     }
     if(myWaitingUnsub){ myWaitingUnsub(); myWaitingUnsub = null; }
     if(waitingUnsub){ waitingUnsub(); waitingUnsub = null; }
@@ -687,8 +652,6 @@ if (oldWaitingId) {
 
     messagesEl.innerHTML = '';
     roomRef = null; roomId = null; partnerId = null;
-
-    localStorage.removeItem("waitingId");
   }
 
   // deletes messages subcollection and room document if appropriate
@@ -787,48 +750,4 @@ if (oldWaitingId) {
       tryJoinSavedRoom(rRef, null).catch(()=>startSearch());
     }
   }
-
-document.addEventListener("visibilitychange", async () => {
-    // если вкладка скрылась (уход в фон)
-    if (document.hidden) {
-        try {
-            // остановить heartbeat
-            stopWaitingHeartbeat();
-
-            // удалить waiting-док если он есть
-            if (myWaitingRef) {
-                await deleteDoc(myWaitingRef).catch(()=>{});
-                myWaitingRef = null;
-                localStorage.removeItem("waitingId");
-            }
-
-            // удалить presence в комнате, если мы в чате
-            if (roomRef && uid) {
-                await deleteDoc(doc(roomRef, "presence", uid)).catch(()=>{});
-
-                // удалить комнату, если мы были последним участником
-                const rSnap = await getDoc(roomRef);
-                if (rSnap.exists()) {
-                    const data = rSnap.data();
-                    const parts = data.participants || [];
-                    const newParts = parts.filter(p => p !== uid);
-
-                    if (newParts.length === 0) {
-                        // удалить сообщения
-                        const msgs = await getDocs(collection(roomRef, "messages"));
-                        for (const m of msgs.docs) await deleteDoc(m.ref).catch(()=>{});
-
-                        // удалить саму комнату
-                        await deleteDoc(roomRef).catch(()=>{});
-                    } else {
-                        await updateDoc(roomRef, { participants: newParts }).catch(()=>{});
-                    }
-                }
-            }
-        } catch (err) {
-            console.warn("visibilitychange cleanup error:", err);
-        }
-    }
-});
-
   setTimeout(tryJoinFromURL, 600);
