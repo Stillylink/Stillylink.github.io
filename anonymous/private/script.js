@@ -789,68 +789,46 @@ if (oldWaitingId) {
   }
 
 document.addEventListener("visibilitychange", async () => {
-  if (!document.hidden) return;
+    // если вкладка скрылась (уход в фон)
+    if (document.hidden) {
+        try {
+            // остановить heartbeat
+            stopWaitingHeartbeat();
 
-  try {
-    stopWaitingHeartbeat();
+            // удалить waiting-док если он есть
+            if (myWaitingRef) {
+                await deleteDoc(myWaitingRef).catch(()=>{});
+                myWaitingRef = null;
+                localStorage.removeItem("waitingId");
+            }
 
-    if (myWaitingRef) {
-      await deleteDoc(myWaitingRef).catch(()=>{});
-      myWaitingRef = null;
-      localStorage.removeItem("waitingId");
-    } else if (uid) {
-      try {
-        const q = query(collection(db, 'waiting'), where('uid', '==', uid), limit(5));
-        const snap = await getDocs(q);
-        for (const d of snap.docs) {
-          await deleteDoc(d.ref).catch(()=>{});
+            // удалить presence в комнате, если мы в чате
+            if (roomRef && uid) {
+                await deleteDoc(doc(roomRef, "presence", uid)).catch(()=>{});
+
+                // удалить комнату, если мы были последним участником
+                const rSnap = await getDoc(roomRef);
+                if (rSnap.exists()) {
+                    const data = rSnap.data();
+                    const parts = data.participants || [];
+                    const newParts = parts.filter(p => p !== uid);
+
+                    if (newParts.length === 0) {
+                        // удалить сообщения
+                        const msgs = await getDocs(collection(roomRef, "messages"));
+                        for (const m of msgs.docs) await deleteDoc(m.ref).catch(()=>{});
+
+                        // удалить саму комнату
+                        await deleteDoc(roomRef).catch(()=>{});
+                    } else {
+                        await updateDoc(roomRef, { participants: newParts }).catch(()=>{});
+                    }
+                }
+            }
+        } catch (err) {
+            console.warn("visibilitychange cleanup error:", err);
         }
-        localStorage.removeItem("waitingId");
-      } catch(e) {
-        // best-effort
-      }
     }
-
-    if (roomRef && uid) {
-      try {
-        await runTransaction(db, async (txn) => {
-          const rSnap = await txn.get(roomRef);
-          if (!rSnap.exists()) return;
-          const parts = rSnap.data().participants || [];
-          const newParts = parts.filter(p => p !== uid);
-          // обновляем participants (если пусто — обновляем на пустой массив)
-          txn.update(roomRef, { participants: newParts });
-        });
-      } catch (e) {
-        // транзакция могла упасть — best-effort, продолжим попытки ниже
-      }
-
-      try {
-        const rSnap2 = await getDoc(roomRef);
-        if (rSnap2.exists()) {
-          const parts2 = rSnap2.data().participants || [];
-          if (parts2.length === 0) {
-            // удалить сообщения
-            const msgsSnap = await getDocs(collection(roomRef, 'messages'));
-            for (const m of msgsSnap.docs) await deleteDoc(m.ref).catch(()=>{});
-            // удалить presence доки
-            const presSnap = await getDocs(collection(roomRef, 'presence'));
-            for (const p of presSnap.docs) await deleteDoc(p.ref).catch(()=>{});
-            // удалить саму комнату
-            await deleteDoc(roomRef).catch(()=>{});
-          } else {
-            // также удалить наш presence doc на всякий случай
-            await deleteDoc(doc(roomRef, 'presence', uid)).catch(()=>{});
-          }
-        }
-      } catch (e) {
-        console.warn('post-transaction room cleanup failed', e);
-      }
-    }
-
-  } catch (err) {
-    console.warn("visibilitychange cleanup error:", err);
-  }
 });
 
   setTimeout(tryJoinFromURL, 600);
