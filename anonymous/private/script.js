@@ -787,4 +787,41 @@ if (oldWaitingId) {
       tryJoinSavedRoom(rRef, null).catch(()=>startSearch());
     }
   }
+
+document.addEventListener("visibilitychange", async () => {
+    if (document.hidden) {
+        try {
+            // остановить heartbeat
+            stopWaitingHeartbeat();
+
+            if (myWaitingRef) {
+                await deleteDoc(myWaitingRef).catch(()=>{});
+                myWaitingRef = null;
+                localStorage.removeItem("waitingId");
+            }
+
+            if (roomRef && uid) {
+                await deleteDoc(doc(roomRef, "presence", uid)).catch(()=>{});
+
+                const rSnap = await getDoc(roomRef);
+                if (rSnap.exists()) {
+                    const data = rSnap.data();
+                    const parts = data.participants || [];
+                    const newParts = parts.filter(p => p !== uid);
+
+                    if (newParts.length === 0) {
+                        const msgs = await getDocs(collection(roomRef, "messages"));
+                        for (const m of msgs.docs) await deleteDoc(m.ref).catch(()=>{});
+
+                        await deleteDoc(roomRef).catch(()=>{});
+                    } else {
+                        await updateDoc(roomRef, { participants: newParts }).catch(()=>{});
+                    }
+                }
+            }
+        } catch (err) {
+            console.warn("visibilitychange cleanup error:", err);
+        }
+    }
+});
   setTimeout(tryJoinFromURL, 600);
