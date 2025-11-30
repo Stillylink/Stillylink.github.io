@@ -1,5 +1,3 @@
-
-
   const searchScreen = document.getElementById('searchScreen');
   const chatWindow = document.getElementById('chatWindow');
   const endScreen = document.getElementById('endScreen');
@@ -67,7 +65,6 @@ document.addEventListener("click", e => {
     if (userMenu.contains(e.target) || avatar.contains(e.target)) return;
     userMenu.classList.remove("open");
 });
-
 
   let uid = null;
   let myWaitingRef = null;
