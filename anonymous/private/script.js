@@ -556,28 +556,27 @@ function clearMessages(){ messagesEl.innerHTML = ''; }
   }
 
 async function finishChat(){
-  if(!roomRef || !uid) return;
-  try{
-    await runTransaction(db, async t => {
-      const snap = await t.get(roomRef);
-      if(!snap.exists()) throw 'room gone';
-      const data = snap.data();
-      const parts = data.participants || [];
+  if(!roomRef) return;
 
-      // 1. закрываем комнату
-      t.update(roomRef, { closed: true });
-
-      // 2. удаляем waiting-документы всех участников
-      for(const p of parts){
-        t.delete(doc(db,'waiting',p));
-      }
-    });
-  }catch(e){
-    console.warn('finish transaction err',e);
+  // 1. Удаляем waiting-документы обоих участников
+  const snap = await getDoc(roomRef);
+  if(snap.exists()){
+    const parts = snap.data().participants || [];
+    for(const p of parts){
+      await deleteDoc(doc(db,'waiting',p)).catch(()=>{});
+    }
   }
 
-  // локальная чистка
-  await fullRoomCleanup();
+  // 2. Удаляем всю комнату целиком (messages + presence + сам документ)
+  const msgsSnap = await getDocs(collection(roomRef,'messages'));
+  for(const m of msgsSnap.docs) await deleteDoc(m.ref).catch(()=>{});
+
+  const presSnap = await getDocs(collection(roomRef,'presence'));
+  for(const p of presSnap.docs) await deleteDoc(p.ref).catch(()=>{});
+
+  await deleteDoc(roomRef).catch(()=>{});
+
+  // 3. Чистим локальное состояние
   clearRoomStorage();
   endChatUI();
 }
@@ -639,35 +638,12 @@ async function finishChat(){
     roomRef = null; roomId = null; partnerId = null;
   }
 
-  async function fullRoomCleanup(){
-    if(!roomRef) return;
-    try {
-      const rSnap = await getDoc(roomRef);
-      if(!rSnap.exists()) return;
-      const data = rSnap.data();
-      const participants = data.participants || [];
-
-      // Удаляем waiting-документы всех участников
-      for(const p of participants){
-        await deleteDoc(doc(db,'waiting',p)).catch(()=>{});
-      }
-
-      const newParts = participants.filter(p => p !== uid);
-      if(newParts.length === 0){
-        const msgsSnap = await getDocs(collection(roomRef, 'messages'));
-        for(const m of msgsSnap.docs){
-          await deleteDoc(m.ref).catch(()=>{});
-        }
-        const presSnap = await getDocs(collection(roomRef, 'presence'));
-        for(const p of presSnap.docs) await deleteDoc(p.ref).catch(()=>{});
-        await deleteDoc(roomRef).catch(()=>{});
-      } else {
-        await updateDoc(roomRef, { participants: newParts }).catch(()=>{});
-      }
-    } catch(e){
-      console.warn('fullRoomCleanup error', e);
-    }
+async function fullRoomCleanup(){
+  // толькоbest-effort убрать свою presence
+  if(roomRef && uid){
+    await deleteDoc(doc(roomRef,'presence',uid)).catch(()=>{});
   }
+}
 
   window.addEventListener('beforeunload', async (ev) => {
     try {
