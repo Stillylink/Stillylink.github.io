@@ -347,6 +347,40 @@ function clearMessages(){ messagesEl.innerHTML = ''; }
     hide(endScreen);
     statusText.textContent = 'Ищем собеседника...';
 
+
+
+      
+const oldPartnerId = localStorage.getItem("partnerId");
+if (oldPartnerId) {
+    const oldRef = doc(db, "partner", oldPartnerId);
+    const oldSnap = await getDoc(oldRef);
+
+    if (oldSnap.exists()) {
+        console.log("Восстанавливаем старый partner:", oldPartnerId);
+        myWaitingRef = oldRef;
+
+        // обновим, чтобы не считался устаревшим
+        await updateDoc(myWaitingRef, { lastSeen: serverTimestamp(), claimed: false });
+
+        // запуск наблюдателя
+        if (myWaitingUnsub) myWaitingUnsub();
+        myWaitingUnsub = onSnapshot(myWaitingRef, (snap) => {
+            if(!snap.exists()) return;
+            const data = snap.data();
+            if(data.claimed && data.roomId){
+                roomId = data.roomId;
+                roomRef = doc(db, 'rooms', roomId);
+                saveRoomToStorage(roomId, null);
+                connectToRoom(roomRef).catch(console.warn);
+            }
+        });
+
+        startPartnerHeartbeat();
+        return; // ВАЖНО: не создавать новый partner-док!
+    }
+}
+
+      
     try {
       const qMy = query(collection(db, 'waiting'), where('uid', '==', uid), where('claimed', '==', false), limit(1));
       const snap = await getDocs(qMy);
@@ -359,6 +393,7 @@ function clearMessages(){ messagesEl.innerHTML = ''; }
         myWaitingRef = doc(collection(db, 'waiting'));
         await setDoc(myWaitingRef, { uid, createdAt: serverTimestamp(), claimed: false, roomId: null, lastSeen: serverTimestamp() });
       }
+        localStorage.setItem("partnerId", myPartnerRef.id);
     } catch (e) {
       // fallback: create
       myWaitingRef = doc(collection(db, 'waiting'));
@@ -424,6 +459,8 @@ function clearMessages(){ messagesEl.innerHTML = ''; }
 
             txn.update(otherRef, { claimed: true, roomId: newRoomRef.id });
             txn.update(myWaitingRef, { claimed: true, roomId: newRoomRef.id });
+
+            localStorage.removeItem("partnerId");
 
             return { roomId: newRoomRef.id };
           });
@@ -653,6 +690,8 @@ function clearMessages(){ messagesEl.innerHTML = ''; }
     messagesEl.innerHTML = '';
     roomRef = null; roomId = null; partnerId = null;
   }
+
+    localStorage.removeItem("partnerId");
 
   // deletes messages subcollection and room document if appropriate
   async function fullRoomCleanup(){
