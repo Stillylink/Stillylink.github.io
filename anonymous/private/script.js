@@ -114,9 +114,10 @@ document.addEventListener("click", e => {
   let partnerId = null;
   let messagesUnsub = null;
   let waitingUnsub = null;
-  let roomMetaUnsub = null;          // ← новый слушатель мета-данных комнаты
+  let roomMetaUnsub = null;   // ← новый слушатель мета-данных комнаты
   let presenceUnsub = null;
   let presenceHeartbeatInterval = null;
+  let chatClosed = false;
 
   let waitingHeartbeatInterval = null;
   let cleanupWaitingInterval = null;
@@ -331,6 +332,8 @@ function clearMessages(){ messagesEl.innerHTML = ''; }
     const saved = loadRoomFromStorage();
     if(saved.roomId) return;
 
+    chatClosed = false;
+      
     clearAllListenersAndState();
     clearMessages();
     show(searchScreen);
@@ -463,24 +466,30 @@ function clearMessages(){ messagesEl.innerHTML = ''; }
 
       // мгновенный слушатель мета-документа комнаты
       if(roomMetaUnsub) roomMetaUnsub();
-      roomMetaUnsub = onSnapshot(roomRef, (snap) => {
-        if(!snap.exists() || snap.data().closed){
-          endChatUI();
-        } else {
-          const participants = snap.data().participants || [];
-          partnerId = participants.find(p => p !== uid) || null;
-          saveRoomToStorage(roomId, partnerId);
-        }
-      });
+roomMetaUnsub = onSnapshot(roomRef, (snap) => {
+  if(!snap.exists() || snap.data().closed){
+    chatClosed = true;
+    if(messagesUnsub){
+      messagesUnsub();
+      messagesUnsub = null;
+    }
+    endChatUI();               // теперь показываем финальный экран
+  } else {
+    const participants = snap.data().participants || [];
+    partnerId = participants.find(p => p !== uid) || null;
+    saveRoomToStorage(roomId, partnerId);
+  }
+});
 
       const messagesCol = collection(roomRef, 'messages');
       const msgsQuery = query(messagesCol, orderBy('createdAt'));
-      messagesUnsub = onSnapshot(msgsQuery, (snap) => {
-        messagesEl.innerHTML = '';
-        snap.docs.forEach(d => {
-          addMessageToUI(d.data());
-        });
-      });
+    messagesUnsub = onSnapshot(msgsQuery, (snap) => {
+     if(chatClosed) return;   // <-- добавили
+     messagesEl.innerHTML = '';
+     snap.docs.forEach(d => {
+       addMessageToUI(d.data());
+     });
+   });
 
       await setMyPresence();
       const presCol = collection(roomRef, 'presence');
