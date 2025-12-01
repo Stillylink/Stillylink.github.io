@@ -1,9 +1,9 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js ";
 import {
     getAuth,
     signInAnonymously,
     onAuthStateChanged
-} from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
+} from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js ";
 
 import {
     getFirestore,
@@ -22,7 +22,7 @@ import {
     updateDoc,
     getDocs,
     getDoc
-} from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
+} from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js ";
 
 const firebaseConfig = {
     apiKey: "AIzaSyBWlR4QWdnbqXLKKaftEAzhXneTmV9xXX0",
@@ -168,17 +168,24 @@ onAuthStateChanged(auth, user => {
 
         statusText.textContent = "В сети — " + user.uid.slice(0, 6);
 
-        // тут твоя логика поиска комнаты
+        // проверяем сохранённую комнату
         const saved = loadRoomFromStorage();
-      if(saved.roomId){
-        const rRef = doc(db, 'rooms', saved.roomId);
-        tryJoinSavedRoom(rRef, saved.partnerId).catch(err=>{
-          console.warn('Failed to join saved room, starting search', err);
-          startSearch();
-        });
-      } else {
-        startSearch();
-      }
+        if(saved.roomId){
+            const rRef = doc(db, 'rooms', saved.roomId);
+            getDoc(rRef).then(snap=>{
+                if(snap.exists() && !snap.data().closed){
+                    roomRef = rRef;
+                    roomId  = saved.roomId;
+                    partnerId = saved.partnerId;
+                    connectToRoom(roomRef);
+                }else{
+                    clearRoomStorage();
+                    startSearch();
+                }
+            });
+        } else {
+            startSearch();
+        }
 
     } else {
         regBtn?.classList.remove("hidden");
@@ -287,26 +294,17 @@ function clearMessages(){ messagesEl.innerHTML = ''; }
   async function startWaitingHeartbeat() {
     if (!myWaitingRef || !uid) return;
     try {
-      // set initial lastSeen
       await updateDoc(myWaitingRef, { lastSeen: serverTimestamp() }).catch(async (err) => {
-        // if update fails, set with merge
         await setDoc(myWaitingRef, { uid, createdAt: serverTimestamp(), claimed: false, roomId: null, lastSeen: serverTimestamp() }, { merge: true });
       });
-    } catch (e) {
-      // ignore
-    }
+    } catch (e) {}
 
     if (waitingHeartbeatInterval) clearInterval(waitingHeartbeatInterval);
     waitingHeartbeatInterval = setInterval(async () => {
       try {
         await updateDoc(myWaitingRef, { lastSeen: serverTimestamp() });
-      } catch (e) {
-        // ignore
-      }
+      } catch (e) {}
     }, WAITING_HEARTBEAT_INTERVAL);
-
-    if (cleanupWaitingInterval) clearInterval(cleanupWaitingInterval);
-    cleanupWaitingInterval = setInterval(cleanupStaleWaitingDocs, 30000);
   }
 
   function stopWaitingHeartbeat() {
@@ -324,21 +322,15 @@ function clearMessages(){ messagesEl.innerHTML = ''; }
         const ls = data.lastSeen?.toMillis ? data.lastSeen.toMillis() : (data.lastSeen ? new Date(data.lastSeen).getTime() : 0);
         const claimed = !!data.claimed;
         if (!claimed && ls && (now - ls) > WAITING_STALE_MS) {
-          try { await deleteDoc(d.ref); } catch(e){ /* ignore */ }
+          try { await deleteDoc(d.ref); } catch(e){}
         }
       }
-    } catch (e) {
-      // ignore errors — this is best-effort
-    }
+    } catch (e) {}
   }
 
   async function startSearch(){
-    // guard: if already have room saved, don't search
     const saved = loadRoomFromStorage();
-    if(saved.roomId){
-      console.log('have saved room, skipping search');
-      return;
-    }
+    if(saved.roomId) return;
 
     clearAllListenersAndState();
     clearMessages();
@@ -351,17 +343,14 @@ function clearMessages(){ messagesEl.innerHTML = ''; }
       const qMy = query(collection(db, 'waiting'), where('uid', '==', uid), where('claimed', '==', false), limit(1));
       const snap = await getDocs(qMy);
       if (!snap.empty) {
-        // reuse first found
         myWaitingRef = snap.docs[0].ref;
         await setDoc(myWaitingRef, { uid, claimed: false, roomId: null }, { merge: true });
       } else {
-        // create my waiting doc (client-generated id)
-        myWaitingRef = doc(collection(db, 'waiting'));
+        myWaitingRef = doc(db, 'waiting', uid);
         await setDoc(myWaitingRef, { uid, createdAt: serverTimestamp(), claimed: false, roomId: null, lastSeen: serverTimestamp() });
       }
     } catch (e) {
-      // fallback: create
-      myWaitingRef = doc(collection(db, 'waiting'));
+      myWaitingRef = doc(db, 'waiting', uid);
       await setDoc(myWaitingRef, { uid, createdAt: serverTimestamp(), claimed: false, roomId: null, lastSeen: serverTimestamp() });
     }
 
@@ -372,7 +361,7 @@ function clearMessages(){ messagesEl.innerHTML = ''; }
       if(data.claimed && data.roomId){
         roomId = data.roomId;
         roomRef = doc(db, 'rooms', roomId);
-        saveRoomToStorage(roomId, null); // partner will be discovered in room doc
+        saveRoomToStorage(roomId, null);
         connectToRoom(roomRef).catch(console.warn);
       }
     });
@@ -383,14 +372,12 @@ function clearMessages(){ messagesEl.innerHTML = ''; }
     if (waitingUnsub) waitingUnsub();
     waitingUnsub = onSnapshot(q, async (snap) => {
       if (!snap.empty) {
-        // find first doc that is not ourselves and not stale
         const now = Date.now();
         let otherDoc = null;
         for (const d of snap.docs) {
           const data = d.data();
           if (data.uid && data.uid === uid) continue;
           const ls = data.lastSeen?.toMillis ? data.lastSeen.toMillis() : (data.lastSeen ? new Date(data.lastSeen).getTime() : (data.createdAt?.toMillis ? data.createdAt.toMillis() : 0));
-          // skip stale waiters
           if (!ls || (now - ls) > WAITING_STALE_MS) continue;
           otherDoc = d;
           break;
@@ -408,7 +395,6 @@ function clearMessages(){ messagesEl.innerHTML = ''; }
             if (otherSnap.data().claimed === true) throw 'other claimed';
             if (mineSnap.data().claimed === true) throw 'mine claimed';
 
-            // ensure other is not stale at transaction time
             const otherLast = otherSnap.data().lastSeen;
             const otherLastMs = otherLast?.toMillis ? otherLast.toMillis() : (otherLast ? new Date(otherLast).getTime() : 0);
             if (!otherLastMs || (Date.now() - otherLastMs) > WAITING_STALE_MS) throw 'other stale';
@@ -432,7 +418,6 @@ function clearMessages(){ messagesEl.innerHTML = ''; }
             roomId = result.roomId;
             roomRef = doc(db, 'rooms', roomId);
             saveRoomToStorage(roomId, null);
-            // stop heartbeat for waiting (we'll create presence in room)
             stopWaitingHeartbeat();
             await connectToRoom(roomRef);
           }
@@ -447,11 +432,9 @@ function clearMessages(){ messagesEl.innerHTML = ''; }
     try {
       if(!roomDocumentRef) return;
       if(roomId && roomId !== roomDocumentRef.id){
-        // switching rooms: cleanup previous
         await clearAllListenersAndState();
       }
 
-      // avoid double connect
       if(roomRef && roomRef.path === roomDocumentRef.path && presenceUnsub) {
         console.log('already connected to room');
         return;
@@ -477,26 +460,20 @@ function clearMessages(){ messagesEl.innerHTML = ''; }
             txn.update(roomRef, { participants: parts });
           }
         });
-      } catch(e){
-        // ignore
-      }
+      } catch(e){}
 
-      // subscribe room metadata to detect closed flag
       roomUnsub = onSnapshot(roomRef, (snap) => {
         if(!snap.exists()) return;
         const data = snap.data();
         if(data.closed){
-          // someone closed chat -> end it
           endChatUI();
         } else {
-          // record partnerId if possible
           const participants = data.participants || [];
           partnerId = participants.find(p => p !== uid) || null;
           saveRoomToStorage(roomId, partnerId);
         }
       });
 
-      // messages listener (chronological order)
       const messagesCol = collection(roomRef, 'messages');
       const msgsQuery = query(messagesCol, orderBy('createdAt'));
       messagesUnsub = onSnapshot(msgsQuery, (snap) => {
@@ -509,7 +486,6 @@ function clearMessages(){ messagesEl.innerHTML = ''; }
       await setMyPresence();
       const presCol = collection(roomRef, 'presence');
       presenceUnsub = onSnapshot(presCol, async (snap) => {
-        // if presence collection changes, check participants presence
         const docs = snap.docs.map(d=>({ id: d.id, data: d.data() }));
         const now = Date.now();
         const alive = docs.filter(d => {
@@ -520,7 +496,7 @@ function clearMessages(){ messagesEl.innerHTML = ''; }
         if(alive.length === 0){
           try {
             await fullRoomCleanup();
-          } catch(e){/* ignore */}
+          } catch(e){}
         }
       });
 
@@ -537,18 +513,14 @@ function clearMessages(){ messagesEl.innerHTML = ''; }
     } catch(e){
       console.warn('set presence failed', e);
     }
-    // heartbeat
     if(presenceHeartbeatInterval) clearInterval(presenceHeartbeatInterval);
     presenceHeartbeatInterval = setInterval(async ()=>{
       try {
         await updateDoc(presRef, { lastSeen: serverTimestamp() });
-      } catch(e){
-        // ignore
-      }
+      } catch(e){}
     }, PRESENCE_PING_INTERVAL);
   }
 
-  // try rejoin saved room (on load)
   async function tryJoinSavedRoom(rRef, savedPartner){
     try {
       const rSnap = await getDoc(rRef);
@@ -610,7 +582,7 @@ function clearMessages(){ messagesEl.innerHTML = ''; }
 
   async function cancelSearchHandler(){
     if(myWaitingRef){
-      try { await deleteDoc(myWaitingRef); } catch(e){/*ignore*/ }
+      try { await deleteDoc(myWaitingRef); } catch(e){}
       myWaitingRef = null;
     }
     if(myWaitingUnsub){ myWaitingUnsub(); myWaitingUnsub = null; }
@@ -645,16 +617,14 @@ function clearMessages(){ messagesEl.innerHTML = ''; }
       }
       myWaitingRef = null;
     }
-    // remove my presence doc (best-effort)
     if(roomRef && uid){
-      try { await deleteDoc(doc(roomRef, 'presence', uid)).catch(()=>{}); } catch(e){/*ignore*/ }
+      try { await deleteDoc(doc(roomRef, 'presence', uid)).catch(()=>{}); } catch(e){}
     }
 
     messagesEl.innerHTML = '';
     roomRef = null; roomId = null; partnerId = null;
   }
 
-  // deletes messages subcollection and room document if appropriate
   async function fullRoomCleanup(){
     if(!roomRef) return;
     try {
@@ -663,22 +633,21 @@ function clearMessages(){ messagesEl.innerHTML = ''; }
       const data = rSnap.data();
       const participants = data.participants || [];
 
-      // remove self from participants list (best-effort)
-      const newParts = participants.filter(p => p !== uid);
+      // Удаляем waiting-документы всех участников
+      for(const p of participants){
+        await deleteDoc(doc(db,'waiting',p)).catch(()=>{});
+      }
 
+      const newParts = participants.filter(p => p !== uid);
       if(newParts.length === 0){
-        // delete messages
         const msgsSnap = await getDocs(collection(roomRef, 'messages'));
         for(const m of msgsSnap.docs){
           await deleteDoc(m.ref).catch(()=>{});
         }
-        // delete presence docs
         const presSnap = await getDocs(collection(roomRef, 'presence'));
         for(const p of presSnap.docs) await deleteDoc(p.ref).catch(()=>{});
-        // delete room
         await deleteDoc(roomRef).catch(()=>{});
       } else {
-        // update participants set without this user
         await updateDoc(roomRef, { participants: newParts }).catch(()=>{});
       }
     } catch(e){
@@ -686,7 +655,6 @@ function clearMessages(){ messagesEl.innerHTML = ''; }
     }
   }
 
-  // called when unloading page - best-effort
   window.addEventListener('beforeunload', async (ev) => {
     try {
       stopWaitingHeartbeat();
@@ -741,7 +709,6 @@ function clearMessages(){ messagesEl.innerHTML = ''; }
     window.location.href = '/anonymous/';
   });
 
-  // try join by explicit ?room=ID param on load
   function tryJoinFromURL(){
     const url = new URL(location.href);
     const rId = url.searchParams.get('room');
