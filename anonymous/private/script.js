@@ -114,18 +114,18 @@ document.addEventListener("click", e => {
   let partnerId = null;
   let messagesUnsub = null;
   let waitingUnsub = null;
-  let roomUnsub = null;
+  let roomMetaUnsub = null;          // ← новый слушатель мета-данных комнаты
   let presenceUnsub = null;
   let presenceHeartbeatInterval = null;
 
   let waitingHeartbeatInterval = null;
   let cleanupWaitingInterval = null;
 
-  const PRESENCE_PING_INTERVAL = 8000; // ms
-  const PRESENCE_STALE_MS = 25000; // if partner's lastSeen older than this -> considered offline
+  const PRESENCE_PING_INTERVAL = 8000;
+  const PRESENCE_STALE_MS = 25000;
 
   const WAITING_HEARTBEAT_INTERVAL = 8000;
-  const WAITING_STALE_MS = 30000; // 30s
+  const WAITING_STALE_MS = 30000;
 
   function show(el){ el.classList.remove('hidden'); }
   function hide(el){ el.classList.add('hidden'); }
@@ -168,7 +168,6 @@ onAuthStateChanged(auth, user => {
 
         statusText.textContent = "В сети — " + user.uid.slice(0, 6);
 
-        // проверяем сохранённую комнату
         const saved = loadRoomFromStorage();
         if(saved.roomId){
             const rRef = doc(db, 'rooms', saved.roomId);
@@ -435,7 +434,7 @@ function clearMessages(){ messagesEl.innerHTML = ''; }
         await clearAllListenersAndState();
       }
 
-      if(roomRef && roomRef.path === roomDocumentRef.path && presenceUnsub) {
+      if(roomRef && roomRef.path === roomDocumentRef.path && roomMetaUnsub) {
         console.log('already connected to room');
         return;
       }
@@ -462,13 +461,13 @@ function clearMessages(){ messagesEl.innerHTML = ''; }
         });
       } catch(e){}
 
-      roomUnsub = onSnapshot(roomRef, (snap) => {
-        if(!snap.exists()) return;
-        const data = snap.data();
-        if(data.closed){
+      // мгновенный слушатель мета-документа комнаты
+      if(roomMetaUnsub) roomMetaUnsub();
+      roomMetaUnsub = onSnapshot(roomRef, (snap) => {
+        if(!snap.exists() || snap.data().closed){
           endChatUI();
         } else {
-          const participants = data.participants || [];
+          const participants = snap.data().participants || [];
           partnerId = participants.find(p => p !== uid) || null;
           saveRoomToStorage(roomId, partnerId);
         }
@@ -555,31 +554,28 @@ function clearMessages(){ messagesEl.innerHTML = ''; }
     }
   }
 
-async function finishChat(){
-  if(!roomRef) return;
+  async function finishChat(){
+    // мгновенно переключаем экран у инициатора
+    endChatUI();
 
-  // 1. Удаляем waiting-документы обоих участников
-  const snap = await getDoc(roomRef);
-  if(snap.exists()){
-    const parts = snap.data().participants || [];
-    for(const p of parts){
-      await deleteDoc(doc(db,'waiting',p)).catch(()=>{});
+    if(roomRef){
+      // удаляем waiting-записи участников
+      const snap = await getDoc(roomRef);
+      if(snap.exists()){
+        const parts = snap.data().participants || [];
+        for(const p of parts){
+          await deleteDoc(doc(db,'waiting',p)).catch(()=>{});
+        }
+      }
+      // удаляем подколлекции и саму комнату
+      const msgsSnap = await getDocs(collection(roomRef,'messages'));
+      for(const m of msgsSnap.docs) await deleteDoc(m.ref).catch(()=>{});
+      const presSnap = await getDocs(collection(roomRef,'presence'));
+      for(const p of presSnap.docs) await deleteDoc(p.ref).catch(()=>{});
+      await deleteDoc(roomRef).catch(()=>{});
     }
+    clearRoomStorage();
   }
-
-  // 2. Удаляем всю комнату целиком (messages + presence + сам документ)
-  const msgsSnap = await getDocs(collection(roomRef,'messages'));
-  for(const m of msgsSnap.docs) await deleteDoc(m.ref).catch(()=>{});
-
-  const presSnap = await getDocs(collection(roomRef,'presence'));
-  for(const p of presSnap.docs) await deleteDoc(p.ref).catch(()=>{});
-
-  await deleteDoc(roomRef).catch(()=>{});
-
-  // 3. Чистим локальное состояние
-  clearRoomStorage();
-  endChatUI();
-}
 
   function endChatUI(){
     connectedCleanup();
@@ -607,7 +603,7 @@ async function finishChat(){
 
   async function clearAllListenersAndState(){
     if(messagesUnsub){ messagesUnsub(); messagesUnsub = null; }
-    if(roomUnsub){ roomUnsub(); roomUnsub = null; }
+    if(roomMetaUnsub){ roomMetaUnsub(); roomMetaUnsub = null; }
     if(waitingUnsub){ waitingUnsub(); waitingUnsub = null; }
     if(myWaitingUnsub){ myWaitingUnsub(); myWaitingUnsub = null; }
     if(presenceUnsub){ presenceUnsub(); presenceUnsub = null; }
@@ -638,12 +634,12 @@ async function finishChat(){
     roomRef = null; roomId = null; partnerId = null;
   }
 
-async function fullRoomCleanup(){
-  // толькоbest-effort убрать свою presence
-  if(roomRef && uid){
-    await deleteDoc(doc(roomRef,'presence',uid)).catch(()=>{});
+  async function fullRoomCleanup(){
+    // только best-effort убрать свою presence
+    if(roomRef && uid){
+      await deleteDoc(doc(roomRef,'presence',uid)).catch(()=>{});
+    }
   }
-}
 
   window.addEventListener('beforeunload', async (ev) => {
     try {
@@ -673,7 +669,7 @@ async function fullRoomCleanup(){
 
   function connectedCleanup(){
     if(messagesUnsub){ messagesUnsub(); messagesUnsub = null; }
-    if(roomUnsub){ roomUnsub(); roomUnsub = null; }
+    if(roomMetaUnsub){ roomMetaUnsub(); roomMetaUnsub = null; }
     if(presenceUnsub){ presenceUnsub(); presenceUnsub = null; }
     if(presenceHeartbeatInterval){ clearInterval(presenceHeartbeatInterval); presenceHeartbeatInterval = null; }
   }
