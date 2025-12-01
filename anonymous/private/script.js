@@ -555,18 +555,32 @@ function clearMessages(){ messagesEl.innerHTML = ''; }
     }
   }
 
-  async function finishChat(){
-    if(roomRef){
-      try {
-        await updateDoc(roomRef, { closed: true });
-        await fullRoomCleanup();
-      } catch(e){
-        console.warn('Error closing room:', e);
+async function finishChat(){
+  if(!roomRef || !uid) return;
+  try{
+    await runTransaction(db, async t => {
+      const snap = await t.get(roomRef);
+      if(!snap.exists()) throw 'room gone';
+      const data = snap.data();
+      const parts = data.participants || [];
+
+      // 1. закрываем комнату
+      t.update(roomRef, { closed: true });
+
+      // 2. удаляем waiting-документы всех участников
+      for(const p of parts){
+        t.delete(doc(db,'waiting',p));
       }
-    }
-    clearRoomStorage();
-    endChatUI();
+    });
+  }catch(e){
+    console.warn('finish transaction err',e);
   }
+
+  // локальная чистка
+  await fullRoomCleanup();
+  clearRoomStorage();
+  endChatUI();
+}
 
   function endChatUI(){
     connectedCleanup();
