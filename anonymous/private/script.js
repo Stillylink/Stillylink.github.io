@@ -563,30 +563,44 @@ roomMetaUnsub = onSnapshot(roomRef, (snap) => {
     }
   }
 
-async function finishChat(){
-  // 1. Мгновенно переключаем экран у инициатора
+async function finishChat() {
+  // 1. Показываем экран завершения на своей стороне немедленно
   endChatUI();
 
-  // 2. Останавливаем прослушку сообщений, чтобы не видеть их исчезновение
-  if(messagesUnsub){ messagesUnsub(); messagesUnsub = null; }
-
-  // 3. Удаляем всё в Firebase (у второго тоже не будет видно)
-  if(roomRef){
-    const snap = await getDoc(roomRef);
-    if(snap.exists()){
-      const parts = snap.data().participants || [];
-      for(const p of parts){              // чистим waiting
-        await deleteDoc(doc(db,'waiting',p)).catch(()=>{});
-      }
-    }
-    // удаляем подколлекции и саму комнату
-    const msgsSnap = await getDocs(collection(roomRef,'messages'));
-    for(const m of msgsSnap.docs) await deleteDoc(m.ref).catch(()=>{});
-    const presSnap = await getDocs(collection(roomRef,'presence'));
-    for(const p of presSnap.docs) await deleteDoc(p.ref).catch(()=>{});
-    await deleteDoc(roomRef).catch(()=>{});
+  // 2. Ставим room.closed = true (оба клиента сразу увидят закрытие)
+  if (roomRef) {
+    await updateDoc(roomRef, { closed: true }).catch(()=>{});
   }
+
+  // 3. Останавливаем прослушку, чтобы не видеть удаление сообщений
+  if (messagesUnsub) { messagesUnsub(); messagesUnsub = null; }
+
+  // 4. Сохраняем сохранённое roomId, чтобы очистки не запустились повторно
   clearRoomStorage();
+
+  // 5. Задержка, чтобы второй пользователь тоже успел переключиться на экран завершения
+  setTimeout(async () => {
+    if (roomRef) {
+      // чистим waiting
+      const snap = await getDoc(roomRef);
+      if (snap.exists()) {
+        const parts = snap.data().participants || [];
+        for (const p of parts) {
+          await deleteDoc(doc(db, 'waiting', p)).catch(()=>{});
+        }
+      }
+
+      // удаляем подколлекции
+      const msgsSnap = await getDocs(collection(roomRef, 'messages'));
+      for (const m of msgsSnap.docs) await deleteDoc(m.ref).catch(()=>{});
+
+      const presSnap = await getDocs(collection(roomRef, 'presence'));
+      for (const p of presSnap.docs) await deleteDoc(p.ref).catch(()=>{});
+
+      // удаляем комнату
+      await deleteDoc(roomRef).catch(()=>{});
+    }
+  }, 300);
 }
 
 function endChatUI(){
