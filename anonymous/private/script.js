@@ -555,7 +555,7 @@ function clearMessages(){ messagesEl.innerHTML = ''; }
   }
 
 async function finishChat(){
-  // 1. Мгновенно переключаем экран
+  // 1. Мгновенно переключаем экран у инициатора
   endChatUI();
 
   // 2. Останавливаем прослушку сообщений, чтобы не видеть их исчезновение
