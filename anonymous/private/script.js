@@ -131,7 +131,7 @@ document.addEventListener("click", e => {
   function hide(el){ el.classList.add('hidden'); }
 
 
-// =================== ХРАНИЛИЩЕ КОМНАТЫ ===================
+// =================== ХРАНИЛИЩЕ КОМНАТЫ ====================
   function saveRoomToStorage(rId, pId){
     if(rId) localStorage.setItem('roomId', rId);
     else localStorage.removeItem('roomId');
