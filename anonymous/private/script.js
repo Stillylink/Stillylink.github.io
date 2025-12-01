@@ -554,34 +554,36 @@ function clearMessages(){ messagesEl.innerHTML = ''; }
     }
   }
 
-  async function finishChat(){
-    // мгновенно переключаем экран у инициатора
-    endChatUI();
+async function finishChat(){
+  // 1. Мгновенно переключаем экран
+  endChatUI();
 
-    if(roomRef){
-      // удаляем waiting-записи участников
-      const snap = await getDoc(roomRef);
-      if(snap.exists()){
-        const parts = snap.data().participants || [];
-        for(const p of parts){
-          await deleteDoc(doc(db,'waiting',p)).catch(()=>{});
-        }
+  // 2. Останавливаем прослушку сообщений, чтобы не видеть их исчезновение
+  if(messagesUnsub){ messagesUnsub(); messagesUnsub = null; }
+
+  // 3. Удаляем всё в Firebase (у второго тоже не будет видно)
+  if(roomRef){
+    const snap = await getDoc(roomRef);
+    if(snap.exists()){
+      const parts = snap.data().participants || [];
+      for(const p of parts){              // чистим waiting
+        await deleteDoc(doc(db,'waiting',p)).catch(()=>{});
       }
-      // удаляем подколлекции и саму комнату
-      const msgsSnap = await getDocs(collection(roomRef,'messages'));
-      for(const m of msgsSnap.docs) await deleteDoc(m.ref).catch(()=>{});
-      const presSnap = await getDocs(collection(roomRef,'presence'));
-      for(const p of presSnap.docs) await deleteDoc(p.ref).catch(()=>{});
-      await deleteDoc(roomRef).catch(()=>{});
     }
-    clearRoomStorage();
+    // удаляем подколлекции и саму комнату
+    const msgsSnap = await getDocs(collection(roomRef,'messages'));
+    for(const m of msgsSnap.docs) await deleteDoc(m.ref).catch(()=>{});
+    const presSnap = await getDocs(collection(roomRef,'presence'));
+    for(const p of presSnap.docs) await deleteDoc(p.ref).catch(()=>{});
+    await deleteDoc(roomRef).catch(()=>{});
   }
+  clearRoomStorage();
+}
 
-  function endChatUI(){
-    connectedCleanup();
-    connectedStopUI();
-    statusText.textContent = 'Чат завершен';
-  }
+function endChatUI(){
+  connectedStopUI();          // просто показать экран «Чат завершён»
+  statusText.textContent = 'Чат завершен';
+}
 
   function connectedStopUI(){
     hide(searchScreen);
