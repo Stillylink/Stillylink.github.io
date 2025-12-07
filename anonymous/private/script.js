@@ -156,11 +156,14 @@ document.addEventListener("click", e => {
 
 const onChatPage = location.pathname.includes('/anonymous/private/');
 
+const onChatPage = location.pathname.includes('/anonymous/private/');
+
 onAuthStateChanged(auth, user => {
     if (user) {
         uid = user.uid;
         isRealUser = !!user.email;
 
+        // Показываем аватарку ТОЛЬКО реальному пользователю
         if (isRealUser) {
             regBtn?.classList.add("hidden");
             avatar?.classList.remove("hidden");
@@ -168,20 +171,24 @@ onAuthStateChanged(auth, user => {
             avatarLetter.textContent = letter;
             localStorage.setItem("userAvatarLetter", letter);
         } else {
+            // технический аноним – не трогаем шапку
             regBtn?.classList.remove("hidden");
             avatar?.classList.add("hidden");
             localStorage.removeItem("userAvatarLetter");
         }
 
+        // чатовая логика
         const saved = loadRoomFromStorage();
         if (saved.roomId) { /*...*/ connectToRoom(...); }
         else if (onChatPage) startSearch();
         return;
     }
 
+    // пользователя нет
     if (onChatPage) {
-        signInAnonymously(auth);
+        signInAnonymously(auth);   // ← только на странице чата
     }
+    // на других страницах НИЧЕГО не делаем – шапка остаётся как есть
 });
 
 function clearMessages(){ messagesEl.innerHTML = ''; }
