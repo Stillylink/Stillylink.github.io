@@ -707,13 +707,16 @@ function endChatUI(){
 
   cancelSearch.addEventListener('click', cancelSearchHandler);
 
-  exitBtn.addEventListener('click', async function(e){
-    e.preventDefault();
-    await fullRoomCleanup();
-    await clearAllListenersAndState();
-    clearRoomStorage();
-    window.location.href = '/anonymous/';
-  });
+exitBtn.addEventListener('click', function (e) {
+  e.preventDefault();
+
+  const target = '/anonymous/';
+  window.location.replace(target);   // или location.href = target;
+
+  fullRoomCleanup().catch(() => {});
+  clearAllListenersAndState().catch(() => {});
+  clearRoomStorage();                // синхронно
+});
 
 
 // ========================= АВТО-УДАЛЕНИЕ НЕАКТИВНЫХ КОМНАТ =========================
