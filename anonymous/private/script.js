@@ -205,10 +205,6 @@ function clearMessages(){ messagesEl.innerHTML = ''; }
     const isOwn = sender === uid;
     wrap.className = 'msg-row ' + (isOwn ? 'own' : 'other');
 
-    const avatar = document.createElement('div');
-    avatar.className = 'avatar';
-    avatar.textContent = isOwn ? 'Я' : 'Гость';
-
     const msg = document.createElement('div');
     msg.className = 'message' + (isOwn ? ' own' : '');
     if (type === 'image') {
@@ -231,7 +227,6 @@ function clearMessages(){ messagesEl.innerHTML = ''; }
     meta.textContent = time;
     msg.appendChild(meta);
 
-    wrap.appendChild(avatar);
     wrap.appendChild(msg);
     messagesEl.appendChild(wrap);
 
