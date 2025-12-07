@@ -754,9 +754,6 @@ async function cleanupRoomsByInactivity() {
             const data = d.data();
             const roomRef = d.ref;
 
-            // 0. Если в комнате есть участники — НЕ ТРОГАТЬ!
-            if ((data.participants || []).length > 0) continue;
-
             // 0.1. Не трогаем комнаты, созданные менее 2 минут назад
             const created = data.createdAt?.toMillis?.() || 0;
             if (now - created < 2 * 60 * 1000) continue;
