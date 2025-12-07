@@ -154,49 +154,44 @@ document.addEventListener("click", e => {
   }
 // =========================================================
 
-const onChatPage = location.pathname.includes('/anonymous/private/');
-
 onAuthStateChanged(auth, user => {
     if (!user) {
-        // нет пользователя – анонимный вход ТОЛЬКО на странице чата
-        if (onChatPage) signInAnonymously(auth);
+        // совсем нет акка – анонимно, НО не показываем в UI
+        signInAnonymously(auth);
         return;
     }
 
-    // пользователь есть (аноним или реальный)
     uid = user.uid;
-    const isRealUser = !!user.email;
+
+    // считаем «реальным» только если у него есть email
+    isRealUser = !!user.email;
 
     if (isRealUser) {
-        // реальный пользователь – рисуем аватарку
         regBtn?.classList.add("hidden");
         avatar?.classList.remove("hidden");
         const letter = user.email.charAt(0).toUpperCase();
         avatarLetter.textContent = letter;
         localStorage.setItem("userAvatarLetter", letter);
     } else {
-        // аноним – НЕ трогаем UI и НЕ пишем в localStorage
+        // технический аноним – оставляем кнопку «Войти»
         regBtn?.classList.remove("hidden");
         avatar?.classList.add("hidden");
-        localStorage.removeItem("userAvatarLetter");   // ← убираем след
+        localStorage.removeItem("userAvatarLetter");
     }
 
-    // чатовая логика
+    // дальше одинаково для всех
     const saved = loadRoomFromStorage();
-    if (saved.roomId) {
+    if(saved.roomId){
         const rRef = doc(db, 'rooms', saved.roomId);
-        getDoc(rRef).then(snap => {
-            if (snap.exists() && !snap.data().closed) {
-                roomRef = rRef;
-                roomId = saved.roomId;
-                partnerId = saved.partnerId;
+        getDoc(rRef).then(snap=>{
+            if(snap.exists() && !snap.data().closed){
+                roomRef = rRef; roomId = saved.roomId; partnerId = saved.partnerId;
                 connectToRoom(roomRef);
-            } else {
-                clearRoomStorage();
-                if (onChatPage) startSearch();
+            }else{
+                clearRoomStorage(); startSearch();
             }
         });
-    } else if (onChatPage) {
+    } else {
         startSearch();
     }
 });
