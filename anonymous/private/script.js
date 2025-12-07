@@ -419,7 +419,7 @@ function clearMessages(){ messagesEl.innerHTML = ''; }
             await connectToRoom(roomRef);
           }
         } catch (err) {
-          console.warn('Matchmaking transaction error:', err);
+          console.log('Matchmaking transaction skipped (race condition):', err);
         }
       }
     });
