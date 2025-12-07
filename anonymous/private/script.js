@@ -392,8 +392,8 @@ function clearMessages(){ messagesEl.innerHTML = ''; }
             const otherSnap = await txn.get(otherRef);
             const mineSnap = await txn.get(myWaitingRef);
 
-            if (!otherSnap.exists()) throw 'other gone';
-            if (!mineSnap.exists()) throw 'mine gone';
+            if (!otherSnap.exists()) return null;
+            if (!mineSnap.exists()) return null;
             if (otherSnap.data().claimed === true) throw 'other claimed';
             if (mineSnap.data().claimed === true) throw 'mine claimed';
 
