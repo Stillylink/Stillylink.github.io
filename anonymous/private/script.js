@@ -181,10 +181,6 @@ onAuthStateChanged(auth, user => {
 
     if (onChatPage) {
         signInAnonymously(auth);
-    } else {
-        regBtn?.classList.remove("hidden");
-        avatar?.classList.add("hidden");
-        localStorage.removeItem("userAvatarLetter");
     }
 });
 
