@@ -748,7 +748,6 @@ async function deleteRoomFully(roomRef) {
 
 async function cleanupRoomsByInactivity() {
     try {
-        // Берём максимум 20 комнат за один проход, чтобы не грузить Firestore
         const q = query(collection(db, "rooms"), limit(20));
         const snap = await getDocs(q);
         const now = Date.now();
@@ -757,32 +756,33 @@ async function cleanupRoomsByInactivity() {
             const data = d.data();
             const roomRef = d.ref;
 
-            // 1. Если комната закрыта вручную — удаляем
+            // 0. Если в комнате есть участники — НЕ ТРОГАТЬ!
+            if ((data.participants || []).length > 0) continue;
+
+            // 0.1. Не трогаем комнаты, созданные менее 2 минут назад
+            const created = data.createdAt?.toMillis?.() || 0;
+            if (now - created < 2 * 60 * 1000) continue;
+
+            // 1. Удаляем закрытые комнаты
             if (data.closed === true) {
                 await deleteRoomFully(roomRef);
                 continue;
             }
 
-            // 2. Вычисляем время последней активности
+            // 2. Проверяем последнюю активность
             let lastActive = 0;
 
-            // Последнее сообщение
             const msgs = await getDocs(
                 query(collection(roomRef, "messages"), orderBy("createdAt", "desc"), limit(1))
             );
             if (!msgs.empty) {
-                const m = msgs.docs[0].data();
-                lastActive = m.createdAt?.toMillis?.() || 0;
+                lastActive = msgs.docs[0].data().createdAt?.toMillis?.() || 0;
             }
 
-            // Если нет сообщений — используем время создания комнаты
-            if (!lastActive) {
-                lastActive = data.createdAt?.toMillis?.() || 0;
-            }
+            if (!lastActive) lastActive = created;
 
-            // 3. 20 минут = 1200000 мс
+            // 3. Неактивна >20 минут — удаляем
             if (now - lastActive > 20 * 60 * 1000) {
-                console.log("⏳ Комната неактивна >20мин:", roomRef.id);
                 await deleteRoomFully(roomRef);
             }
         }
