@@ -157,44 +157,47 @@ document.addEventListener("click", e => {
 const onChatPage = location.pathname.includes('/anonymous/private/');
 
 onAuthStateChanged(auth, user => {
-    if (user) {
-        uid = user.uid;
-        isRealUser = !!user.email;
-
-        if (isRealUser) {
-            regBtn?.classList.add("hidden");
-            avatar?.classList.remove("hidden");
-            const letter = user.email.charAt(0).toUpperCase();
-            avatarLetter.textContent = letter;
-            localStorage.setItem("userAvatarLetter", letter);
-        } else {
-            regBtn?.classList.remove("hidden");
-            avatar?.classList.add("hidden");
-            localStorage.removeItem("userAvatarLetter");
-        }
-
-        const saved = loadRoomFromStorage();
-        if (saved.roomId) {
-            const rRef = doc(db, 'rooms', saved.roomId);
-            getDoc(rRef).then(snap => {
-                if (snap.exists() && !snap.data().closed) {
-                    roomRef = rRef;
-                    roomId = saved.roomId;
-                    partnerId = saved.partnerId;
-                    connectToRoom(roomRef);
-                } else {
-                    clearRoomStorage();
-                    if (onChatPage) startSearch();
-                }
-            });
-        } else if (onChatPage) {
-            startSearch();
-        }
+    if (!user) {
+        // нет пользователя – анонимный вход ТОЛЬКО на странице чата
+        if (onChatPage) signInAnonymously(auth);
         return;
     }
 
-    if (onChatPage) {
-        signInAnonymously(auth);
+    // пользователь есть (аноним или реальный)
+    uid = user.uid;
+    const isRealUser = !!user.email;
+
+    if (isRealUser) {
+        // реальный пользователь – рисуем аватарку
+        regBtn?.classList.add("hidden");
+        avatar?.classList.remove("hidden");
+        const letter = user.email.charAt(0).toUpperCase();
+        avatarLetter.textContent = letter;
+        localStorage.setItem("userAvatarLetter", letter);
+    } else {
+        // аноним – НЕ трогаем UI и НЕ пишем в localStorage
+        regBtn?.classList.remove("hidden");
+        avatar?.classList.add("hidden");
+        localStorage.removeItem("userAvatarLetter");   // ← убираем след
+    }
+
+    // чатовая логика
+    const saved = loadRoomFromStorage();
+    if (saved.roomId) {
+        const rRef = doc(db, 'rooms', saved.roomId);
+        getDoc(rRef).then(snap => {
+            if (snap.exists() && !snap.data().closed) {
+                roomRef = rRef;
+                roomId = saved.roomId;
+                partnerId = saved.partnerId;
+                connectToRoom(roomRef);
+            } else {
+                clearRoomStorage();
+                if (onChatPage) startSearch();
+            }
+        });
+    } else if (onChatPage) {
+        startSearch();
     }
 });
 
