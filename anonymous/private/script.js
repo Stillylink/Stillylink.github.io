@@ -153,48 +153,38 @@ document.addEventListener("click", e => {
   }
 // =========================================================
 
-
 onAuthStateChanged(auth, user => {
     if (user) {
         uid = user.uid;
         statusText.textContent = 'В сети — ' + uid.slice(0,6);
-        
-        const letter = user.email?.charAt(0).toUpperCase() || "U";
 
+        const letter = user.email?.charAt(0).toUpperCase() || "U";
         regBtn?.classList.add("hidden");
         avatar?.classList.remove("hidden");
         avatarLetter.textContent = letter;
-
         localStorage.setItem("userAvatarLetter", letter);
-
-        statusText.textContent = "В сети — " + user.uid.slice(0, 6);
-
-        const saved = loadRoomFromStorage();
-        if(saved.roomId){
-            const rRef = doc(db, 'rooms', saved.roomId);
-            getDoc(rRef).then(snap=>{
-                if(snap.exists() && !snap.data().closed){
-                    roomRef = rRef;
-                    roomId  = saved.roomId;
-                    partnerId = saved.partnerId;
-                    connectToRoom(roomRef);
-                }else{
-                    clearRoomStorage();
-                    startSearch();
-                }
-            });
-        } else {
-            startSearch();
-        }
-
     } else {
         regBtn?.classList.remove("hidden");
         avatar?.classList.add("hidden");
         userMenu?.classList.remove("open");
-
         localStorage.removeItem("userAvatarLetter");
-
         signInAnonymously(auth);
+        return;
+    }
+
+    const saved = loadRoomFromStorage();
+    if(saved.roomId){
+        const rRef = doc(db, 'rooms', saved.roomId);
+        getDoc(rRef).then(snap=>{
+            if(snap.exists() && !snap.data().closed){
+                roomRef = rRef; roomId = saved.roomId; partnerId = saved.partnerId;
+                connectToRoom(roomRef);
+            }else{
+                clearRoomStorage(); startSearch();
+            }
+        });
+    } else {
+        startSearch();
     }
 });
 
