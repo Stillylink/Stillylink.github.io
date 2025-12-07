@@ -720,6 +720,83 @@ function endChatUI(){
     window.location.href = '/anonymous/';
   });
 
+
+// ========================= АВТО-УДАЛЕНИЕ НЕАКТИВНЫХ КОМНАТ =========================
+
+async function deleteRoomFully(roomRef) {
+    try {
+        // Удаляем сообщения
+        const msgs = await getDocs(collection(roomRef, "messages"));
+        for (const m of msgs.docs) {
+            await deleteDoc(m.ref).catch(() => {});
+        }
+
+        // Удаляем presence
+        const pres = await getDocs(collection(roomRef, "presence"));
+        for (const p of pres.docs) {
+            await deleteDoc(p.ref).catch(() => {});
+        }
+
+        // Удаляем саму комнату
+        await deleteDoc(roomRef).catch(() => {});
+
+        console.log("🔥 Комната удалена автоматически:", roomRef.id);
+    } catch (e) {
+        console.warn("Ошибка авто-удаления:", e);
+    }
+}
+
+async function cleanupRoomsByInactivity() {
+    try {
+        // Берём максимум 20 комнат за один проход, чтобы не грузить Firestore
+        const q = query(collection(db, "rooms"), limit(20));
+        const snap = await getDocs(q);
+        const now = Date.now();
+
+        for (const d of snap.docs) {
+            const data = d.data();
+            const roomRef = d.ref;
+
+            // 1. Если комната закрыта вручную — удаляем
+            if (data.closed === true) {
+                await deleteRoomFully(roomRef);
+                continue;
+            }
+
+            // 2. Вычисляем время последней активности
+            let lastActive = 0;
+
+            // Последнее сообщение
+            const msgs = await getDocs(
+                query(collection(roomRef, "messages"), orderBy("createdAt", "desc"), limit(1))
+            );
+            if (!msgs.empty) {
+                const m = msgs.docs[0].data();
+                lastActive = m.createdAt?.toMillis?.() || 0;
+            }
+
+            // Если нет сообщений — используем время создания комнаты
+            if (!lastActive) {
+                lastActive = data.createdAt?.toMillis?.() || 0;
+            }
+
+            // 3. 20 минут = 1200000 мс
+            if (now - lastActive > 20 * 60 * 1000) {
+                console.log("⏳ Комната неактивна >20мин:", roomRef.id);
+                await deleteRoomFully(roomRef);
+            }
+        }
+    } catch (e) {
+        console.warn("Ошибка проверки старых комнат:", e);
+    }
+}
+
+// Запускаем авто-уборку каждые 5 минут
+setInterval(cleanupRoomsByInactivity, 5 * 60 * 1000);
+
+// Первую проверку запускаем через 20 секунд после входа
+setTimeout(cleanupRoomsByInactivity, 20000);
+
   function tryJoinFromURL(){
     const url = new URL(location.href);
     const rId = url.searchParams.get('room');
