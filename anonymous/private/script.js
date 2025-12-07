@@ -107,6 +107,7 @@ document.addEventListener("click", e => {
 
 
   let uid = null;
+  let isRealUser = false;
   let myWaitingRef = null;
   let myWaitingUnsub = null;
   let roomRef = null;
@@ -154,22 +155,25 @@ document.addEventListener("click", e => {
 // =========================================================
 
 onAuthStateChanged(auth, user => {
-    if (user) {
-        uid = user.uid;
-        statusText.textContent = 'В сети — ' + uid.slice(0,6);
+    if (!user) {
+        signInAnonymously(auth);
+        return;
+    }
 
-        const letter = user.email?.charAt(0).toUpperCase() || "U";
+    uid = user.uid;
+
+    isRealUser = !!user.email;
+
+    if (isRealUser) {
         regBtn?.classList.add("hidden");
         avatar?.classList.remove("hidden");
+        const letter = user.email.charAt(0).toUpperCase();
         avatarLetter.textContent = letter;
         localStorage.setItem("userAvatarLetter", letter);
     } else {
         regBtn?.classList.remove("hidden");
         avatar?.classList.add("hidden");
-        userMenu?.classList.remove("open");
         localStorage.removeItem("userAvatarLetter");
-        signInAnonymously(auth);
-        return;
     }
 
     const saved = loadRoomFromStorage();
