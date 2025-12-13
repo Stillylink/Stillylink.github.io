@@ -194,33 +194,26 @@ if (savedLogin === "true" && savedLetter) {
 
 // --- Авторизация ---
 onAuthStateChanged(auth, user => {
-    if (user) {
-        const letter = user.email?.charAt(0).toUpperCase() || "U";
-
+    if (user && user.email) {          // ← только реальный пользователь
         regBtn.classList.add("hidden");
         avatar.classList.remove("hidden");
+        const letter = user.email.charAt(0).toUpperCase();
         avatarLetter.textContent = letter;
-
         localStorage.setItem("isLoggedIn", "true");
         localStorage.setItem("avatarLetter", letter);
-
     } else {
         regBtn.classList.remove("hidden");
         avatar.classList.add("hidden");
-
+        userMenu.classList.remove("open");
         localStorage.removeItem("isLoggedIn");
         localStorage.removeItem("avatarLetter");
     }
 });
 
 // --- Выход ---
-logoutBtn.onclick = (e) => {
+logoutBtn.onclick = e => {
     e.preventDefault();
-
-    localStorage.removeItem("isLoggedIn");
-    localStorage.removeItem("avatarLetter");
-
-    signOut(auth).then(() => window.location.reload());
+    signOut(auth).then(() => location.reload());
 };
 </script>
 
