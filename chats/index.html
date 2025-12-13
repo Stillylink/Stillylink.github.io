@@ -169,32 +169,23 @@ if (savedAvatar) {
 }
 
 onAuthStateChanged(auth, user => {
-    if (user) {
+    if (user && user.email) {          // ← только реальный пользователь
         regBtn.classList.add("hidden");
         avatar.classList.remove("hidden");
-
-        const letter = user.email?.charAt(0).toUpperCase() || "U";
+        const letter = user.email.charAt(0).toUpperCase();
         avatarLetter.textContent = letter;
-
-        // Сохраняем локально
         localStorage.setItem("userAvatarLetter", letter);
-
     } else {
         regBtn.classList.remove("hidden");
         avatar.classList.add("hidden");
         userMenu.classList.remove("open");
-
-        // Удаляем локальные данные при выходе
         localStorage.removeItem("userAvatarLetter");
     }
 });
     
-    logoutBtn.onclick = (e) => {
+logoutBtn.onclick = e => {
     e.preventDefault();
-    signOut(auth).then(() => {
-        localStorage.removeItem("userAvatarLetter");
-        window.location.reload();
-    });
+    signOut(auth).then(() => location.reload());
 };
 
 
