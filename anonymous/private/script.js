@@ -63,12 +63,16 @@ const userMenu     = document.querySelector(".user-menu");
 const logoutBtn    = document.getElementById("logoutBtn");
 
 window.addEventListener("DOMContentLoaded", () => {
-    const savedAvatar = localStorage.getItem("userAvatarLetter");
-
-    if (savedAvatar) {
-        regBtn?.classList.add("hidden");
-        avatar?.classList.remove("hidden");
-        avatarLetter.textContent = savedAvatar;
+    if (isRealUser) {
+        const saved = localStorage.getItem("userAvatarLetter");
+        if (saved) {
+            regBtn?.classList.add("hidden");
+            avatar?.classList.remove("hidden");
+            avatarLetter.textContent = saved;
+        }
+    } else {
+        regBtn?.classList.remove("hidden");
+        avatar?.classList.add("hidden");
     }
 
     logoutBtn?.addEventListener("click", e => {
@@ -119,6 +123,7 @@ document.addEventListener("click", e => {
   let presenceUnsub = null;
   let presenceHeartbeatInterval = null;
   let chatClosed = false;
+  let isRealUser = false;
 
   let waitingHeartbeatInterval = null;
   let cleanupWaitingInterval = null;
@@ -166,18 +171,17 @@ onAuthStateChanged(auth, user => {
     // считаем «реальным» только если у него есть email
     isRealUser = !!user.email;
 
-    if (isRealUser) {
-        regBtn?.classList.add("hidden");
-        avatar?.classList.remove("hidden");
-        const letter = user.email.charAt(0).toUpperCase();
-        avatarLetter.textContent = letter;
-        localStorage.setItem("userAvatarLetter", letter);
-    } else {
-        // технический аноним – оставляем кнопку «Войти»
-        regBtn?.classList.remove("hidden");
-        avatar?.classList.add("hidden");
-        localStorage.removeItem("userAvatarLetter");
-    }
+if (isRealUser) {
+    regBtn?.classList.add("hidden");
+    avatar?.classList.remove("hidden");
+    const letter = user.email.charAt(0).toUpperCase();
+    avatarLetter.textContent = letter;
+    localStorage.setItem("userAvatarLetter", letter);
+} else {
+    regBtn?.classList.remove("hidden");
+    avatar?.classList.add("hidden");
+    localStorage.removeItem("userAvatarLetter");
+}
 
     // дальше одинаково для всех
     const saved = loadRoomFromStorage();
