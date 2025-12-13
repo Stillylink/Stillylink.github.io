@@ -114,25 +114,20 @@ if (savedLogin === "true" && savedLetter) {
 
 // --- Авторизация ---
 onAuthStateChanged(auth, user => {
-    if (user) {
-        const letter = user.email?.charAt(0).toUpperCase() || "U";
+    if (user && user.email) {          // ← рисуем только реального пользователя
+        const letter = user.email.charAt(0).toUpperCase();
 
-        // UI
         regBtn.classList.add("hidden");
         avatar.classList.remove("hidden");
         avatarLetter.textContent = letter;
 
-        // Save locally
         localStorage.setItem("isLoggedIn", "true");
         localStorage.setItem("avatarLetter", letter);
-
     } else {
-        // UI
         regBtn.classList.remove("hidden");
         avatar.classList.add("hidden");
         userMenu.classList.remove("open");
 
-        // Clear local data
         localStorage.removeItem("isLoggedIn");
         localStorage.removeItem("avatarLetter");
     }
