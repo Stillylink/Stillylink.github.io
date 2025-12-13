@@ -123,7 +123,6 @@ document.addEventListener("click", e => {
   let presenceUnsub = null;
   let presenceHeartbeatInterval = null;
   let chatClosed = false;
-  let isRealUser = false;
 
   let waitingHeartbeatInterval = null;
   let cleanupWaitingInterval = null;
