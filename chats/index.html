@@ -147,16 +147,13 @@ function renderRoom(id, data) {
 }
 
 onSnapshot(collection(db, "rooms"), (snapshot) => {
-    chatList.innerHTML = ""; // Убираем skeleton
-
-    if (snapshot.empty) {
+    chatList.innerHTML = "";
+    const valid = snapshot.docs.filter(d => d.data().name); // ← пропускаем битые
+    if (valid.length === 0) {
         chatList.innerHTML = "<p>Пока нет созданных чатов.</p>";
         return;
     }
-
-    snapshot.forEach(doc => {
-        chatList.innerHTML += renderRoom(doc.id, doc.data());
-    });
+    valid.forEach(doc => chatList.innerHTML += renderRoom(doc.id, doc.data()));
 });
 
     // === Локальная загрузка аватара сразу при заходе ===
