@@ -690,30 +690,32 @@ function endChatUI(){
 
 // Удаление при уходе со страницы (мобильная и десктопная)
 function handlePageExit() {
-    const isInSearch = !chatClosed && !roomRef && myWaitingRef;
+  const isInSearch = !chatClosed && !roomRef && myWaitingRef;
+  console.log("[handlePageExit]", { chatClosed, roomRef: !!roomRef, myWaitingRef: !!myWaitingRef, isInSearch });
 
-    console.log("[handlePageExit] Условие удаления:", {
-        chatClosed,
-        roomRef: !!roomRef,
-        myWaitingRef: !!myWaitingRef,
-        isInSearch
-    });
+  if (isInSearch && myWaitingRef) {
+    deleteDoc(myWaitingRef).catch(() => {});
+    clearRoomStorage();
+    myWaitingRef = null;          // ← обнуляем ссылку
+  }
 
-    if (isInSearch && myWaitingRef) {
-        deleteDoc(myWaitingRef).catch(() => {});
-        clearRoomStorage();
-    }
-
-    if (roomRef && uid) {
-        deleteDoc(doc(roomRef, 'presence', uid)).catch(() => {});
-    }
+  if (roomRef && uid) {
+    deleteDoc(doc(roomRef, 'presence', uid)).catch(() => {});
+  }
 }
 
 async function handlePageReturn() {
-  // если мы сейчас не в комнате и не стоим в очереди – встаём заново
-  if (!roomRef && !myWaitingRef) {
-    console.log('[visible] встаём в очередь заново');
-    startSearch();             // пересоздаст waiting/<uid>
+  if (!roomRef) {                       // в комнате не находимся
+    if (!myWaitingRef) {                // и ссылки нет
+      startSearch();                    // точно создаём заново
+      return;
+    }
+    // ссылка есть, но документ может быть удалён – проверим
+    const snap = await getDoc(myWaitingRef);
+    if (!snap.exists()) {               // документа нет → создаём
+      myWaitingRef = null;
+      startSearch();
+    }
   }
 }
 
