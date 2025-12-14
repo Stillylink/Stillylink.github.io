@@ -826,11 +826,41 @@ async function cleanupRoomsByInactivity() {
     }
 }
 
-// Запускаем авто-уборку каждые 5 минут
-setInterval(cleanupRoomsByInactivity, 5 * 60 * 1000);
+// ========== УДАЛЕНИЕ ЗАВИСШИХ В ОЧЕРЕДИ ==========
+async function cleanupStaleWaitingUsers() {
+  try {
+    const q = query(collection(db, 'waiting'), limit(50));   // берём первые 50
+    const snap = await getDocs(q);
+    const now = Date.now();
 
-// Первую проверку запускаем через 20 секунд после входа
-setTimeout(cleanupRoomsByInactivity, 20000);
+    for (const d of snap.docs) {
+      const data = d.data();
+      if (data.claimed === true) continue;                 // уже в комнате – пропускаем
+
+      const ls = data.lastSeen?.toMillis?.() || 0;
+      if (!ls) continue;                                   // нет метки – пропускаем
+
+      if (now - ls > WAITING_STALE_MS) {                   // WAITING_STALE_MS = 30 000 (у вас уже есть)
+        await deleteDoc(d.ref).catch(() => {});            // удаляем зависшего
+        console.log('🧹 удалён зависший пользователь из waiting:', d.id);
+      }
+    }
+  } catch (e) {
+    console.warn('Ошибка при чистке waiting:', e);
+  }
+}
+
+// общий таймер: и комнаты, и зависших в очереди
+setInterval(() => {
+  cleanupRoomsByInactivity();
+  cleanupStaleWaitingUsers();
+}, 5 * 60 * 1000);
+
+// первый запуск через 20 с
+setTimeout(() => {
+  cleanupRoomsByInactivity();
+  cleanupStaleWaitingUsers();
+}, 20000);
 
   function tryJoinFromURL(){
     const url = new URL(location.href);
