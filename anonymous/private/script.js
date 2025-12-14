@@ -690,13 +690,16 @@ function endChatUI(){
 
 // Удаление при уходе со страницы (мобильная и десктопная)
 function handlePageExit() {
-    // ❗ Удаляем только если пользователь в поиске (не в чате)
     const isInSearch = !chatClosed && !roomRef && myWaitingRef;
 
+    console.log("[handlePageExit] Условие удаления:", {
+        chatClosed,
+        roomRef: !!roomRef,
+        myWaitingRef: !!myWaitingRef,
+        isInSearch
+    });
+
     if (isInSearch && myWaitingRef) {
-        navigator.sendBeacon ? 
-            navigator.sendBeacon('', null) : 
-            fetch('', { keepalive: true, method: 'POST' });
         deleteDoc(myWaitingRef).catch(() => {});
         clearRoomStorage();
     }
