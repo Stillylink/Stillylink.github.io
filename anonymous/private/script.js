@@ -690,18 +690,20 @@ function endChatUI(){
 
 // Удаление при уходе со страницы (мобильная и десктопная)
 function handlePageExit() {
-    if (myWaitingRef) {
+    // ❗ Удаляем только если пользователь в поиске (не в чате)
+    const isInSearch = !chatClosed && !roomRef && myWaitingRef;
+
+    if (isInSearch && myWaitingRef) {
         navigator.sendBeacon ? 
             navigator.sendBeacon('', null) : 
             fetch('', { keepalive: true, method: 'POST' });
         deleteDoc(myWaitingRef).catch(() => {});
+        clearRoomStorage();
     }
 
     if (roomRef && uid) {
         deleteDoc(doc(roomRef, 'presence', uid)).catch(() => {});
     }
-
-    clearRoomStorage();
 }
 
 document.addEventListener('visibilitychange', () => {
