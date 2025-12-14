@@ -317,17 +317,9 @@ function clearMessages(){ messagesEl.innerHTML = ''; }
         const data = d.data();
         const ls = data.lastSeen?.toMillis ? data.lastSeen.toMillis() : (data.lastSeen ? new Date(data.lastSeen).getTime() : 0);
         const claimed = !!data.claimed;
-const inactive = data.inactive === true;
-
-if (
-  !claimed &&
-  (
-    inactive ||
-    (ls && (now - ls) > WAITING_STALE_MS)
-  )
-) {
-  await deleteDoc(d.ref);
-}
+        if (!claimed && ls && (now - ls) > WAITING_STALE_MS) {
+          try { await deleteDoc(d.ref); } catch(e){}
+        }
       }
     } catch (e) {}
   }
@@ -698,28 +690,23 @@ function endChatUI(){
 
 // Удаление при уходе со страницы (мобильная и десктопная)
 function handlePageExit() {
-    const now = Date.now();
+    const isInSearch = !chatClosed && !roomRef && myWaitingRef;
 
-    // Если в поиске — просто помечаем как мёртвого
-    if (myWaitingRef) {
-        try {
-            updateDoc(myWaitingRef, {
-                lastSeen: new Date(0), // гарантированно устаревший
-                inactive: true
-            });
-        } catch (e) {}
+    console.log("[handlePageExit] Условие удаления:", {
+        chatClosed,
+        roomRef: !!roomRef,
+        myWaitingRef: !!myWaitingRef,
+        isInSearch
+    });
+
+    if (isInSearch && myWaitingRef) {
+        deleteDoc(myWaitingRef).catch(() => {});
+        clearRoomStorage();
     }
 
-    // Если в комнате — тоже помечаем presence как мёртвый
     if (roomRef && uid) {
-        try {
-            updateDoc(doc(roomRef, 'presence', uid), {
-                lastSeen: new Date(0)
-            });
-        } catch (e) {}
+        deleteDoc(doc(roomRef, 'presence', uid)).catch(() => {});
     }
-
-    clearRoomStorage();
 }
 
 document.addEventListener('visibilitychange', () => {
