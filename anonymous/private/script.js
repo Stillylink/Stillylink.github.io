@@ -688,6 +688,30 @@ function endChatUI(){
     } catch(e){}
   });
 
+// Удаление при уходе со страницы (мобильная и десктопная)
+function handlePageExit() {
+    if (myWaitingRef) {
+        navigator.sendBeacon ? 
+            navigator.sendBeacon('', null) : 
+            fetch('', { keepalive: true, method: 'POST' });
+        deleteDoc(myWaitingRef).catch(() => {});
+    }
+
+    if (roomRef && uid) {
+        deleteDoc(doc(roomRef, 'presence', uid)).catch(() => {});
+    }
+
+    clearRoomStorage();
+}
+
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') {
+        handlePageExit();
+    }
+});
+
+window.addEventListener('pagehide', handlePageExit);
+
   function connectedCleanup(){
     if(messagesUnsub){ messagesUnsub(); messagesUnsub = null; }
     if(roomMetaUnsub){ roomMetaUnsub(); roomMetaUnsub = null; }
@@ -724,6 +748,16 @@ exitBtn.addEventListener('click', function (e) {
 
 async function deleteRoomFully(roomRef) {
     try {
+        const snap = await getDoc(roomRef);
+        if (!snap.exists()) return;
+
+        const participants = snap.data().participants || [];
+
+        // Удаляем из waiting
+        for (const uid of participants) {
+            await deleteDoc(doc(db, 'waiting', uid)).catch(() => {});
+        }
+
         // Удаляем сообщения
         const msgs = await getDocs(collection(roomRef, "messages"));
         for (const m of msgs.docs) {
@@ -739,7 +773,7 @@ async function deleteRoomFully(roomRef) {
         // Удаляем саму комнату
         await deleteDoc(roomRef).catch(() => {});
 
-        console.log("🔥 Комната удалена автоматически:", roomRef.id);
+        console.log("🔥 Комната и пользователи удалены автоматически:", roomRef.id);
     } catch (e) {
         console.warn("Ошибка авто-удаления:", e);
     }
