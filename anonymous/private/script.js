@@ -77,6 +77,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
     logoutBtn?.addEventListener("click", e => {
         e.preventDefault();
+        handlePageExit();
         localStorage.removeItem("userAvatarLetter");
         window.location.href = "/login/";
     });
@@ -751,6 +752,7 @@ window.addEventListener('pagehide', handlePageExit);
 
 exitBtn.addEventListener('click', function (e) {
   e.preventDefault();
+  handlePageExit();
 
   const target = '/anonymous/';
   window.location.replace(target);   // или location.href = target;
