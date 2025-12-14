@@ -709,10 +709,20 @@ function handlePageExit() {
     }
 }
 
+async function handlePageReturn() {
+  // если мы сейчас не в комнате и не стоим в очереди – встаём заново
+  if (!roomRef && !myWaitingRef) {
+    console.log('[visible] встаём в очередь заново');
+    startSearch();             // пересоздаст waiting/<uid>
+  }
+}
+
 document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'hidden') {
-        handlePageExit();
-    }
+  if (document.visibilityState === 'hidden') {
+    handlePageExit();          // старый код – удалили при сворачивании
+  } else {
+    handlePageReturn();        // ← новый код – вернулись
+  }
 });
 
 window.addEventListener('pagehide', handlePageExit);
