@@ -125,6 +125,7 @@ document.addEventListener("click", e => {
   let presenceHeartbeatInterval = null;
   let chatClosed = false;
   let cleaning = false;               // чтобы не гонять запросы
+  let searchCancelled = false;   // пользователь сам отменил поиск
 
   let waitingHeartbeatInterval = null;
   let cleanupWaitingInterval = null;
@@ -614,6 +615,7 @@ function endChatUI(){
   }
 
   async function cancelSearchHandler(){
+    searchCancelled = true; 
     if(myWaitingRef){
       try { await deleteDoc(myWaitingRef); } catch(e){}
       myWaitingRef = null;
@@ -716,6 +718,7 @@ async function handlePageExit() {
 
 async function handlePageReturn() {
   if (!roomRef) {                       // в комнате не находимся
+    if (searchCancelled) return;   
     if (!myWaitingRef) {                // и ссылки нет
       startSearch();                    // точно создаём заново
       return;
@@ -749,6 +752,7 @@ document.addEventListener('visibilitychange', () => {
   modalFinish.addEventListener('click', async ()=>{ modal.classList.add('hidden'); await finishChat(); });
 
   newChatBtn.addEventListener('click', async ()=>{ 
+    searchCancelled = false;
     await fullRoomCleanup();
     await clearAllListenersAndState();
     clearRoomStorage();
