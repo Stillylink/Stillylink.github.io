@@ -124,6 +124,7 @@ document.addEventListener("click", e => {
   let presenceUnsub = null;
   let presenceHeartbeatInterval = null;
   let chatClosed = false;
+  let cleaning = false;               // чтобы не гонять запросы
 
   let waitingHeartbeatInterval = null;
   let cleanupWaitingInterval = null;
@@ -353,6 +354,7 @@ function clearMessages(){ messagesEl.innerHTML = ''; }
       await setDoc(myWaitingRef, { uid, createdAt: serverTimestamp(), claimed: false, roomId: null, lastSeen: serverTimestamp() });
     }
 
+    if (!myWaitingRef) return;
     if (myWaitingUnsub) myWaitingUnsub();
     myWaitingUnsub = onSnapshot(myWaitingRef, (snap) => {
       if(!snap.exists()) return;
@@ -690,19 +692,26 @@ function endChatUI(){
   });
 
 // Удаление при уходе со страницы (мобильная и десктопная)
-function handlePageExit() {
+async function handlePageExit() {
+  if (cleaning) return;                       // уже уходим – выходим
+  cleaning = true;
+
   const isInSearch = !chatClosed && !roomRef && myWaitingRef;
   console.log("[handlePageExit]", { chatClosed, roomRef: !!roomRef, myWaitingRef: !!myWaitingRef, isInSearch });
 
+  const promises = [];
+
   if (isInSearch && myWaitingRef) {
-    deleteDoc(myWaitingRef).catch(() => {});
+    promises.push(deleteDoc(myWaitingRef).catch(() => {}));
     clearRoomStorage();
-    myWaitingRef = null;          // ← обнуляем ссылку
+    myWaitingRef = null;
   }
 
   if (roomRef && uid) {
-    deleteDoc(doc(roomRef, 'presence', uid)).catch(() => {});
+    promises.push(deleteDoc(doc(roomRef, 'presence', uid)).catch(() => {}));
   }
+
+  await Promise.all(promises);   // дождёмся, пока Firestore примет запрос
 }
 
 async function handlePageReturn() {
@@ -727,8 +736,6 @@ document.addEventListener('visibilitychange', () => {
     handlePageReturn();        // ← новый код – вернулись
   }
 });
-
-window.addEventListener('pagehide', handlePageExit);
 
   function connectedCleanup(){
     if(messagesUnsub){ messagesUnsub(); messagesUnsub = null; }
