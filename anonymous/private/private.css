@@ -145,7 +145,40 @@
 input, textarea, .text-input { font-size:16px !important; -webkit-text-size-adjust:100%; }
 
 @media (max-width: 480px) {
-  .messages { padding:12px; gap:10px; }
-  .message { max-width:85%; }
-  .emoji-panel { right:12px; left:auto; bottom:80px; width:180px; }
+  /* обёртка = почти вся ширина экрана */
+  .chat-box{
+    width:auto;              /* убираем жёсткую 740 px */
+    margin:0 8px;            /* по 8 px слева/справа */
+    gap:8px;
+  }
+
+  /* шапка компактнее */
+  .chat-header{
+    padding:10px 12px;
+    font-size:16px;
+  }
+  .chat-header .title{ font-size:16px; }
+
+  /* окно чата = почти весь экран */
+  .chat-window{
+    height:calc(100vh - 140px); /* 140 px примерно = шапка + инпут + системные бары */
+    min-height:auto;
+    border-radius:8px;
+  }
+
+  /* сообщения плотнее */
+  .messages{ padding:10px; gap:8px; }
+  .message{ max-width:85%; font-size:15px; }
+
+  /* компоновка поля ввода */
+  .composer{ padding:8px; gap:6px; }
+  .text-input{ font-size:16px; padding:8px 10px; }
+
+  /* панель эмодзи подстраивается под экран */
+  .emoji-panel{
+    right:8px;
+    left:8px;
+    width:auto;
+    bottom:72px;
+  }
 }
