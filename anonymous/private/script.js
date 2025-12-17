@@ -715,20 +715,15 @@ async function handlePageExit() {
 
   await Promise.all(promises);   // дождёмся, пока Firestore примет запрос
 }
-
 async function handlePageReturn() {
-  cleaning = false; 
-  if (!roomRef) {                       // в комнате не находимся
-    if (searchCancelled) {
-      searchCancelled = false;          // ← сбросить флаг!
-    }
+  cleaning = false;
 
-    if (!myWaitingRef) {                // ссылки нет – создаём заново
+  if (!roomRef) {                       // не в комнате
+    if (searchCancelled) return;        // ← важно: пользователь сам отменил
+    if (!myWaitingRef) {
       startSearch();
       return;
     }
-
-    // ссылка есть, но документ может быть удалён – проверим
     const snap = await getDoc(myWaitingRef);
     if (!snap.exists()) {
       myWaitingRef = null;
