@@ -718,14 +718,18 @@ async function handlePageExit() {
 
 async function handlePageReturn() {
   if (!roomRef) {                       // в комнате не находимся
-    if (searchCancelled) return;   
-    if (!myWaitingRef) {                // и ссылки нет
-      startSearch();                    // точно создаём заново
+    if (searchCancelled) {
+      searchCancelled = false;          // ← сбросить флаг!
+    }
+
+    if (!myWaitingRef) {                // ссылки нет – создаём заново
+      startSearch();
       return;
     }
+
     // ссылка есть, но документ может быть удалён – проверим
     const snap = await getDoc(myWaitingRef);
-    if (!snap.exists()) {               // документа нет → создаём
+    if (!snap.exists()) {
       myWaitingRef = null;
       startSearch();
     }
