@@ -717,6 +717,7 @@ async function handlePageExit() {
 }
 
 async function handlePageReturn() {
+  cleaning = false; 
   if (!roomRef) {                       // в комнате не находимся
     if (searchCancelled) {
       searchCancelled = false;          // ← сбросить флаг!
