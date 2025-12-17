@@ -147,9 +147,9 @@ input, textarea, .text-input { font-size:16px !important; -webkit-text-size-adju
 @media (max-width: 480px) {
   /* возвращаем исходную высоту окна */
   .chat-window{
+    width:auto;            /* убираем 740px, растягивается на 100% родителя */
     height:64vh;
     min-height:420px;
-    width:auto;            /* растягивается на весь контейнер */
     border-radius:8px;
   }
 
