@@ -145,42 +145,34 @@
 input, textarea, .text-input { font-size:16px !important; -webkit-text-size-adjust:100%; }
 
 @media (max-width: 480px) {
-  /* обёртка = почти вся ширина, но с безопасными полями */
+  /* возвращаем исходную высоту окна */
+  .chat-window{
+    height:64vh;
+    min-height:420px;
+    width:auto;            /* растягивается на весь контейнер */
+    border-radius:8px;
+  }
+
+  /* шапка и обёртка без изменений */
   .chat-box{
     width:auto;
     margin:0 8px;
     gap:8px;
   }
-
-  /* шапка компактнее */
   .chat-header{
     padding:10px 12px;
     font-size:16px;
   }
   .chat-header .title{ font-size:16px; }
 
-  /* окно чата = фикс. высота, удобная под клавиатуру */
-  .chat-window{
-    width:100%;
-    height:420px;           /* ≈ 7-8 сообщений видно сразу */
-    min-height:unset;
-    max-height:420px;       /* запрещаем растягиваться */
-    border-radius:8px;
-  }
-
-  /* сообщения плотнее */
+  /* сообщения уже были настроены */
   .messages{ padding:10px; gap:8px; }
   .message{ max-width:85%; font-size:15px; }
 
-  /* поле ввода всегда внизу, не прилипает к краю */
   .composer{ padding:8px; gap:6px; }
   .text-input{ font-size:16px; padding:8px 10px; }
 
-  /* эмодзи-панель по ширине экрана */
   .emoji-panel{
-    right:8px;
-    left:8px;
-    width:auto;
-    bottom:72px;
+    right:8px; left:8px; width:auto; bottom:72px;
   }
 }
