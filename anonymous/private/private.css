@@ -84,7 +84,10 @@
   word-break:break-word;
   box-shadow:0 2px 6px rgba(0,0,0,0.25);
 }
-.message.own{ background:linear-gradient(90deg,var(--accent),#2bd1ff); color:#000; }
+.message.own{ 
+  background:#1f1f1f;   /* тёмно-серый, но светлее чистого чёрного */
+  color:#e0e0e0;        /* светло-серый текст для контраста */
+}
 
 .msg-row{ display:flex; gap:10px; align-items:flex-end }
 .msg-row.own { flex-direction: row-reverse; }
