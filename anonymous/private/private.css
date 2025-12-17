@@ -2,12 +2,13 @@
 :root { -webkit-text-size-adjust: 100%; }
 
 .private-container{
-  max-width: 980px;
-  margin: 24px auto;
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-  padding: 0 18px;
+  max-width:980px;
+  margin:24px auto;
+  display:flex;
+  flex-direction:column;
+  gap:18px;
+  padding:0 18px;
+  align-items:center;   /* центрируем внутри контейнера */
 }
 
 .chat-header{
@@ -54,18 +55,21 @@
 @keyframes spin{to{transform:rotate(360deg)}}
 
 .chat-window{
-  width:100%;          /* занять всё доступное пространство контейнера */
-  max-width:740px;     /* не даём разрастаться больше 740 px (можно свое) */
-  margin:0 auto;       /* центрируем по горизонтали */
-  height:64vh;         /* фиксированная высота */
+  width:740px;         /* жёсткая ширина, не 100 % */
+  height:64vh;
   min-height:420px;
+  margin:0 auto;       /* центрируем по горизонтали */
   display:flex;
   flex-direction:column;
   gap:12px;
   border-radius:10px;
-  overflow:hidden;     /* всё, что выходит за рамки, скрыто */
+  overflow:hidden;
   border:1px solid var(--border);
   background:linear-gradient(180deg,#0f1112,#0b0b0b);
+
+  resize:none;
+  max-width:none;
+  min-width:none;
 }
 
 .messages{
