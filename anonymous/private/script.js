@@ -693,33 +693,44 @@ function endChatUI(){
     } catch(e){}
   });
 
-// Удаление при уходе со страницы (мобильная и десктопная)
+/* 1. определяем один раз */
+const isMobile = /Android|iPhone|iPad|iPod|Opera Mini|IEMobile/i.test(navigator.userAgent);
+
+/* 2. уход со страницы */
 async function handlePageExit() {
-  if (cleaning) return;                       // уже уходим – выходим
+  if (cleaning) return;
   cleaning = true;
 
   const isInSearch = !chatClosed && !roomRef && myWaitingRef;
-  console.log("[handlePageExit]", { chatClosed, roomRef: !!roomRef, myWaitingRef: !!myWaitingRef, isInSearch });
+  console.log('[handlePageExit]', { isMobile, isInSearch });
 
   const promises = [];
 
-  if (isInSearch && myWaitingRef) {
+  /* удаляем waiting только на мобильном */
+  if (isMobile && isInSearch && myWaitingRef) {
     promises.push(deleteDoc(myWaitingRef).catch(() => {}));
     clearRoomStorage();
     myWaitingRef = null;
   }
 
+  /* presence убираем всегда – он всё равно быстро восстановится */
   if (roomRef && uid) {
     promises.push(deleteDoc(doc(roomRef, 'presence', uid)).catch(() => {}));
   }
 
-  await Promise.all(promises);   // дождёмся, пока Firestore примет запрос
+  await Promise.all(promises);
 }
+
+/* 3. возврат на страницу */
 async function handlePageReturn() {
   cleaning = false;
 
-  if (!roomRef) {                       // не в комнате
-    if (searchCancelled) return;        // ← важно: пользователь сам отменил
+  if (!roomRef) {
+    /* на ПК ничего не делаем – поиск и так продолжается */
+    if (!isMobile) return;
+
+    /* ниже только для мобильного сценария */
+    if (searchCancelled) return;
     if (!myWaitingRef) {
       startSearch();
       return;
