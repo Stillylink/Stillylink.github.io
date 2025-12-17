@@ -702,7 +702,6 @@ async function handlePageExit() {
   cleaning = true;
 
   const isInSearch = !chatClosed && !roomRef && myWaitingRef;
-  console.log('[handlePageExit]', { isMobile, isInSearch });
 
   const promises = [];
 
