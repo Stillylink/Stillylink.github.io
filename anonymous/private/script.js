@@ -77,8 +77,12 @@ window.addEventListener("DOMContentLoaded", () => {
 logoutBtn?.addEventListener("click", async e => {
     e.preventDefault();
     try {
+        await clearAllListenersAndState();
+        clearRoomStorage();
+
         await auth.signOut();
         localStorage.removeItem("userAvatarLetter");
+
         window.location.reload();
     } catch (err) {
         console.error('logout error', err);
