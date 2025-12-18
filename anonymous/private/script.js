@@ -269,18 +269,23 @@ function clearMessages(){ messagesEl.innerHTML = ''; }
     photoInput.value = '';
   });
 
-  sendBtn.addEventListener('click', ()=>{
-    const txt = textInput.value.trim();
-    if(!txt) return;
-    sendMessageToRoom(txt, 'text').then(()=>{ textInput.value = ''; });
+sendBtn.addEventListener('click', ()=>{
+  const txt = textInput.value.trim();
+  if(!txt) return;
+  sendMessageToRoom(txt, 'text').then(()=>{
+    textInput.value = '';
+    textInput.style.width = '0px';
+    textInput.style.width = '';
+    textInput.focus();
   });
+});
 
-  textInput.addEventListener('keydown', (e)=>{
-    if(e.key === 'Enter' && !e.shiftKey){
-      e.preventDefault();
-      sendBtn.click();
-    }
-  });
+textInput.addEventListener('keydown', (e)=>{
+  if(e.key === 'Enter' && !e.shiftKey){
+    e.preventDefault();
+    sendBtn.click();
+  }
+});
 
   emojiBtn.addEventListener('click', (e)=>{
     emojiPanel.classList.toggle('hidden');
