@@ -65,7 +65,6 @@
   gap:12px;
 }
 
-
 .chat-window{
   height:64vh;
   min-height:420px;
@@ -111,14 +110,23 @@
 .msg-row .avatar{ width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#000;color:#fff;font-weight:700 }
 .msg-meta{ font-size:12px; color:var(--text-secondary); margin-top:6px }
 
-.composer{
-  display:flex;
-  gap:8px;
-  align-items:flex-end;
-  padding:12px;
-  border-top:1px solid rgba(255,255,255,0.03);
-  background:linear-gradient(180deg,#0d0d0d,#0b0b0b);
+.composer {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+  padding: 12px;
+  border-top: 1px solid rgba(255,255,255,.03);
+  background: linear-gradient(180deg,#0d0d0d,#0b0b0b);
 }
+
+.chat-window.hidden + .composer,
+.composer.hidden {
+  display: none;
+}
+
 .text-input{
   flex:1 1 auto;
   min-height:44px;
@@ -151,6 +159,10 @@ input, textarea, .text-input { font-size:16px !important; -webkit-text-size-adju
     height:64vh;
     min-height:420px;
     border-radius:8px;
+  }
+
+    .chat-window.hidden {
+    display: none;
   }
 
   /* шапка и обёртка без изменений */
