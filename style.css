@@ -22,14 +22,23 @@
 }
 
 /* ======== ОБЩИЙ ФОН САЙТА ======== */
+html, body {
+  height: 100%;
+  overflow: hidden;
+}
+
 body {
     background: var(--bg-page);
     color: var(--text-main);
-    min-height: 100vh;
     display: flex;
     flex-direction: column;
 }
 
+main.private-container {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
 /* ======== НАВИГАЦИЯ ======== */
 .navbar {
     display: flex;
