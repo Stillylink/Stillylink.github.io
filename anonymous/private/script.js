@@ -194,20 +194,21 @@ if (isRealUser) {
     localStorage.removeItem("userAvatarLetter");
 }
 
-    const saved = loadRoomFromStorage();
-    if(saved.roomId){
-        const rRef = doc(db, 'rooms', saved.roomId);
-        getDoc(rRef).then(snap=>{
-            if(snap.exists() && !snap.data().closed){
-                roomRef = rRef; roomId = saved.roomId; partnerId = saved.partnerId;
-                connectToRoom(roomRef);
-            }else{
-                clearRoomStorage(); startSearch();
-            }
-        });
-    } else {
-        startSearch();
-    }
+const saved = loadRoomFromStorage();
+if(saved.roomId){
+    const rRef = doc(db, 'rooms', saved.roomId);
+    getDoc(rRef).then(snap=>{
+        if(snap.exists() && !snap.data().closed){
+            roomRef = rRef; roomId = saved.roomId; partnerId = saved.partnerId;
+            connectToRoom(roomRef);
+        }else{
+            clearRoomStorage(); startSearch();
+        }
+    });
+} else {
+    // 🔥 Новое: проверяем, не потеряли ли мы комнату из-за инкогнито
+    tryCloseRoomIfUserLost().then(() => startSearch());
+}
 });
 
 function clearMessages(){ messagesEl.innerHTML = ''; }
@@ -720,12 +721,38 @@ async function handlePageExit() {
   await Promise.all(promises);
 }
 
+
+async function tryCloseRoomIfUserLost() {
+  if (cleaning) return;
+
+  const saved = loadRoomFromStorage();
+  if (saved.roomId) return; //
+
+  if (!roomRef || !roomId) {
+    try {
+      const q = query(collection(db, 'rooms'), where('participants', 'array-contains', uid), where('closed', '==', false));
+      const snap = await getDocs(q);
+      for (const d of snap.docs) {
+        const rRef = d.ref;
+        const data = d.data();
+        const otherId = data.participants.find(p => p !== uid);
+        if (otherId) {
+          await updateDoc(rRef, { closed: true });
+          console.warn('Комната закрыта из-за потери localStorage (инкогнито)');
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn('Ошибка при попытке закрыть комнату без localStorage:', e);
+    }
+  }
+}
+
+
 async function handlePageReturn() {
   cleaning = false;
-
   if (!roomRef) {
     if (!isMobile) return;
-
     if (searchCancelled) return;
     if (!myWaitingRef) {
       startSearch();
@@ -735,7 +762,9 @@ async function handlePageReturn() {
     if (!snap.exists()) {
       myWaitingRef = null;
       startSearch();
+      return;
     }
+    await tryCloseRoomIfUserLost();
   }
 }
 
