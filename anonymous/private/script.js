@@ -726,25 +726,33 @@ async function tryCloseRoomIfUserLost() {
   if (cleaning) return;
 
   const saved = loadRoomFromStorage();
-  if (saved.roomId) return; //
+  if (saved.roomId) return;
 
-  if (!roomRef || !roomId) {
-    try {
-      const q = query(collection(db, 'rooms'), where('participants', 'array-contains', uid), where('closed', '==', false));
-      const snap = await getDocs(q);
-      for (const d of snap.docs) {
-        const rRef = d.ref;
-        const data = d.data();
-        const otherId = data.participants.find(p => p !== uid);
-        if (otherId) {
-          await updateDoc(rRef, { closed: true });
-          console.warn('Комната закрыта из-за потери localStorage (инкогнито)');
-          return;
-        }
+  try {
+    const q = query(collection(db, 'rooms'), where('participants', 'array-contains', uid), where('closed', '==', false));
+    const snap = await getDocs(q);
+
+    for (const d of snap.docs) {
+      const rRef = d.ref;
+      const data = d.data();
+      const parts = data.participants || [];
+      const otherId = parts.find(p => p !== uid);
+
+      const newParts = parts.filter(p => p !== uid);
+      await updateDoc(rRef, { participants: newParts });
+
+      await deleteDoc(doc(rRef, 'presence', uid)).catch(() => {});
+
+      if (newParts.length === 0) {
+        await deleteRoomFully(rRef);
+      } else {
+        await updateDoc(rRef, { closed: true });
       }
-    } catch (e) {
-      console.warn('Ошибка при попытке закрыть комнату без localStorage:', e);
+
+      console.warn('Пользователь удалён из комнаты (инкогнито)', rRef.id);
     }
+  } catch (e) {
+    console.warn('Ошибка при удалении себя из комнаты:', e);
   }
 }
 
