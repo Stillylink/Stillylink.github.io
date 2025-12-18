@@ -5,10 +5,8 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Анонимный чат — Private</title>
 
-  <!-- Основные стили -->
   <link rel="stylesheet" href="/style.css">
 
-  <!-- Локальные стили (были внутри HTML, оставляем как отдельный файл) -->
   <link rel="stylesheet" href="private.css">
 </head>
 
@@ -48,7 +46,6 @@
     </div>
   </div>
 
-  <!-- Поисковый экран -->
   <div id="searchScreen" class="searching hidden">
     <div class="spinner"></div>
     <div style="text-align:center">
@@ -60,19 +57,18 @@
     </div>
   </div>
 
-<div id="chatWindow" class="chat-window hidden" aria-live="polite">
-  <div class="messages" id="messages" role="log" aria-live="polite"></div>
-</div>
+  <div id="chatWindow" class="chat-window hidden" aria-live="polite">
+    <div class="messages" id="messages" role="log" aria-live="polite"></div>
 
-<div class="composer">
-  <input type="file" id="photoInput" accept="image/*" class="hidden">
-  <button title="Добавить фото" class="tool-btn" id="photoBtn">📷</button>
-  <button title="Emoji" class="tool-btn" id="emojiBtn">😊</button>
-  <textarea id="textInput" class="text-input" placeholder="Сообщение"></textarea>
-  <button id="sendBtn" class="btn" style="width:auto;padding:10px 14px">Отправить</button>
-</div>
+    <div class="composer">
+      <input type="file" id="photoInput" accept="image/*" class="hidden">
+      <button title="Добавить фото" class="tool-btn" id="photoBtn">📷</button>
+      <button title="Emoji" class="tool-btn" id="emojiBtn">😊</button>
+      <textarea id="textInput" class="text-input" placeholder="Сообщение"></textarea>
+      <button id="sendBtn" class="btn" style="width:auto;padding:10px 14px">Отправить</button>
+    </div>
+  </div>
 
-  <!-- Экран после завершения -->
   <div id="endScreen" class="card hidden end-screen">
     <div style="font-size:18px;color:var(--accent);font-weight:700">Чат завершен</div>
     <div style="color:var(--text-secondary)">Вы можете начать новый чат или выйти обратно на страницу анонимных.</div>
@@ -82,7 +78,6 @@
     </div>
   </div>
 
-  <!-- Модальное окно -->
   <div id="modal" class="hidden">
     <div class="modal-backdrop">
       <div class="modal" role="dialog" aria-modal="true">
@@ -96,7 +91,6 @@
     </div>
   </div>
 
-  <!-- Эмодзи -->
   <div id="emojiPanel" class="emoji-panel hidden" aria-hidden="true">
     <button class="tool-btn emoji">😀</button>
     <button class="tool-btn emoji">😂</button>
