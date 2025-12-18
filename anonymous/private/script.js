@@ -151,7 +151,7 @@ document.addEventListener("click", e => {
   function hide(el){ el.classList.add('hidden'); }
 
 
-// =================== ХРАНИЛИЩЕ КОМНАТЫ =====================
+// =================== ХРАНИЛИЩЕ КОМНАТЫ ====================
   function saveRoomToStorage(rId, pId){
     if(rId) localStorage.setItem('roomId', rId);
     else localStorage.removeItem('roomId');
@@ -194,21 +194,20 @@ if (isRealUser) {
     localStorage.removeItem("userAvatarLetter");
 }
 
-const saved = loadRoomFromStorage();
-if(saved.roomId){
-    const rRef = doc(db, 'rooms', saved.roomId);
-    getDoc(rRef).then(snap=>{
-        if(snap.exists() && !snap.data().closed){
-            roomRef = rRef; roomId = saved.roomId; partnerId = saved.partnerId;
-            connectToRoom(roomRef);
-        }else{
-            clearRoomStorage(); startSearch();
-        }
-    });
-} else {
-    // 🔥 Новое: проверяем, не потеряли ли мы комнату из-за инкогнито
-    tryCloseRoomIfUserLost().then(() => startSearch());
-}
+    const saved = loadRoomFromStorage();
+    if(saved.roomId){
+        const rRef = doc(db, 'rooms', saved.roomId);
+        getDoc(rRef).then(snap=>{
+            if(snap.exists() && !snap.data().closed){
+                roomRef = rRef; roomId = saved.roomId; partnerId = saved.partnerId;
+                connectToRoom(roomRef);
+            }else{
+                clearRoomStorage(); startSearch();
+            }
+        });
+    } else {
+        startSearch();
+    }
 });
 
 function clearMessages(){ messagesEl.innerHTML = ''; }
@@ -270,23 +269,18 @@ function clearMessages(){ messagesEl.innerHTML = ''; }
     photoInput.value = '';
   });
 
-sendBtn.addEventListener('click', ()=>{
-  const txt = textInput.value.trim();
-  if(!txt) return;
-  sendMessageToRoom(txt, 'text').then(()=>{
-    textInput.value = '';
-    textInput.style.display = 'none';
-    textInput.offsetHeight;
-    textInput.style.display = '';
+  sendBtn.addEventListener('click', ()=>{
+    const txt = textInput.value.trim();
+    if(!txt) return;
+    sendMessageToRoom(txt, 'text').then(()=>{ textInput.value = ''; });
   });
-});
 
-textInput.addEventListener('keydown', (e)=>{
-  if(e.key === 'Enter' && !e.shiftKey){
-    e.preventDefault();
-    sendBtn.click();
-  }
-});
+  textInput.addEventListener('keydown', (e)=>{
+    if(e.key === 'Enter' && !e.shiftKey){
+      e.preventDefault();
+      sendBtn.click();
+    }
+  });
 
   emojiBtn.addEventListener('click', (e)=>{
     emojiPanel.classList.toggle('hidden');
@@ -721,46 +715,12 @@ async function handlePageExit() {
   await Promise.all(promises);
 }
 
-
-async function tryCloseRoomIfUserLost() {
-  if (cleaning) return;
-
-  const saved = loadRoomFromStorage();
-  if (saved.roomId) return;
-
-  try {
-    const q = query(collection(db, 'rooms'), where('participants', 'array-contains', uid), where('closed', '==', false));
-    const snap = await getDocs(q);
-
-    for (const d of snap.docs) {
-      const rRef = d.ref;
-      const data = d.data();
-      const parts = data.participants || [];
-      const otherId = parts.find(p => p !== uid);
-
-      const newParts = parts.filter(p => p !== uid);
-      await updateDoc(rRef, { participants: newParts });
-
-      await deleteDoc(doc(rRef, 'presence', uid)).catch(() => {});
-
-      if (newParts.length === 0) {
-        await deleteRoomFully(rRef);
-      } else {
-        await updateDoc(rRef, { closed: true });
-      }
-
-      console.warn('Пользователь удалён из комнаты (инкогнито)', rRef.id);
-    }
-  } catch (e) {
-    console.warn('Ошибка при удалении себя из комнаты:', e);
-  }
-}
-
-
 async function handlePageReturn() {
   cleaning = false;
+
   if (!roomRef) {
     if (!isMobile) return;
+
     if (searchCancelled) return;
     if (!myWaitingRef) {
       startSearch();
@@ -770,9 +730,7 @@ async function handlePageReturn() {
     if (!snap.exists()) {
       myWaitingRef = null;
       startSearch();
-      return;
     }
-    await tryCloseRoomIfUserLost();
   }
 }
 
