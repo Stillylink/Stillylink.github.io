@@ -121,14 +121,6 @@ document.addEventListener("click", e => {
     userMenu.classList.remove("open");
 });
 
-function clearTextareaMobileSafe(el) {
-  el.value = '';
-  el.blur();
-
-  requestAnimationFrame(() => {
-    el.focus();
-  });
-}
 
   let uid = null;
   let isRealUser = false;
@@ -280,10 +272,7 @@ function clearMessages(){ messagesEl.innerHTML = ''; }
   sendBtn.addEventListener('click', ()=>{
     const txt = textInput.value.trim();
     if(!txt) return;
-    sendMessageToRoom(txt, 'text').then(()=>{
-    clearTextareaMobileSafe(textInput);
-   });
-
+    sendMessageToRoom(txt, 'text').then(()=>{ textInput.value = ''; });
   });
 
   textInput.addEventListener('keydown', (e)=>{
@@ -299,8 +288,8 @@ function clearMessages(){ messagesEl.innerHTML = ''; }
   });
   document.querySelectorAll('.emoji').forEach(b=>{
     b.addEventListener('click', ()=>{
-textInput.value = textInput.value + b.textContent;
-requestAnimationFrame(() => textInput.focus());
+      textInput.value += b.textContent;
+      textInput.focus();
     });
   });
   document.addEventListener('click', (e)=>{
