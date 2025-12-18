@@ -349,10 +349,3 @@ body {
         display: block;
     }
 }
-
-@media (max-width: 768px) {
-html {
-    overscroll-behavior: none;
-    background: var(--bg-page);
-}
-}
