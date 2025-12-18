@@ -74,17 +74,12 @@ window.addEventListener("DOMContentLoaded", () => {
         regBtn?.classList.remove("hidden");
         avatar?.classList.add("hidden");
     }
-
 logoutBtn?.addEventListener("click", async e => {
     e.preventDefault();
     try {
         await auth.signOut();
         localStorage.removeItem("userAvatarLetter");
-        regBtn?.classList.remove("hidden");
-        avatar?.classList.add("hidden");
-        await clearAllListenersAndState();
-        clearRoomStorage();
-        startSearch();
+        window.location.reload();
     } catch (err) {
         console.error('logout error', err);
     }
@@ -128,12 +123,12 @@ document.addEventListener("click", e => {
   let partnerId = null;
   let messagesUnsub = null;
   let waitingUnsub = null;
-  let roomMetaUnsub = null;   // ← новый слушатель мета-данных комнатыв
+  let roomMetaUnsub = null;
   let presenceUnsub = null;
   let presenceHeartbeatInterval = null;
   let chatClosed = false;
-  let cleaning = false;               // чтобы не гонять запросы
-  let searchCancelled = false;   // пользователь сам отменил поиск
+  let cleaning = false;
+  let searchCancelled = false;
 
   let waitingHeartbeatInterval = null;
   let cleanupWaitingInterval = null;
@@ -171,14 +166,12 @@ document.addEventListener("click", e => {
 
 onAuthStateChanged(auth, user => {
     if (!user) {
-        // совсем нет акка – анонимно, НО не показываем в UI
         signInAnonymously(auth);
         return;
     }
 
     uid = user.uid;
 
-    // считаем «реальным» только если у него есть email
     isRealUser = !!user.email;
 
 if (isRealUser) {
@@ -193,7 +186,6 @@ if (isRealUser) {
     localStorage.removeItem("userAvatarLetter");
 }
 
-    // дальше одинаково для всех
     const saved = loadRoomFromStorage();
     if(saved.roomId){
         const rRef = doc(db, 'rooms', saved.roomId);
@@ -481,7 +473,7 @@ roomMetaUnsub = onSnapshot(roomRef, (snap) => {
       messagesUnsub();
       messagesUnsub = null;
     }
-    endChatUI();               // теперь показываем финальный экран
+    endChatUI();
   } else {
     const participants = snap.data().participants || [];
     partnerId = participants.find(p => p !== uid) || null;
@@ -492,7 +484,7 @@ roomMetaUnsub = onSnapshot(roomRef, (snap) => {
       const messagesCol = collection(roomRef, 'messages');
       const msgsQuery = query(messagesCol, orderBy('createdAt'));
     messagesUnsub = onSnapshot(msgsQuery, (snap) => {
-     if(chatClosed) return;   // <-- добавили
+     if(chatClosed) return;
      messagesEl.innerHTML = '';
      snap.docs.forEach(d => {
        addMessageToUI(d.data());
@@ -572,24 +564,18 @@ roomMetaUnsub = onSnapshot(roomRef, (snap) => {
   }
 
 async function finishChat() {
-  // 1. Показываем экран завершения на своей стороне немедленно
   endChatUI();
 
-  // 2. Ставим room.closed = true (оба клиента сразу увидят закрытие)
   if (roomRef) {
     await updateDoc(roomRef, { closed: true }).catch(()=>{});
   }
 
-  // 3. Останавливаем прослушку, чтобы не видеть удаление сообщений
   if (messagesUnsub) { messagesUnsub(); messagesUnsub = null; }
 
-  // 4. Сохраняем сохранённое roomId, чтобы очистки не запустились повторно
   clearRoomStorage();
 
-  // 5. Задержка, чтобы второй пользователь тоже успел переключиться на экран завершения
   setTimeout(async () => {
     if (roomRef) {
-      // чистим waiting
       const snap = await getDoc(roomRef);
       if (snap.exists()) {
         const parts = snap.data().participants || [];
@@ -598,21 +584,19 @@ async function finishChat() {
         }
       }
 
-      // удаляем подколлекции
       const msgsSnap = await getDocs(collection(roomRef, 'messages'));
       for (const m of msgsSnap.docs) await deleteDoc(m.ref).catch(()=>{});
 
       const presSnap = await getDocs(collection(roomRef, 'presence'));
       for (const p of presSnap.docs) await deleteDoc(p.ref).catch(()=>{});
 
-      // удаляем комнату
       await deleteDoc(roomRef).catch(()=>{});
     }
   }, 300);
 }
 
 function endChatUI(){
-  connectedStopUI();          // просто показать экран «Чат завершён»
+  connectedStopUI();
   statusText.textContent = 'Чат завершен';
 }
 
@@ -669,7 +653,6 @@ function endChatUI(){
   }
 
   async function fullRoomCleanup(){
-    // только best-effort убрать свою presence
     if(roomRef && uid){
       await deleteDoc(doc(roomRef,'presence',uid)).catch(()=>{});
     }
@@ -701,10 +684,8 @@ function endChatUI(){
     } catch(e){}
   });
 
-/* 1. определяем один раз */
 const isMobile = /Android|iPhone|iPad|iPod|Opera Mini|IEMobile/i.test(navigator.userAgent);
 
-/* 2. уход со страницы */
 async function handlePageExit() {
   if (cleaning) return;
   cleaning = true;
@@ -713,14 +694,12 @@ async function handlePageExit() {
 
   const promises = [];
 
-  /* удаляем waiting только на мобильном */
   if (isMobile && isInSearch && myWaitingRef) {
     promises.push(deleteDoc(myWaitingRef).catch(() => {}));
     clearRoomStorage();
     myWaitingRef = null;
   }
 
-  /* presence убираем всегда – он всё равно быстро восстановится */
   if (roomRef && uid) {
     promises.push(deleteDoc(doc(roomRef, 'presence', uid)).catch(() => {}));
   }
@@ -728,15 +707,12 @@ async function handlePageExit() {
   await Promise.all(promises);
 }
 
-/* 3. возврат на страницу */
 async function handlePageReturn() {
   cleaning = false;
 
   if (!roomRef) {
-    /* на ПК ничего не делаем – поиск и так продолжается */
     if (!isMobile) return;
 
-    /* ниже только для мобильного сценария */
     if (searchCancelled) return;
     if (!myWaitingRef) {
       startSearch();
@@ -752,9 +728,9 @@ async function handlePageReturn() {
 
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') {
-    handlePageExit();          // старый код – удалили при сворачивании
+    handlePageExit();
   } else {
-    handlePageReturn();        // ← новый код – вернулись
+    handlePageReturn();
   }
 });
 
@@ -784,11 +760,11 @@ exitBtn.addEventListener('click', function (e) {
   handlePageExit();
 
   const target = '/anonymous/';
-  window.location.replace(target);   // или location.href = target;
+  window.location.replace(target);
 
   fullRoomCleanup().catch(() => {});
   clearAllListenersAndState().catch(() => {});
-  clearRoomStorage();                // синхронно
+  clearRoomStorage();
 });
 
 
@@ -801,27 +777,23 @@ async function deleteRoomFully(roomRef) {
 
         const participants = snap.data().participants || [];
 
-        // Удаляем из waiting
         for (const uid of participants) {
             await deleteDoc(doc(db, 'waiting', uid)).catch(() => {});
         }
 
-        // Удаляем сообщения
         const msgs = await getDocs(collection(roomRef, "messages"));
         for (const m of msgs.docs) {
             await deleteDoc(m.ref).catch(() => {});
         }
 
-        // Удаляем presence
         const pres = await getDocs(collection(roomRef, "presence"));
         for (const p of pres.docs) {
             await deleteDoc(p.ref).catch(() => {});
         }
 
-        // Удаляем саму комнату
         await deleteDoc(roomRef).catch(() => {});
 
-        console.log("🔥 Комната и пользователи удалены автоматически:", roomRef.id);
+        console.log("Комната и пользователи удалены автоматически:", roomRef.id);
     } catch (e) {
         console.warn("Ошибка авто-удаления:", e);
     }
@@ -837,17 +809,14 @@ async function cleanupRoomsByInactivity() {
             const data = d.data();
             const roomRef = d.ref;
 
-            // 0.1. Не трогаем комнаты, созданные менее 2 минут назад
             const created = data.createdAt?.toMillis?.() || 0;
             if (now - created < 2 * 60 * 1000) continue;
 
-            // 1. Удаляем закрытые комнаты
             if (data.closed === true) {
                 await deleteRoomFully(roomRef);
                 continue;
             }
 
-            // 2. Проверяем последнюю активность
             let lastActive = 0;
 
             const msgs = await getDocs(
@@ -859,7 +828,6 @@ async function cleanupRoomsByInactivity() {
 
             if (!lastActive) lastActive = created;
 
-            // 3. Неактивна >20 минут — удаляем
             if (now - lastActive > 20 * 60 * 1000) {
                 await deleteRoomFully(roomRef);
             }
@@ -872,20 +840,20 @@ async function cleanupRoomsByInactivity() {
 // ========== УДАЛЕНИЕ ЗАВИСШИХ В ОЧЕРЕДИ ==========
 async function cleanupStaleWaitingUsers() {
   try {
-    const q = query(collection(db, 'waiting'), limit(50));   // берём первые 50
+    const q = query(collection(db, 'waiting'), limit(50));
     const snap = await getDocs(q);
     const now = Date.now();
 
     for (const d of snap.docs) {
       const data = d.data();
-      if (data.claimed === true) continue;                 // уже в комнате – пропускаем
+      if (data.claimed === true) continue;
 
       const ls = data.lastSeen?.toMillis?.() || 0;
-      if (!ls) continue;                                   // нет метки – пропускаем
+      if (!ls) continue;
 
-      if (now - ls > WAITING_STALE_MS) {                   // WAITING_STALE_MS = 30 000 (у вас уже есть)
-        await deleteDoc(d.ref).catch(() => {});            // удаляем зависшего
-        console.log('🧹 удалён зависший пользователь из waiting:', d.id);
+      if (now - ls > WAITING_STALE_MS) {
+        await deleteDoc(d.ref).catch(() => {});
+        console.log('удалён зависший пользователь из waiting:', d.id);
       }
     }
   } catch (e) {
@@ -893,13 +861,11 @@ async function cleanupStaleWaitingUsers() {
   }
 }
 
-// общий таймер: и комнаты, и зависших в очереди
 setInterval(() => {
   cleanupRoomsByInactivity();
   cleanupStaleWaitingUsers();
 }, 5 * 60 * 1000);
 
-// первый запуск через 20 с
 setTimeout(() => {
   cleanupRoomsByInactivity();
   cleanupStaleWaitingUsers();
