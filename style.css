@@ -39,7 +39,6 @@ body {
     background: var(--bg-card);
     border-bottom: 1px solid var(--border);
     position: sticky;
-    top: 100vh; 
     z-index: 100;
 }
 
@@ -337,6 +336,8 @@ body {
     text-align: center;
     color: var(--text-secondary);
     font-size: 14px;
+    position: sticky;
+    top: 100vh; 
 }
 
 /* ======== АДАПТИВ ======== */
