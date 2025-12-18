@@ -351,30 +351,18 @@ body {
 }
 
 @media (max-width: 768px) {
-  html,body{
-    height:100%;
-    overflow:hidden;
+  .navbar{
+    position:fixed;
+    top:0; left:0; right:0;
+    z-index:1000;
   }
-  .site-wrapper{
-    height:100%;
-    overflow-y:auto;
-    -webkit-overflow-scrolling:touch;
+  .footer{
+    position:fixed;
+    bottom:0; left:0; right:0;
+    z-index:1000;
   }
-  html{background:var(--bg-card);}
-
-.navbar{
-  position:fixed;
-  top:0; left:0; right:0;
-  z-index:1000;
+  body{
+    padding-top:60px;
+    padding-bottom:60px;
+  }
 }
-.footer{
-  position:fixed;
-  bottom:0; left:0; right:0;
-  z-index:1000;
-}
-
-.site-wrapper{
-  padding-top:60px;
-  padding-bottom:60px;
-}
-    }
