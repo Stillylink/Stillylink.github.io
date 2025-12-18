@@ -9,7 +9,7 @@
 /* ======== ГЛАВНЫЕ ЦВЕТА ======== */
 :root {
     --bg-dark: #111214;
-    --bg-page: #ffffff;     /* новый мягкий тёмно-серый фон */
+    --bg-page: #ffffff;
     --bg-card: #1a1c1f;
     --bg-hover: #222327;
 
@@ -22,29 +22,21 @@
 }
 
 /* ======== ОБЩИЙ ФОН САЙТА ======== */
-html, body {
-  height: 100%;
-  overflow: hidden;
-}
-
 body {
     background: var(--bg-page);
     color: var(--text-main);
+    min-height: 100vh;
     display: flex;
     flex-direction: column;
+    overscroll-behavior: none;
 }
 
-main.private-container {
-  flex: 1 1 auto;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-}
 /* ======== НАВИГАЦИЯ ======== */
 .navbar {
     display: flex;
     align-items: center;
-    height: 60px;        /* фиксированная высота */
-    padding: 0 20px;     /* только горизонтальный отступ */
+    height: 60px;
+    padding: 0 20px;
     background: var(--bg-card);
     border-bottom: 1px solid var(--border);
     position: sticky;
@@ -123,7 +115,7 @@ main.private-container {
 
 /* ======== HERO-БЛОК ======== */
 .hero {
-    background: var(--bg-dark);       /* остаётся тёмным */
+    background: var(--bg-dark);
     padding: 70px 20px;
     text-align: center;
     color: var(--text-main);
@@ -318,7 +310,6 @@ main.private-container {
 }
 @media (max-width: 768px) {
 
-    /* бургер слева — аватарка справа */
     .navbar {
         justify-content: space-between;
     }
