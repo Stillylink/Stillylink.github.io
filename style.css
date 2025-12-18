@@ -336,9 +336,9 @@ body {
     text-align: center;
     color: var(--text-secondary);
     font-size: 14px;
-    position: sticky;
-    top: 100vh; 
 }
+
+.site-wrapper { flex: 1 0 auto; }
 
 /* ======== АДАПТИВ ======== */
 @media (max-width: 768px) {
