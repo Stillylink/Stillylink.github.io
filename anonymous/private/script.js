@@ -269,18 +269,21 @@ function clearMessages(){ messagesEl.innerHTML = ''; }
     photoInput.value = '';
   });
 
-  sendBtn.addEventListener('click', ()=>{
+sendBtn.addEventListener('click', ()=>{
     const txt = textInput.value.trim();
     if(!txt) return;
-    sendMessageToRoom(txt, 'text').then(()=>{ textInput.value = ''; });
-  });
+    sendMessageToRoom(txt, 'text').then(()=>{
+        textInput.value = '';
+        textInput.style.height = '';
+    });
+});
 
-  textInput.addEventListener('keydown', (e)=>{
+textInput.addEventListener('keydown', (e)=>{
     if(e.key === 'Enter' && !e.shiftKey){
-      e.preventDefault();
-      sendBtn.click();
+        e.preventDefault();
+        sendBtn.click();
     }
-  });
+});
 
   emojiBtn.addEventListener('click', (e)=>{
     emojiPanel.classList.toggle('hidden');
