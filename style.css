@@ -350,48 +350,47 @@ body {
     }
 }
 
-/* ---------- мобильный фикс овер-скролла ---------- */
 @media (max-width: 768px) {
-.navbar {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 60px;
-  z-index: 1000;
-}
-.footer {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 52px;
-  z-index: 1000;
-}
-html {
-  background: var(--bg-card)
-}
-body {
-  overscroll-behavior-y: contain;
-}
-.site-wrapper {
-  padding-top: 60px;  /* высота navbar */
-  padding-bottom: 52px; /* высота footer */
-}
-.private-container {
-  min-height: calc(100vh - 60px - 52px);
-  display: flex;
-  flex-direction: column;
-}
-.chat-box {
-  flex: 1 1 auto;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-.messages {
-  flex: 1 1 auto;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-}
+  html {
+    background: var(--bg-card);
+    overscroll-behavior: none;
+  }
+
+  .navbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 60px;
+    z-index: 1000;
+  }
+  .footer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 52px;
+    z-index: 1000;
+  }
+  .site-wrapper {
+    padding-top: 60px;
+    padding-bottom: 52px;
+  }
+
+  .private-container {
+    min-height: calc(100vh - 60px - 52px);
+    display: flex;
+    flex-direction: column;
+  }
+  .chat-box {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .messages {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
 }
