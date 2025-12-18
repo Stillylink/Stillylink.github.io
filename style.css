@@ -351,46 +351,32 @@ body {
 }
 
 @media (max-width: 768px) {
-  html {
-    background: var(--bg-card);
+html {
+    background: var(--bg-page);
     overscroll-behavior: none;
-  }
+}
 
-  .navbar {
+.navbar {
     position: fixed;
     top: 0;
     left: 0;
     right: 0;
     height: 60px;
-    z-index: 1000;
-  }
-  .footer {
+    z-index: 100;
+}
+
+.footer {
     position: fixed;
     bottom: 0;
     left: 0;
     right: 0;
-    height: 52px;
-    z-index: 1000;
-  }
-  .site-wrapper {
-    padding-top: 60px;
-    padding-bottom: 52px;
-  }
+    z-index: 100;
+}
 
-  .private-container {
-    min-height: calc(100vh - 60px - 52px);
-    display: flex;
-    flex-direction: column;
-  }
-  .chat-box {
-    flex: 1 1 auto;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
-  .messages {
-    flex: 1 1 auto;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-  }
+.site-wrapper {
+    padding-top: 60px;
+    padding-bottom: 60px;
+    min-height: 100vh;
+    box-sizing: border-box;
+}
 }
