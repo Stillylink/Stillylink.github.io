@@ -118,15 +118,21 @@
   border-top:1px solid rgba(255,255,255,0.03);
   background:linear-gradient(180deg,#0d0d0d,#0b0b0b);
 }
-.text-input{
-  flex:1 1 auto;
-  min-height:44px;
-  max-height:140px;
-  padding:10px 12px;
-  border-radius:10px;
-  resize:none;
-  border:1px solid var(--border);
-  background:#0f1112;color:var(--text-main);font-size:16px;outline:none;
+.text-input {
+  /* ваши текущие правила */
+  flex: 1 1 auto;
+  min-height: 44px;
+  max-height: 140px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  resize: none;
+  border: 1px solid var(--border);
+  background: #0f1112;
+  color: var(--text-main);
+  font-size: 16px;
+  outline: none;
+  height: auto;
+  field-sizing: content;
 }
 .tool-btn{ padding:8px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text-secondary);cursor:pointer }
 .tool-btn:hover{ color:var(--accent) }
