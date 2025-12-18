@@ -352,31 +352,7 @@ body {
 
 @media (max-width: 768px) {
 html {
-    background: var(--bg-page);
     overscroll-behavior: none;
-}
-
-.navbar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 60px;
-    z-index: 100;
-}
-
-.footer {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    z-index: 100;
-}
-
-.site-wrapper {
-    padding-top: 60px;
-    padding-bottom: 60px;
-    min-height: 100vh;
-    box-sizing: border-box;
+    background: var(--bg-page);
 }
 }
