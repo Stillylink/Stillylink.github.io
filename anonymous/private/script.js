@@ -272,18 +272,24 @@ function clearMessages(){ messagesEl.innerHTML = ''; }
 sendBtn.addEventListener('click', ()=>{
   const txt = textInput.value.trim();
   if(!txt) return;
-  sendMessageToRoom(txt, 'text').then(()=>{
-    textInput.value = '';
-    textInput.style.display = 'none';
-    textInput.offsetHeight;
-    textInput.style.display = '';
-  });
+
+  textInput.value = '';
+  textInput.style.display = 'none';
+  textInput.offsetHeight;
+  textInput.style.display = '';
+
+  sendMessageToRoom(txt, 'text')
+    .catch(err => console.error(err));
 });
 
-textInput.addEventListener('keydown', (e)=>{
-  if(e.key === 'Enter' && !e.shiftKey){
+textInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault();
-    sendBtn.click();
+    const txt = textInput.value.trim();
+    if (!txt) return;
+    textInput.value = '';
+    sendMessageToRoom(txt, 'text')
+      .catch(err => console.error('send failed:', err));
   }
 });
 
