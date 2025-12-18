@@ -76,17 +76,21 @@ window.addEventListener("DOMContentLoaded", () => {
     }
 logoutBtn?.addEventListener("click", async e => {
     e.preventDefault();
-    try {
-        await clearAllListenersAndState();
-        clearRoomStorage();
 
-        await auth.signOut();
-        localStorage.removeItem("userAvatarLetter");
-
-        window.location.reload();
-    } catch (err) {
-        console.error('logout error', err);
+    if (roomRef && !chatClosed) {
+        chatClosed = true;
+        try {
+            await updateDoc(roomRef, { closed: true });
+        } catch (err) { /* silent */ }
     }
+
+    await clearAllListenersAndState();
+    clearRoomStorage();
+
+    await auth.signOut();
+    localStorage.removeItem("userAvatarLetter");
+
+    window.location.reload();
 });
 });
 
