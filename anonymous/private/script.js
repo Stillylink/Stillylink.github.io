@@ -274,9 +274,9 @@ sendBtn.addEventListener('click', ()=>{
   if(!txt) return;
   sendMessageToRoom(txt, 'text').then(()=>{
     textInput.value = '';
-    textInput.style.width = '0px';
-    textInput.style.width = '';
-    textInput.focus();
+    textInput.style.display = 'none';
+    textInput.offsetHeight;
+    textInput.style.display = '';
   });
 });
 
