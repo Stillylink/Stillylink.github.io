@@ -39,7 +39,7 @@ body {
     background: var(--bg-card);
     border-bottom: 1px solid var(--border);
     position: sticky;
-    top: 0;
+    top: 100vh; 
     z-index: 100;
 }
 
