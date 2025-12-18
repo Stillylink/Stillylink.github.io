@@ -75,12 +75,20 @@ window.addEventListener("DOMContentLoaded", () => {
         avatar?.classList.add("hidden");
     }
 
-    logoutBtn?.addEventListener("click", e => {
-        e.preventDefault();
-        handlePageExit();
+logoutBtn?.addEventListener("click", async e => {
+    e.preventDefault();
+    try {
+        await auth.signOut();
         localStorage.removeItem("userAvatarLetter");
-        window.location.href = "/login/";
-    });
+        regBtn?.classList.remove("hidden");
+        avatar?.classList.add("hidden");
+        await clearAllListenersAndState();
+        clearRoomStorage();
+        startSearch();
+    } catch (err) {
+        console.error('logout error', err);
+    }
+});
 });
 
 function toggleMenu() {
