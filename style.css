@@ -351,18 +351,11 @@ body {
 }
 
 @media (max-width: 768px) {
-  .navbar{
-    position:fixed;
-    top:0; left:0; right:0;
-    z-index:1000;
-  }
-  .footer{
-    position:fixed;
-    bottom:0; left:0; right:0;
-    z-index:1000;
-  }
-  body{
-    padding-top:60px;
-    padding-bottom:60px;
-  }
+  /* то, что у тебя уже есть */
+  .navbar { position: fixed; top: 0; left: 0; right: 0; z-index: 1000; }
+  .footer { position: fixed; bottom: 0; left: 0; right: 0; z-index: 1000; }
+
+  /* новые две строки */
+  .site-wrapper { background: var(--bg-card); }
+  .navbar, .footer { will-change: transform; }
 }
