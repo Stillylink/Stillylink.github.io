@@ -269,21 +269,18 @@ function clearMessages(){ messagesEl.innerHTML = ''; }
     photoInput.value = '';
   });
 
-sendBtn.addEventListener('click', ()=>{
+  sendBtn.addEventListener('click', ()=>{
     const txt = textInput.value.trim();
     if(!txt) return;
-    sendMessageToRoom(txt, 'text').then(()=>{
-        textInput.value = '';
-        textInput.style.height = '';
-    });
-});
+    sendMessageToRoom(txt, 'text').then(()=>{ textInput.value = ''; });
+  });
 
-textInput.addEventListener('keydown', (e)=>{
+  textInput.addEventListener('keydown', (e)=>{
     if(e.key === 'Enter' && !e.shiftKey){
-        e.preventDefault();
-        sendBtn.click();
+      e.preventDefault();
+      sendBtn.click();
     }
-});
+  });
 
   emojiBtn.addEventListener('click', (e)=>{
     emojiPanel.classList.toggle('hidden');
@@ -890,28 +887,4 @@ setTimeout(() => {
       tryJoinSavedRoom(rRef, null).catch(()=>startSearch());
     }
   }
-
-function clearInput() {
-    const ph = textInput.placeholder;
-    textInput.placeholder = '';
-    textInput.value = '';
-    textInput.style.height = '';
-    textInput.blur();
-    textInput.focus();
-    textInput.placeholder = ph;
-}
-
-sendBtn.addEventListener('click', () => {
-    const txt = textInput.value.trim();
-    if (!txt) return;
-    sendMessageToRoom(txt, 'text').then(() => clearInput());
-});
-
-textInput.addEventListener('keydown', e => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        sendBtn.click();
-    }
-});
-
   setTimeout(tryJoinFromURL, 600);
