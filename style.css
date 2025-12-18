@@ -349,3 +349,36 @@ body {
         display: block;
     }
 }
+
+/* ---------- мобильный фикс овер-скролла ---------- */
+@media (max-width: 768px) {
+  html,body{
+    height:100%;            /* 1. фиксируем высоту viewport */
+    overflow:hidden;        /* 2. запрещаем скролл у корня */
+  }
+  .site-wrapper{            /* 3. всю прокрутку переводим сюда */
+    height:100%;
+    overflow-y:auto;
+    -webkit-overflow-scrolling:touch; /* плавность iOS */
+  }
+  /* цвет, который виден при «потяге» = цвет карточек */
+  html{background:var(--bg-card);}
+}
+
+/* ---------- фиксируем шапку / футер ---------- */
+.navbar{
+  position:fixed;   /* вместо sticky */
+  top:0; left:0; right:0;
+  z-index:1000;
+}
+.footer{
+  position:fixed;
+  bottom:0; left:0; right:0;
+  z-index:1000;
+}
+
+/* ---------- отступы, чтобы контент не уезжал под фикс-бары ---------- */
+.site-wrapper{
+  padding-top:60px;    /* высота navbar */
+  padding-bottom:60px; /* высота footer */
+}
