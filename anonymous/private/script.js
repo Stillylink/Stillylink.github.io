@@ -376,21 +376,17 @@ textInput.addEventListener('keydown', (e) => {
 
     if (!myWaitingRef) return;
     if (myWaitingUnsub) myWaitingUnsub();
- myWaitingUnsub = onSnapshot(myWaitingRef, (snap) => {
-  if (!snap.exists()) {
-    cancelSearchHandler();
-    return;
-  }
+    myWaitingUnsub = onSnapshot(myWaitingRef, (snap) => {
+      if(!snap.exists()) return;
+      const data = snap.data();
+      if(data.claimed && data.roomId){
+        roomId = data.roomId;
+        roomRef = doc(db, 'rooms', roomId);
+        saveRoomToStorage(roomId, null);
+        connectToRoom(roomRef).catch(console.warn);
+      }
+    });
 
-  const data = snap.data();
-  if (data.claimed && data.roomId) {
-    roomId = data.roomId;
-    roomRef = doc(db, 'rooms', roomId);
-    saveRoomToStorage(roomId, null);
-    connectToRoom(roomRef).catch(console.warn);
-  }
-});
-      
     startWaitingHeartbeat();
 
     const q = query(collection(db, 'waiting'), where('claimed', '==', false), limit(20));
