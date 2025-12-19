@@ -358,6 +358,14 @@ body {
 
 @media (max-width: 768px) {
   .navbar { position: fixed; top: 0; left: 0; right: 0; z-index: 1000; }
-  .footer { position: fixed; bottom: 0; left: 0; right: 0; z-index: 1000; }
   .navbar, .footer { will-change: transform; }
+
+        .site-wrapper {
+        display: flex;
+        flex-direction: column;
+        min-height: 100vh;
+    }
+    main {
+        flex: 1;
+    }
 }
