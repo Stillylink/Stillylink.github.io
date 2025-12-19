@@ -60,10 +60,12 @@
         <button class="btn">Зарегистрироваться</button>
     </div>
 </section>
+
 <footer class="footer">
     <p>© 2025 StillyLink. Все права защищены.</p>
 </footer>
-</div>
+     </div>
+
 <!-- ============== FIREBASE (ОДНОКРАТНАЯ ИНИЦИАЛИЗАЦИЯ) ============== -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
@@ -113,7 +115,7 @@ if (savedLogin === "true" && savedLetter) {
 
 // --- Авторизация ---
 onAuthStateChanged(auth, user => {
-    if (user && user.email) {
+    if (user && user.email) {          // ← рисуем только реального пользователя
         const letter = user.email.charAt(0).toUpperCase();
 
         regBtn.classList.add("hidden");
