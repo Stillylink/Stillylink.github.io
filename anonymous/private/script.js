@@ -711,18 +711,25 @@ async function handlePageExit() {
 
   stopWaitingHeartbeat();
 
-  if (!isMobile && myWaitingRef) {
-    try {
-      await deleteDoc(myWaitingRef);
-    } catch (e) {}
-    myWaitingRef = null;
+  const isInSearch = !chatClosed && !roomRef && myWaitingRef;
+
+  const promises = [];
+  if (isMobile && isInSearch && myWaitingRef) {
+    promises.push(
+      deleteDoc(myWaitingRef)
+        .then(() => {
+          clearRoomStorage();
+          myWaitingRef = null;
+        })
+        .catch(() => {})
+    );
   }
 
   if (roomRef && uid) {
-    try {
-      await deleteDoc(doc(roomRef, 'presence', uid));
-    } catch (e) {}
+    promises.push(deleteDoc(doc(roomRef, 'presence', uid)).catch(() => {}));
   }
+
+  await Promise.all(promises);
 }
 
 
