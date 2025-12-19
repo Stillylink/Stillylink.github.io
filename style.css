@@ -28,6 +28,7 @@ body {
     min-height: 100vh;
     display: flex;
     flex-direction: column;
+    padding-top: 60px;
 }
 
 /* ======== НАВИГАЦИЯ ======== */
@@ -40,6 +41,7 @@ body {
     border-bottom: 1px solid var(--border);
     position: sticky;
     z-index: 100;
+    position: fixed;
 }
 
 
