@@ -345,10 +345,6 @@ body {
 
 .site-wrapper { flex: 1 0 auto; }
 
-    html {
-    background: #000;
-}
-
 /* ======== АДАПТИВ ======== */
 @media (max-width: 768px) {
     .nav-links {
@@ -372,4 +368,14 @@ body {
     main {
         flex: 1;
     }
+
+      body {
+    background: #000;
+  }
+  .site-wrapper,
+  .hero,
+  .section,
+  .card {
+    background: #ffffff;
+  }
 }
