@@ -309,21 +309,34 @@ textInput.addEventListener('keydown', (e) => {
     emojiPanel.classList.add('hidden');
   });
 
-  async function startWaitingHeartbeat() {
-    if (!myWaitingRef || !uid) return;
-    try {
-      await updateDoc(myWaitingRef, { lastSeen: serverTimestamp() }).catch(async (err) => {
-        await setDoc(myWaitingRef, { uid, createdAt: serverTimestamp(), claimed: false, roomId: null, lastSeen: serverTimestamp() }, { merge: true });
-      });
-    } catch (e) {}
+async function startWaitingHeartbeat() {
+  if (!myWaitingRef || !uid) return;
 
-    if (waitingHeartbeatInterval) clearInterval(waitingHeartbeatInterval);
-    waitingHeartbeatInterval = setInterval(async () => {
+  const beat = async () => {
+    try {
+      await updateDoc(myWaitingRef, { lastSeen: serverTimestamp() });
+      console.log('[HB] OK', new Date().toLocaleTimeString());
+    } catch (e) {
+      console.warn('[HB] failed, recreating doc', e);
       try {
-        await updateDoc(myWaitingRef, { lastSeen: serverTimestamp() });
-      } catch (e) {}
-    }, WAITING_HEARTBEAT_INTERVAL);
-  }
+        await setDoc(myWaitingRef, {
+          uid,
+          createdAt: serverTimestamp(),
+          claimed: false,
+          roomId: null,
+          lastSeen: serverTimestamp()
+        }, { merge: true });
+      } catch (e2) {
+        console.error('[HB] recreate failed', e2);
+      }
+    }
+  };
+
+  await beat();
+
+  if (waitingHeartbeatInterval) clearInterval(waitingHeartbeatInterval);
+  waitingHeartbeatInterval = setInterval(beat, WAITING_HEARTBEAT_INTERVAL);
+}
 
   function stopWaitingHeartbeat() {
     if (waitingHeartbeatInterval) { clearInterval(waitingHeartbeatInterval); waitingHeartbeatInterval = null; }
