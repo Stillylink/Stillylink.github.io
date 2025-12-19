@@ -376,9 +376,12 @@ textInput.addEventListener('keydown', (e) => {
 
     if (!myWaitingRef) return;
     if (myWaitingUnsub) myWaitingUnsub();
-    myWaitingUnsub = onSnapshot(myWaitingRef, (snap) => {
-      if(!snap.exists()) return;
-      const data = snap.data();
+myWaitingUnsub = onSnapshot(myWaitingRef, (snap) => {
+  if (!snap.exists()) {
+    cancelSearchHandler();
+    return;
+  }
+  const data = snap.data();
       if(data.claimed && data.roomId){
         roomId = data.roomId;
         roomRef = doc(db, 'rooms', roomId);
