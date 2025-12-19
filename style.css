@@ -369,13 +369,15 @@ body {
         flex: 1;
     }
 
-      body {
-    background: #000;
+  .overscroll-top,
+  .overscroll-bottom {
+    position: fixed;
+    left: 0;
+    right: 0;
+    height: 200px;
+    background: var(--bg-card);
+    z-index: -1;
   }
-  .site-wrapper,
-  .hero,
-  .section,
-  .card {
-    background: #ffffff;
-  }
+  .overscroll-top  { top: 0; }
+  .overscroll-bottom { bottom: 0; }
 }
