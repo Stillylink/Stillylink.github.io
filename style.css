@@ -22,14 +22,16 @@
 }
 
 /* ======== ОБЩИЙ ФОН САЙТА ======== */
+
 body {
-    background: var(--bg-page);
+    background: transparent;
     color: var(--text-main);
     min-height: 100vh;
     display: flex;
     flex-direction: column;
     padding-top: 60px;
 }
+
 
 /* ======== НАВИГАЦИЯ ======== */
 .navbar {
@@ -343,7 +345,15 @@ body {
     font-size: 14px;
 }
 
-.site-wrapper { flex: 1 0 auto; }
+.site-wrapper {
+    background: var(--bg-page);
+    flex: 1 0 auto;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+
 
 /* ======== АДАПТИВ ======== */
 @media (max-width: 768px) {
@@ -357,6 +367,10 @@ body {
 }
 
 @media (max-width: 768px) {
+    html {
+    background: var(--bg-card); /* #1a1c1f */
+}
+
   .navbar { position: fixed; top: 0; left: 0; right: 0; z-index: 1000; }
   .navbar, .footer { will-change: transform; }
 
@@ -368,25 +382,4 @@ body {
     main {
         flex: 1;
     }
-
-  .overscroll-top,
-  .overscroll-bottom {
-    position: fixed;
-    left: 0;
-    right: 0;
-    height: 100dvh;
-    background: var(--bg-card);
-    z-index: 9999;
-    pointer-events: none;
-  }
-
-  .overscroll-top {
-    top: 0;
-    transform: translateY(-100dvh);
-  }
-
-  .overscroll-bottom {
-    bottom: 0;
-    transform: translateY(100dvh);
-  }
 }
