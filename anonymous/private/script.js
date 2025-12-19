@@ -309,34 +309,21 @@ textInput.addEventListener('keydown', (e) => {
     emojiPanel.classList.add('hidden');
   });
 
-async function startWaitingHeartbeat() {
-  if (!myWaitingRef || !uid) return;
-
-  const beat = async () => {
+  async function startWaitingHeartbeat() {
+    if (!myWaitingRef || !uid) return;
     try {
-      await updateDoc(myWaitingRef, { lastSeen: serverTimestamp() });
-      console.log('[HB] OK', new Date().toLocaleTimeString());
-    } catch (e) {
-      console.warn('[HB] failed, recreating doc', e);
+      await updateDoc(myWaitingRef, { lastSeen: serverTimestamp() }).catch(async (err) => {
+        await setDoc(myWaitingRef, { uid, createdAt: serverTimestamp(), claimed: false, roomId: null, lastSeen: serverTimestamp() }, { merge: true });
+      });
+    } catch (e) {}
+
+    if (waitingHeartbeatInterval) clearInterval(waitingHeartbeatInterval);
+    waitingHeartbeatInterval = setInterval(async () => {
       try {
-        await setDoc(myWaitingRef, {
-          uid,
-          createdAt: serverTimestamp(),
-          claimed: false,
-          roomId: null,
-          lastSeen: serverTimestamp()
-        }, { merge: true });
-      } catch (e2) {
-        console.error('[HB] recreate failed', e2);
-      }
-    }
-  };
-
-  await beat();
-
-  if (waitingHeartbeatInterval) clearInterval(waitingHeartbeatInterval);
-  waitingHeartbeatInterval = setInterval(beat, WAITING_HEARTBEAT_INTERVAL);
-}
+        await updateDoc(myWaitingRef, { lastSeen: serverTimestamp() });
+      } catch (e) {}
+    }, WAITING_HEARTBEAT_INTERVAL);
+  }
 
   function stopWaitingHeartbeat() {
     if (waitingHeartbeatInterval) { clearInterval(waitingHeartbeatInterval); waitingHeartbeatInterval = null; }
@@ -722,20 +709,14 @@ async function handlePageExit() {
   if (cleaning) return;
   cleaning = true;
 
-  stopWaitingHeartbeat();
-
   const isInSearch = !chatClosed && !roomRef && myWaitingRef;
 
   const promises = [];
+
   if (isMobile && isInSearch && myWaitingRef) {
-    promises.push(
-      deleteDoc(myWaitingRef)
-        .then(() => {
-          clearRoomStorage();
-          myWaitingRef = null;
-        })
-        .catch(() => {})
-    );
+    promises.push(deleteDoc(myWaitingRef).catch(() => {}));
+    clearRoomStorage();
+    myWaitingRef = null;
   }
 
   if (roomRef && uid) {
@@ -744,7 +725,6 @@ async function handlePageExit() {
 
   await Promise.all(promises);
 }
-
 
 async function handlePageReturn() {
   cleaning = false;
