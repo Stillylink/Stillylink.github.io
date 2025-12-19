@@ -359,9 +359,5 @@ body {
 @media (max-width: 768px) {
   .navbar { position: fixed; top: 0; left: 0; right: 0; z-index: 1000; }
   .footer { position: fixed; bottom: 0; left: 0; right: 0; z-index: 1000; }
-
-  .site-wrapper { 
-    padding-bottom: 60px;
-  }
   .navbar, .footer { will-change: transform; }
 }
