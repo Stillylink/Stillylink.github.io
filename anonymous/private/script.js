@@ -709,22 +709,22 @@ async function handlePageExit() {
   if (cleaning) return;
   cleaning = true;
 
-  const isInSearch = !chatClosed && !roomRef && myWaitingRef;
+  stopWaitingHeartbeat();
 
-  const promises = [];
-
-  if (isMobile && isInSearch && myWaitingRef) {
-    promises.push(deleteDoc(myWaitingRef).catch(() => {}));
-    clearRoomStorage();
+  if (!isMobile && myWaitingRef) {
+    try {
+      await deleteDoc(myWaitingRef);
+    } catch (e) {}
     myWaitingRef = null;
   }
 
   if (roomRef && uid) {
-    promises.push(deleteDoc(doc(roomRef, 'presence', uid)).catch(() => {}));
+    try {
+      await deleteDoc(doc(roomRef, 'presence', uid));
+    } catch (e) {}
   }
-
-  await Promise.all(promises);
 }
+
 
 async function handlePageReturn() {
   cleaning = false;
