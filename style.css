@@ -368,4 +368,7 @@ body {
     main {
         flex: 1;
     }
+    html {
+    background: #000;
+}
 }
