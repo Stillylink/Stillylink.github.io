@@ -374,10 +374,21 @@ body {
     position: fixed;
     left: 0;
     right: 0;
-    height: 40px;
+    height: 0;
     background: var(--bg-card);
     z-index: -9999;
+    transition: height 0s;
   }
-  .overscroll-top  { top: 0; }
-  .overscroll-bottom { bottom: 0; }
+
+  .overscroll-top {
+    top: 0;
+    height: 100dvh;
+    transform: translateY(-100dvh);
+  }
+
+  .overscroll-bottom {
+    bottom: 0;
+    height: 100dvh;
+    transform: translateY(100dvh);
+  }
 }
