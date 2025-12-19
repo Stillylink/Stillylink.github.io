@@ -374,9 +374,9 @@ body {
     position: fixed;
     left: 0;
     right: 0;
-    height: 200px;
+    height: 40px;
     background: var(--bg-card);
-    z-index: -1;
+    z-index: -9999;
   }
   .overscroll-top  { top: 0; }
   .overscroll-bottom { bottom: 0; }
