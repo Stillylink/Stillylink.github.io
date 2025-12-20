@@ -36,6 +36,13 @@ const emojiPanel = document.getElementById('emojiPanel');
 const photoBtn = document.getElementById('photoBtn');
 const photoInput = document.getElementById('photoInput');
 
+/*  =====  элементы шапки  =====  */
+const regBtn        = document.querySelector('.register-btn');
+const avatar        = document.querySelector('.user-avatar');
+const avatarLetter  = document.querySelector('.user-avatar span');
+const userMenu      = document.querySelector('.user-menu');
+const logoutBtn     = document.getElementById('logoutBtn');
+
 /*  ===============  Глобальные переменные  ===============  */
 const ROOM_ID = 'public_room';          // одна бессрочная комната
 const MSG_LIMIT = 100;                  // максимум сообщений в коллекции
@@ -53,11 +60,43 @@ let onlineUids = new Set();             // кто в онлайне прямо �
 const show = el => el.classList.remove('hidden');
 const hide = el => el.classList.add('hidden');
 
+
+/*  =====  выйти  =====  */
+logoutBtn?.addEventListener('click', async e => {
+  e.preventDefault();
+  await auth.signOut();                 // выход из Firebase
+  localStorage.removeItem('userAvatarLetter');
+  window.location.reload();             // перезагрузить страницу
+});
+
+/*  =====  открыть/закрыть меню аватарки  =====  */
+window.toggleUserMenu = () => userMenu.classList.toggle('open');
+document.addEventListener('click', e => {
+  if (!userMenu.classList.contains('open')) return;
+  if (userMenu.contains(e.target) || avatar.contains(e.target)) return;
+  userMenu.classList.remove('open');
+});
+
+window.toggleMenu = () => document.querySelector('.nav-links').classList.toggle('open');
 /*  ===============  Авторизация  ===============  */
 onAuthStateChanged(auth, user => {
   if (!user) { signInAnonymously(auth); return; }
+
   uid = user.uid;
-  show(joinScreen);            // ждём выбора ника
+
+  if (user.email) {
+    regBtn?.classList.add('hidden');
+    avatar?.classList.remove('hidden');
+    const letter = user.email.charAt(0).toUpperCase();
+    avatarLetter.textContent = letter;
+    localStorage.setItem('userAvatarLetter', letter);
+  } else {
+    regBtn?.classList.remove('hidden');
+    avatar?.classList.add('hidden');
+    localStorage.removeItem('userAvatarLetter');
+  }
+
+  show(joinScreen);
 });
 
 /*  ===============  Вход в чат  ===============  */
