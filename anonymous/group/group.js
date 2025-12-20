@@ -110,14 +110,26 @@ onAuthStateChanged(auth, user => {
 });
 
 /*  ===============  Вход в чат  ===============  */
+const nickError = document.getElementById('nickError');
+
+function showNickError(msg) {
+  nickError.textContent = msg;
+}
+
 joinBtn.addEventListener('click', () => {
   const raw = nickInput.value.trim();
-  if (raw.length < 3 || raw.length > 20) return alert('От 3 до 20 символов');
+  if (raw.length < 3 || raw.length > 20) {
+    showNickError('Никнейм должен быть от 3 до 20 символов.');
+    return;
+  }
+  nickError.textContent = '';
   nickname = raw;
   hide(joinScreen);
   show(chatWindow);
   enterRoom();
 });
+
+nickInput.addEventListener('input', () => nickError.textContent = '');
 
 /*  ===============  Присоединение к комнате  ===============  */
 async function enterRoom() {
