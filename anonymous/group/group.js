@@ -1,3 +1,5 @@
+/*  group.js  –  групповой анонимный чат, последние 100 сообщений всегда онлайн
+-------------------------------------------------- */
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js';
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js';
 import {
@@ -101,16 +103,13 @@ async function enterRoom() {
     onlineCount.textContent = `${onlineUids.size} онлайн`;
   });
 
-  // слушаем сообщения
+  // слушаем сообщения (последние 100)
   const q = query(collection(roomRef, 'messages'), orderBy('createdAt'), limit(MSG_LIMIT));
   messagesUnsub = onSnapshot(q, snap => {
     messagesEl.innerHTML = '';
     snap.docs.forEach(d => addMessageToUI(d.data()));
     messagesEl.scrollTop = messagesEl.scrollHeight;
   });
-
-  // авто-чистка старых (>100) сообщений при каждом новом
-  snapLimitMessages();
 }
 
 /*  ===============  Отправка текста / картинки  ===============  */
@@ -130,7 +129,7 @@ async function send(text, type) {
     type,
     createdAt: serverTimestamp()
   });
-  snapLimitMessages();
+  snapLimitMessages();   // сразу чистим, если стало >100
 }
 
 /*  ===============  Картинки  ===============  */
@@ -190,14 +189,16 @@ function addMessageToUI(data) {
   if (isOwn) row.appendChild(msg);
   else { row.appendChild(ava); row.appendChild(msg); }
   messagesEl.appendChild(row);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
 }
 
 /*  ===============  Удаляем лишние сообщения (>MSG_LIMIT)  ===============  */
 async function snapLimitMessages() {
   const roomRef = doc(db, 'rooms', ROOM_ID);
-  const q = query(collection(roomRef, 'messages'), orderBy('createdAt'), limit(MSG_LIMIT + 50));
+  const q = query(collection(roomRef, 'messages'), orderBy('createdAt'), limit(MSG_LIMIT + 1));
   const snap = await getDocs(q);
-  const toDelete = snap.docs.slice(0, -MSG_LIMIT); // оставляем последние 100
+  if (snap.size <= MSG_LIMIT) return;
+  const toDelete = snap.docs.slice(0, snap.size - MSG_LIMIT);
   for (const d of toDelete) await deleteDoc(d.ref);
 }
 
@@ -207,7 +208,6 @@ leaveBtn.addEventListener('click', async () => {
   const roomRef = doc(db, 'rooms', ROOM_ID);
   const presenceRef = doc(roomRef, 'presence', uid);
 
-  // убираем себя из participants
   await runTransaction(db, async tx => {
     const snap = await tx.get(roomRef);
     if (snap.exists()) {
@@ -217,12 +217,10 @@ leaveBtn.addEventListener('click', async () => {
   });
   await deleteDoc(presenceRef);
 
-  // останавливаем всё
   if (messagesUnsub) { messagesUnsub(); messagesUnsub = null; }
   if (presenceUnsub) { presenceUnsub(); presenceUnsub = null; }
   if (presenceInterval) { clearInterval(presenceInterval); presenceInterval = null; }
 
-  // возвращаемся на страницу анонимных чатов
   window.location.replace('/anonymous/');
 });
 
