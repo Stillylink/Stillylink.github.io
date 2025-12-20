@@ -61,6 +61,14 @@
   margin-bottom:16px;
   color:var(--accent);
 }
+.error-text {
+  color: #ff5555;
+  margin-top: 6px;
+  margin-bottom: 10px;
+  font-size: 14px;
+  min-height: 18px;
+  text-align: left;
+}
 
 /* ========== ОКНО ЧАТА ========== */
 .chat-window{
