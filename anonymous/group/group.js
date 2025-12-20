@@ -48,7 +48,7 @@ const navToggle     = document.querySelector('.nav-toggle');
 const ROOM_ID = 'public_room';          // одна бессрочная комната
 const MSG_LIMIT = 100;                  // максимум сообщений в коллекции
 const PRESENCE_INTERVAL = 8_000;        // heartbeat онлайна
-const STALE_MS = 25_000;                // считаем оффлайн после молчания
+const STALE_MS = 40_000;                // считаем оффлайн после молчания
 
 let uid = null;                         // anon uid
 let nickname = '';                      // выбранный ник
