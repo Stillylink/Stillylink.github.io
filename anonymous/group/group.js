@@ -49,14 +49,15 @@ const navToggle = document.querySelector('.nav-toggle');
 const ROOM_ID = 'public_room';
 const MSG_LIMIT = 100;
 const STALE_MS = 120_000;               // 2 мин бездействия = оффлайн
+const MARK_DELTA = 30_000;              // пинг не чаще 30 с
 
 let uid = null;
 let nickname = '';
-let presenceRef = null;                 // будет заполнен после входа
+let presenceRef = null;
 let messagesUnsub = null;
 let presenceUnsub = null;
 let onlineUids = new Set();
-let prevUids = new Set();
+let lastMark = 0;                       // последний успешный пинг
 
 /*  ===============  Утилиты  ===============  */
 const show = el => el.classList.remove('hidden');
@@ -139,24 +140,17 @@ async function enterRoom() {
 
   await setDoc(presenceRef, { lastSeen: serverTimestamp(), nick: nickname }, { merge: true });
 
-presenceUnsub = onSnapshot(collection(roomRef, 'presence'), snap => {
-  const now = Date.now();
-  const fresh = new Set();
-
-  snap.docs.forEach(d => {
-    const data = d.data();
-    if (!data.lastSeen?.toMillis) return;
-    if (now - data.lastSeen.toMillis() < STALE_MS) fresh.add(d.id);
+  /*  слушаем онлайн  */
+  presenceUnsub = onSnapshot(collection(roomRef, 'presence'), snap => {
+    onlineUids.clear();
+    const now = Date.now();
+    snap.docs.forEach(d => {
+      const data = d.data();
+      if (!data.lastSeen?.toMillis) return;
+      if (now - data.lastSeen.toMillis() < STALE_MS) onlineUids.add(d.id);
+    });
+    onlineCount.textContent = `${Math.max(1, onlineUids.size)} онлайн`;
   });
-
-  const left = [...prevUids].filter(id => !fresh.has(id));
-  left.forEach(id => onlineUids.delete(id));
-
-  fresh.forEach(id => onlineUids.add(id));
-
-  prevUids = fresh;
-  onlineCount.textContent = `${Math.max(1, onlineUids.size)} онлайн`;
-});
 
   /*  слушаем сообщения  */
   const q = query(collection(roomRef, 'messages'), orderBy('createdAt'), limit(MSG_LIMIT));
@@ -166,15 +160,18 @@ presenceUnsub = onSnapshot(collection(roomRef, 'presence'), snap => {
     messagesEl.scrollTop = messagesEl.scrollHeight;
   });
 
-  /*  событийное обновление lastSeen  */
+  /*  событийное обновление lastSeen (не чаще 30 с)  */
   markOnline();
   document.addEventListener('keydown', markOnline);
   document.addEventListener('mousemove', markOnline);
 }
 
-/*  =====  пинг-обновление  =====  */
+/*  =====  пинг-обновление (с защитой от дребезга)  =====  */
 function markOnline() {
   if (!presenceRef) return;
+  const now = Date.now();
+  if (now - lastMark < MARK_DELTA) return;   // ещё рано
+  lastMark = now;
   updateDoc(presenceRef, { lastSeen: serverTimestamp() }).catch(() => {});
 }
 
@@ -189,12 +186,12 @@ async function send(text, type) {
   textInput.value = '';
   const roomRef = doc(db, 'rooms', ROOM_ID);
   await addDoc(collection(roomRef, 'messages'), {
-  sender: uid,
-  nick: nickname,
-  text,
-  type,
-  createdAt: serverTimestamp()
-});
+    sender: uid,
+    nick: nickname,
+    text,
+    type,
+    createdAt: serverTimestamp()
+  });
   markOnline();
   snapLimitMessages();
 }
@@ -283,3 +280,13 @@ window.addEventListener('beforeunload', async () => {
   if (!uid) return;
   await deleteDoc(presenceRef).catch(() => {});
 });
+
+/* =====  авто-чистка мёртвых presence-записей раз в 5 мин ===== */
+setInterval(async () => {
+  const snap = await getDocs(collection(doc(db, 'rooms', ROOM_ID), 'presence'));
+  const now = Date.now();
+  snap.docs.forEach(d => {
+    const ls = d.data().lastSeen?.toMillis ? d.data().lastSeen.toMillis() : 0;
+    if (now - ls > STALE_MS + 60_000) deleteDoc(d.ref).catch(() => {});
+  });
+}, 5 * 60 * 1000);
