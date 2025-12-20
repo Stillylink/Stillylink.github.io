@@ -71,16 +71,23 @@
 }
 
 /* ========== ОКНО ЧАТА ========== */
-.chat-window{
-  height:64vh;
-  min-height:420px;
-  display:flex;
-  flex-direction:column;
-  gap:12px;
-  border-radius:10px;
-  overflow:hidden;
-  border:1px solid var(--border);
-  background:linear-gradient(180deg,#0f1112,#0b0b0b);
+.chat-box {
+  width: 740px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.chat-window {
+  height: 64vh;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: linear-gradient(180deg, #0f1112, #0b0b0b);
 }
 .messages{
   padding:18px;
