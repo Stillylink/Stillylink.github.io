@@ -155,14 +155,18 @@ async function enterRoom() {
   );
 
   // слушаем онлайн
-  presenceUnsub = onSnapshot(collection(roomRef, 'presence'), snap => {
-    onlineUids.clear();
-    snap.docs.forEach(d => {
-      const ls = d.data().lastSeen?.toMillis ? d.data().lastSeen.toMillis() : 0;
-      if (Date.now() - ls < STALE_MS) onlineUids.add(d.id);
-    });
-    onlineCount.textContent = `${onlineUids.size} онлайн`;
+presenceUnsub = onSnapshot(collection(roomRef, 'presence'), snap => {
+  onlineUids.clear();
+  const now = Date.now();
+  snap.docs.forEach(d => {
+    const data = d.data();
+    if (!data.lastSeen || !data.lastSeen.toMillis) return;
+
+    const age = now - data.lastSeen.toMillis();
+    if (age < STALE_MS) onlineUids.add(d.id);
   });
+  onlineCount.textContent = `${Math.max(1, onlineUids.size)} онлайн`;
+});
 
   // слушаем сообщения (последние 100)
   const q = query(collection(roomRef, 'messages'), orderBy('createdAt'), limit(MSG_LIMIT));
