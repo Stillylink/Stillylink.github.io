@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Анонимный чат — Группа</title>
+
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="group.css">
+</head>
+
+<body>
+<div class="site-wrapper">
+  <header class="navbar">
+    <div class="logo">StillyLink</div>
+
+    <nav class="nav-links">
+      <a href="/">Главная</a>
+      <a href="/chats/">Чаты</a>
+      <a href="/#create-chat">Создать чат</a>
+      <a href="/anonymous/">Анонимное общение</a>
+      <a href="/login/" class="register-btn">Регистрация</a>
+    </nav>
+
+    <div class="user-avatar hidden" onclick="toggleUserMenu()">
+      <span>U</span>
+    </div>
+
+    <div class="user-menu">
+      <a href="/profile/">Профиль</a>
+      <a href="/mychats/">Мои чаты</a>
+      <a href="#" id="logoutBtn">Выйти</a>
+    </div>
+
+    <div class="nav-toggle" onclick="toggleMenu()">☰</div>
+  </header>
+
+  <!-- ========== ОСНОВНОЙ КОНТЕЙНЕР ========== -->
+  <main class="group-container">
+    <div class="chat-box">
+
+      <!-- Шапка чата -->
+      <div class="chat-header">
+        <div class="title">Анонимный групповой чат</div>
+        <div class="chat-actions">
+          <span id="onlineCount">0 онлайн</span>
+          <button class="finish-btn" id="leaveBtn">Покинуть чат</button>
+        </div>
+      </div>
+
+      <!-- Экран выбора ника -->
+      <div id="joinScreen" class="join-screen">
+        <div class="card">
+          <h3>Придумайте никнейм</h3>
+          <input
+            id="nickInput"
+            class="input"
+            type="text"
+            placeholder="От 3 до 20 символов"
+            maxlength="20"
+            autocomplete="off"
+          />
+          <button id="joinBtn" class="btn">Войти в чат</button>
+        </div>
+      </div>
+
+      <!-- Собственно чат -->
+      <div id="chatWindow" class="chat-window hidden">
+        <div class="messages" id="messages" role="log" aria-live="polite"></div>
+
+        <div class="composer">
+          <input type="file" id="photoInput" accept="image/*" class="hidden">
+          <button title="Добавить фото" class="tool-btn" id="photoBtn">📷</button>
+          <button title="Emoji" class="tool-btn" id="emojiBtn">😊</button>
+
+          <textarea
+            id="textInput"
+            class="text-input"
+            placeholder="Сообщение..."
+            rows="1"
+          ></textarea>
+
+          <button id="sendBtn" class="btn">Отправить</button>
+        </div>
+      </div>
+
+      <!-- Панель эмодзи -->
+      <div id="emojiPanel" class="emoji-panel hidden">
+        <button class="tool-btn emoji">😀</button>
+        <button class="tool-btn emoji">😂</button>
+        <button class="tool-btn emoji">😍</button>
+        <button class="tool-btn emoji">😢</button>
+        <button class="tool-btn emoji">😮</button>
+        <button class="tool-btn emoji">👍</button>
+        <button class="tool-btn emoji">🙏</button>
+        <button class="tool-btn emoji">🔥</button>
+        <button class="tool-btn emoji">🤝</button>
+        <button class="tool-btn emoji">🎉</button>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<footer class="footer">© 2025 StillyLink.</footer>
+
+<script type="module" src="group.js"></script>
+</body>
+</html>
