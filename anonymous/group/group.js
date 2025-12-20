@@ -48,7 +48,7 @@ const navToggle     = document.querySelector('.nav-toggle');
 const ROOM_ID = 'public_room';          // одна бессрочная комната
 const MSG_LIMIT = 100;                  // максимум сообщений в коллекции
 const PRESENCE_INTERVAL = 8_000;        // heartbeat онлайна
-const STALE_MS = 40_000;                // считаем оффлайн после молчания
+const STALE_MS = 120_000;                // считаем оффлайн после молчания
 
 let uid = null;                         // anon uid
 let nickname = '';                      // выбранный ник
@@ -150,9 +150,6 @@ async function enterRoom() {
 
   // ставим/обновляем своё присутствие
   await setDoc(presenceRef, { lastSeen: serverTimestamp(), nick: nickname }, { merge: true });
-  presenceInterval = setInterval(() =>
-    updateDoc(presenceRef, { lastSeen: serverTimestamp() }), PRESENCE_INTERVAL
-  );
 
   // слушаем онлайн
 presenceUnsub = onSnapshot(collection(roomRef, 'presence'), snap => {
@@ -175,6 +172,16 @@ presenceUnsub = onSnapshot(collection(roomRef, 'presence'), snap => {
     snap.docs.forEach(d => addMessageToUI(d.data()));
     messagesEl.scrollTop = messagesEl.scrollHeight;
   });
+
+  // --- событийное обновление lastSeen ---
+function markOnline() {
+  const presenceRef = doc(roomRef, 'presence', uid);
+  updateDoc(presenceRef, { lastSeen: serverTimestamp() }).catch(()=>{});
+}
+
+markOnline();
+document.addEventListener('keydown', markOnline);
+document.addEventListener('mousemove', markOnline);
 }
 
 /*  ===============  Отправка текста / картинки  ===============  */
@@ -194,6 +201,7 @@ async function send(text, type) {
     type,
     createdAt: serverTimestamp()
   });
+  markOnline();
   snapLimitMessages();   // сразу чистим, если стало >100
 }
 
