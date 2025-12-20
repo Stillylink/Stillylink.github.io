@@ -52,6 +52,7 @@ const STALE_MS = 120_000;                // считаем оффлайн пос
 
 let uid = null;                         // anon uid
 let nickname = '';                      // выбранный ник
+let presenceRef = null;
 let messagesUnsub = null;               // отписка от сообщений
 let presenceUnsub = null;               // отписка от онлайна
 let presenceInterval = null;            // heartbeat
@@ -149,6 +150,7 @@ async function enterRoom() {
   });
 
   // ставим/обновляем своё присутствие
+  presenceRef = doc(roomRef, 'presence', uid);
   await setDoc(presenceRef, { lastSeen: serverTimestamp(), nick: nickname }, { merge: true });
 
   // слушаем онлайн
@@ -174,14 +176,15 @@ presenceUnsub = onSnapshot(collection(roomRef, 'presence'), snap => {
   });
 
   // --- событийное обновление lastSeen ---
-function markOnline() {
-  const presenceRef = doc(roomRef, 'presence', uid);
-  updateDoc(presenceRef, { lastSeen: serverTimestamp() }).catch(()=>{});
-}
-
 markOnline();
 document.addEventListener('keydown', markOnline);
 document.addEventListener('mousemove', markOnline);
+}
+
+/* ====== сразу после enterRoom ====== */
+function markOnline() {
+  if (!presenceRef) return;                      // защита от вызова до входа
+  updateDoc(presenceRef, { lastSeen: serverTimestamp() }).catch(() => {});
 }
 
 /*  ===============  Отправка текста / картинки  ===============  */
