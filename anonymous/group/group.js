@@ -172,7 +172,7 @@ function markOnline() {
   const now = Date.now();
   if (now - lastMark < MARK_DELTA) return;   // ещё рано
   lastMark = now;
-  updateDoc(presenceRef, { lastSeen: serverTimestamp() }).catch(() => {});
+  setDoc(presenceRef, { lastSeen: serverTimestamp(), nick: nickname }, { merge: true });
 }
 
 /*  ===============  Отправка  ===============  */
