@@ -56,6 +56,7 @@ let presenceRef = null;                 // будет заполнен посл�
 let messagesUnsub = null;
 let presenceUnsub = null;
 let onlineUids = new Set();
+let prevUids = new Set();
 
 /*  ===============  Утилиты  ===============  */
 const show = el => el.classList.remove('hidden');
@@ -138,17 +139,24 @@ async function enterRoom() {
 
   await setDoc(presenceRef, { lastSeen: serverTimestamp(), nick: nickname }, { merge: true });
 
-  /*  слушаем онлайн  */
-  presenceUnsub = onSnapshot(collection(roomRef, 'presence'), snap => {
-    onlineUids.clear();
-    const now = Date.now();
-    snap.docs.forEach(d => {
-      const data = d.data();
-      if (!data.lastSeen?.toMillis) return;
-      if (now - data.lastSeen.toMillis() < STALE_MS) onlineUids.add(d.id);
-    });
-    onlineCount.textContent = `${Math.max(1, onlineUids.size)} онлайн`;
+presenceUnsub = onSnapshot(collection(roomRef, 'presence'), snap => {
+  const now = Date.now();
+  const fresh = new Set();
+
+  snap.docs.forEach(d => {
+    const data = d.data();
+    if (!data.lastSeen?.toMillis) return;
+    if (now - data.lastSeen.toMillis() < STALE_MS) fresh.add(d.id);
   });
+
+  const left = [...prevUids].filter(id => !fresh.has(id));
+  left.forEach(id => onlineUids.delete(id));
+
+  fresh.forEach(id => onlineUids.add(id));
+
+  prevUids = fresh;
+  onlineCount.textContent = `${Math.max(1, onlineUids.size)} онлайн`;
+});
 
   /*  слушаем сообщения  */
   const q = query(collection(roomRef, 'messages'), orderBy('createdAt'), limit(MSG_LIMIT));
@@ -181,8 +189,12 @@ async function send(text, type) {
   textInput.value = '';
   const roomRef = doc(db, 'rooms', ROOM_ID);
   await addDoc(collection(roomRef, 'messages'), {
-    sender: uid, nick, text, type, createdAt: serverTimestamp()
-  });
+  sender: uid,
+  nick: nickname,
+  text,
+  type,
+  createdAt: serverTimestamp()
+});
   markOnline();
   snapLimitMessages();
 }
