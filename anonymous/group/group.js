@@ -42,6 +42,7 @@ const avatar        = document.querySelector('.user-avatar');
 const avatarLetter  = document.querySelector('.user-avatar span');
 const userMenu      = document.querySelector('.user-menu');
 const logoutBtn     = document.getElementById('logoutBtn');
+const navToggle     = document.querySelector('.nav-toggle');
 
 /*  ===============  Глобальные переменные  ===============  */
 const ROOM_ID = 'public_room';          // одна бессрочная комната
@@ -69,7 +70,7 @@ logoutBtn?.addEventListener('click', async e => {
   window.location.reload();             // перезагрузить страницу
 });
 
-/*  =====  открыть/закрыть меню аватарки  =====  */
+/*  =====  открыть/закрыть меню аватарки и бургера  =====  */
 window.toggleUserMenu = () => userMenu.classList.toggle('open');
 document.addEventListener('click', e => {
   if (!userMenu.classList.contains('open')) return;
@@ -78,6 +79,15 @@ document.addEventListener('click', e => {
 });
 
 window.toggleMenu = () => document.querySelector('.nav-links').classList.toggle('open');
+
+document.addEventListener('click', e => {
+  const menu = document.querySelector('.nav-links');
+  if (!menu.classList.contains('open')) return;
+  if (menu.contains(e.target)) return;
+  if (navToggle.contains(e.target)) return;
+  menu.classList.remove('open');
+});
+
 /*  ===============  Авторизация  ===============  */
 onAuthStateChanged(auth, user => {
   if (!user) { signInAnonymously(auth); return; }
