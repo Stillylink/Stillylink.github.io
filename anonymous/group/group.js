@@ -35,66 +35,60 @@ const emojiBtn = document.getElementById('emojiBtn');
 const emojiPanel = document.getElementById('emojiPanel');
 const photoBtn = document.getElementById('photoBtn');
 const photoInput = document.getElementById('photoInput');
+const nickError = document.getElementById('nickError');
 
 /*  =====  элементы шапки  =====  */
-const regBtn        = document.querySelector('.register-btn');
-const avatar        = document.querySelector('.user-avatar');
-const avatarLetter  = document.querySelector('.user-avatar span');
-const userMenu      = document.querySelector('.user-menu');
-const logoutBtn     = document.getElementById('logoutBtn');
-const navToggle     = document.querySelector('.nav-toggle');
+const regBtn = document.querySelector('.register-btn');
+const avatar = document.querySelector('.user-avatar');
+const avatarLetter = document.querySelector('.user-avatar span');
+const userMenu = document.querySelector('.user-menu');
+const logoutBtn = document.getElementById('logoutBtn');
+const navToggle = document.querySelector('.nav-toggle');
 
 /*  ===============  Глобальные переменные  ===============  */
-const ROOM_ID = 'public_room';          // одна бессрочная комната
-const MSG_LIMIT = 100;                  // максимум сообщений в коллекции
-const PRESENCE_INTERVAL = 8_000;        // heartbeat онлайна
-const STALE_MS = 120_000;                // считаем оффлайн после молчания
+const ROOM_ID = 'public_room';
+const MSG_LIMIT = 100;
+const STALE_MS = 120_000;               // 2 мин бездействия = оффлайн
 
-let uid = null;                         // anon uid
-let nickname = '';                      // выбранный ник
-let presenceRef = null;
-let messagesUnsub = null;               // отписка от сообщений
-let presenceUnsub = null;               // отписка от онлайна
-let presenceInterval = null;            // heartbeat
-let onlineUids = new Set();             // кто в онлайне прямо сейчас
+let uid = null;
+let nickname = '';
+let presenceRef = null;                 // будет заполнен после входа
+let messagesUnsub = null;
+let presenceUnsub = null;
+let onlineUids = new Set();
 
 /*  ===============  Утилиты  ===============  */
 const show = el => el.classList.remove('hidden');
 const hide = el => el.classList.add('hidden');
 
-
 /*  =====  выйти  =====  */
 logoutBtn?.addEventListener('click', async e => {
   e.preventDefault();
-  await auth.signOut();                 // выход из Firebase
+  await auth.signOut();
   localStorage.removeItem('userAvatarLetter');
-  window.location.reload();             // перезагрузить страницу
+  window.location.reload();
 });
 
-/*  =====  открыть/закрыть меню аватарки и бургера  =====  */
+/*  =====  меню аватарки и бургер  =====  */
 window.toggleUserMenu = () => userMenu.classList.toggle('open');
 document.addEventListener('click', e => {
-  if (!userMenu.classList.contains('open')) return;
-  if (userMenu.contains(e.target) || avatar.contains(e.target)) return;
-  userMenu.classList.remove('open');
+  if (userMenu.classList.contains('open') &&
+      !userMenu.contains(e.target) && !avatar.contains(e.target))
+    userMenu.classList.remove('open');
 });
 
 window.toggleMenu = () => document.querySelector('.nav-links').classList.toggle('open');
-
 document.addEventListener('click', e => {
   const menu = document.querySelector('.nav-links');
-  if (!menu.classList.contains('open')) return;
-  if (menu.contains(e.target)) return;
-  if (navToggle.contains(e.target)) return;
-  menu.classList.remove('open');
+  if (menu.classList.contains('open') &&
+      !menu.contains(e.target) && !navToggle.contains(e.target))
+    menu.classList.remove('open');
 });
 
 /*  ===============  Авторизация  ===============  */
 onAuthStateChanged(auth, user => {
   if (!user) { signInAnonymously(auth); return; }
-
   uid = user.uid;
-
   if (user.email) {
     regBtn?.classList.add('hidden');
     avatar?.classList.remove('hidden');
@@ -106,16 +100,11 @@ onAuthStateChanged(auth, user => {
     avatar?.classList.add('hidden');
     localStorage.removeItem('userAvatarLetter');
   }
-
   show(joinScreen);
 });
 
 /*  ===============  Вход в чат  ===============  */
-const nickError = document.getElementById('nickError');
-
-function showNickError(msg) {
-  nickError.textContent = msg;
-}
+function showNickError(msg) { nickError.textContent = msg; }
 
 joinBtn.addEventListener('click', () => {
   const raw = nickInput.value.trim();
@@ -129,15 +118,13 @@ joinBtn.addEventListener('click', () => {
   show(chatWindow);
   enterRoom();
 });
-
 nickInput.addEventListener('input', () => nickError.textContent = '');
 
 /*  ===============  Присоединение к комнате  ===============  */
 async function enterRoom() {
   const roomRef = doc(db, 'rooms', ROOM_ID);
-  const presenceRef = doc(roomRef, 'presence', uid);
+  presenceRef = doc(roomRef, 'presence', uid);
 
-  // добавляем себя в participants (если ещё нет)
   await runTransaction(db, async tx => {
     const snap = await tx.get(roomRef);
     if (!snap.exists()) {
@@ -149,25 +136,21 @@ async function enterRoom() {
     }
   });
 
-  // ставим/обновляем своё присутствие
-  presenceRef = doc(roomRef, 'presence', uid);
   await setDoc(presenceRef, { lastSeen: serverTimestamp(), nick: nickname }, { merge: true });
 
-  // слушаем онлайн
-presenceUnsub = onSnapshot(collection(roomRef, 'presence'), snap => {
-  onlineUids.clear();
-  const now = Date.now();
-  snap.docs.forEach(d => {
-    const data = d.data();
-    if (!data.lastSeen || !data.lastSeen.toMillis) return;
-
-    const age = now - data.lastSeen.toMillis();
-    if (age < STALE_MS) onlineUids.add(d.id);
+  /*  слушаем онлайн  */
+  presenceUnsub = onSnapshot(collection(roomRef, 'presence'), snap => {
+    onlineUids.clear();
+    const now = Date.now();
+    snap.docs.forEach(d => {
+      const data = d.data();
+      if (!data.lastSeen?.toMillis) return;
+      if (now - data.lastSeen.toMillis() < STALE_MS) onlineUids.add(d.id);
+    });
+    onlineCount.textContent = `${Math.max(1, onlineUids.size)} онлайн`;
   });
-  onlineCount.textContent = `${Math.max(1, onlineUids.size)} онлайн`;
-});
 
-  // слушаем сообщения (последние 100)
+  /*  слушаем сообщения  */
   const q = query(collection(roomRef, 'messages'), orderBy('createdAt'), limit(MSG_LIMIT));
   messagesUnsub = onSnapshot(q, snap => {
     messagesEl.innerHTML = '';
@@ -175,19 +158,19 @@ presenceUnsub = onSnapshot(collection(roomRef, 'presence'), snap => {
     messagesEl.scrollTop = messagesEl.scrollHeight;
   });
 
-  // --- событийное обновление lastSeen ---
-markOnline();
-document.addEventListener('keydown', markOnline);
-document.addEventListener('mousemove', markOnline);
+  /*  событийное обновление lastSeen  */
+  markOnline();
+  document.addEventListener('keydown', markOnline);
+  document.addEventListener('mousemove', markOnline);
 }
 
-/* ====== сразу после enterRoom ====== */
+/*  =====  пинг-обновление  =====  */
 function markOnline() {
-  if (!presenceRef) return;                      // защита от вызова до входа
+  if (!presenceRef) return;
   updateDoc(presenceRef, { lastSeen: serverTimestamp() }).catch(() => {});
 }
 
-/*  ===============  Отправка текста / картинки  ===============  */
+/*  ===============  Отправка  ===============  */
 sendBtn.addEventListener('click', () => send(textInput.value.trim(), 'text'));
 textInput.addEventListener('keydown', e => {
   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(textInput.value.trim(), 'text'); }
@@ -198,14 +181,10 @@ async function send(text, type) {
   textInput.value = '';
   const roomRef = doc(db, 'rooms', ROOM_ID);
   await addDoc(collection(roomRef, 'messages'), {
-    sender: uid,
-    nick: nickname,
-    text,
-    type,
-    createdAt: serverTimestamp()
+    sender: uid, nick, text, type, createdAt: serverTimestamp()
   });
   markOnline();
-  snapLimitMessages();   // сразу чистим, если стало >100
+  snapLimitMessages();
 }
 
 /*  ===============  Картинки  ===============  */
@@ -233,17 +212,13 @@ document.addEventListener('click', e => {
 function addMessageToUI(data) {
   const { sender, nick, text, type, createdAt } = data;
   const isOwn = sender === uid;
-
   const row = document.createElement('div');
   row.className = 'msg-row ' + (isOwn ? 'own' : 'other');
-
   const ava = document.createElement('div');
   ava.className = 'avatar';
   ava.textContent = nick.slice(0, 2).toUpperCase();
-
   const msg = document.createElement('div');
   msg.className = 'message' + (isOwn ? ' own' : '');
-
   if (type === 'image') {
     const img = document.createElement('img');
     img.src = text;
@@ -252,23 +227,19 @@ function addMessageToUI(data) {
     img.style.cursor = 'pointer';
     img.onclick = () => window.open(text, '_blank');
     msg.appendChild(img);
-  } else {
-    msg.textContent = text;
-  }
-
+  } else msg.textContent = text;
   const meta = document.createElement('div');
   meta.className = 'msg-meta';
   const time = createdAt?.toDate ? createdAt.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
   meta.textContent = `${nick} · ${time}`;
   msg.appendChild(meta);
-
   if (isOwn) row.appendChild(msg);
   else { row.appendChild(ava); row.appendChild(msg); }
   messagesEl.appendChild(row);
   messagesEl.scrollTop = messagesEl.scrollHeight;
 }
 
-/*  ===============  Удаляем лишние сообщения (>MSG_LIMIT)  ===============  */
+/*  ===============  Чистка лишних сообщений  ===============  */
 async function snapLimitMessages() {
   const roomRef = doc(db, 'rooms', ROOM_ID);
   const q = query(collection(roomRef, 'messages'), orderBy('createdAt'), limit(MSG_LIMIT + 1));
@@ -282,8 +253,6 @@ async function snapLimitMessages() {
 leaveBtn.addEventListener('click', async () => {
   if (!uid) return;
   const roomRef = doc(db, 'rooms', ROOM_ID);
-  const presenceRef = doc(roomRef, 'presence', uid);
-
   await runTransaction(db, async tx => {
     const snap = await tx.get(roomRef);
     if (snap.exists()) {
@@ -292,18 +261,13 @@ leaveBtn.addEventListener('click', async () => {
     }
   });
   await deleteDoc(presenceRef);
-
   if (messagesUnsub) { messagesUnsub(); messagesUnsub = null; }
   if (presenceUnsub) { presenceUnsub(); presenceUnsub = null; }
-  if (presenceInterval) { clearInterval(presenceInterval); presenceInterval = null; }
-
   window.location.replace('/anonymous/');
 });
 
 /*  ===============  Уборка при закрытии вкладки  ===============  */
 window.addEventListener('beforeunload', async () => {
   if (!uid) return;
-  const roomRef = doc(db, 'rooms', ROOM_ID);
-  const presenceRef = doc(roomRef, 'presence', uid);
   await deleteDoc(presenceRef).catch(() => {});
 });
