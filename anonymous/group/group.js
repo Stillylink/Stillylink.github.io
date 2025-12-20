@@ -127,20 +127,10 @@ async function enterRoom() {
   const roomRef = doc(db, 'rooms', ROOM_ID);
   presenceRef = doc(roomRef, 'presence', uid);
 
-  await runTransaction(db, async tx => {
-    const snap = await tx.get(roomRef);
-    if (!snap.exists()) {
-      tx.set(roomRef, { participants: [uid], createdAt: serverTimestamp() });
-    } else {
-      const pts = snap.data().participants || [];
-      if (!pts.includes(uid)) pts.push(uid);
-      tx.update(roomRef, { participants: pts });
-    }
-  });
-
+  /* ===== больше НЕ трогаем participants ===== */
   await setDoc(presenceRef, { lastSeen: serverTimestamp(), nick: nickname }, { merge: true });
 
-  /*  слушаем онлайн  */
+  /*  слушаем онлайн */
   presenceUnsub = onSnapshot(collection(roomRef, 'presence'), snap => {
     onlineUids.clear();
     const now = Date.now();
@@ -160,7 +150,7 @@ async function enterRoom() {
     messagesEl.scrollTop = messagesEl.scrollHeight;
   });
 
-  /*  событийное обновление lastSeen (не чаще 30 с)  */
+  /*  событийное обновление lastSeen  */
   markOnline();
   document.addEventListener('keydown', markOnline);
   document.addEventListener('mousemove', markOnline);
