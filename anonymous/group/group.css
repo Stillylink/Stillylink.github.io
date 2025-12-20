@@ -137,6 +137,10 @@
 }
 
 /* ========== ПОЛЕ ВВОДА ========== */
+#sendBtn {
+  padding: 10px 14px;
+  width: auto;
+}
 .composer{
   display:flex;
   gap:8px;
