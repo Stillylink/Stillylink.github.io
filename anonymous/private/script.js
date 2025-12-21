@@ -170,7 +170,7 @@ document.addEventListener("click", e => {
     localStorage.removeItem('roomId');
     localStorage.removeItem('partnerId');
   }
-// =========================================================
+// ==========================================================
 
 onAuthStateChanged(auth, user => {
     if (!user) {
