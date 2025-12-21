@@ -87,6 +87,14 @@ document.addEventListener('click', e => {
     menu.classList.remove('open');
 });
 
+/* ===== локальная аватарка сразу ===== */
+const savedAvatar = localStorage.getItem('userAvatarLetter');
+if (savedAvatar) {
+  regBtn?.classList.add('hidden');
+  avatar?.classList.remove('hidden');
+  avatarLetter.textContent = savedAvatar;
+}
+
 /*  ===============  Авторизация  ===============  */
 onAuthStateChanged(auth, user => {
   if (!user) { signInAnonymously(auth); return; }
