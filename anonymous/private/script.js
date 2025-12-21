@@ -62,6 +62,14 @@ const avatarLetter = document.querySelector(".user-avatar span");
 const userMenu     = document.querySelector(".user-menu");
 const logoutBtn    = document.getElementById("logoutBtn");
 
+/* ===== локальная аватарка сразу ===== */
+const savedAvatar = localStorage.getItem('userAvatarLetter');
+if (savedAvatar) {
+  regBtn?.classList.add('hidden');
+  avatar?.classList.remove('hidden');
+  avatarLetter.textContent = savedAvatar;
+}
+
 window.addEventListener("DOMContentLoaded", () => {
     if (isRealUser) {
         const saved = localStorage.getItem("userAvatarLetter");
@@ -171,14 +179,6 @@ document.addEventListener("click", e => {
     localStorage.removeItem('partnerId');
   }
 // =========================================================
-
-/* ===== локальная аватарка сразу ===== */
-const savedAvatar = localStorage.getItem('userAvatarLetter');
-if (savedAvatar) {
-  regBtn?.classList.add('hidden');
-  avatar?.classList.remove('hidden');
-  avatarLetter.textContent = savedAvatar;
-}
 
 onAuthStateChanged(auth, user => {
     if (!user) {
