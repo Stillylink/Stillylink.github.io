@@ -63,12 +63,14 @@ const userMenu     = document.querySelector(".user-menu");
 const logoutBtn    = document.getElementById("logoutBtn");
 
 /* ===== локальная аватарка сразу ===== */
-const savedAvatar = localStorage.getItem('userAvatarLetter');
-if (savedAvatar) {
-  regBtn?.classList.add('hidden');
-  avatar?.classList.remove('hidden');
-  avatarLetter.textContent = savedAvatar;
-}
+document.addEventListener("DOMContentLoaded", () => {
+  const savedAvatar = localStorage.getItem('userAvatarLetter');
+  if (savedAvatar) {
+    regBtn?.classList.add('hidden');
+    avatar?.classList.remove('hidden');
+    avatarLetter.textContent = savedAvatar;
+  }
+});
 
 window.addEventListener("DOMContentLoaded", () => {
     if (isRealUser) {
