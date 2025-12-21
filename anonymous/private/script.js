@@ -172,6 +172,14 @@ document.addEventListener("click", e => {
   }
 // =========================================================
 
+/* ===== локальная аватарка сразу ===== */
+const savedAvatar = localStorage.getItem('userAvatarLetter');
+if (savedAvatar) {
+  regBtn?.classList.add('hidden');
+  avatar?.classList.remove('hidden');
+  avatarLetter.textContent = savedAvatar;
+}
+
 onAuthStateChanged(auth, user => {
     if (!user) {
         signInAnonymously(auth);
