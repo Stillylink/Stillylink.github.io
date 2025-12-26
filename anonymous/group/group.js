@@ -3,7 +3,6 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js';
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js';
 import { getFirestore } from 'https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js';
-
 import {
   getDatabase,
   ref,
@@ -11,9 +10,7 @@ import {
   push,
   onChildAdded,
   onValue,
-  onDisconnect,
-  remove,
-  serverTimestamp
+  onDisconnect
 } from 'https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js';
 
 /*  ===============  Firebase-конфиг  ===============  */
@@ -29,7 +26,7 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
-getFirestore(app); // оставляем Firestore (профиль, аватар)
+getFirestore(app); // Firestore оставляем для профиля/аватарки
 const rtdb = getDatabase(app);
 
 /*  ===============  DOM  ===============  */
@@ -59,6 +56,8 @@ const navToggle = document.querySelector('.nav-toggle');
 /*  ===============  Переменные  ===============  */
 const ROOM_ID = 'public_room';
 const MSG_LIMIT = 100;
+const STALE_MS = 120_000; // 2 минуты
+const MARK_DELTA = 30_000; // 30 секунд
 
 let uid = null;
 let nickname = '';
@@ -93,7 +92,7 @@ document.addEventListener('click', e => {
     menu.classList.remove('open');
 });
 
-/*  ===== локальная аватарка сразу ===== */
+/* ===== локальная аватарка сразу ===== */
 const savedAvatar = localStorage.getItem('userAvatarLetter');
 if (savedAvatar) {
   regBtn?.classList.add('hidden');
@@ -146,32 +145,65 @@ function enterRoom() {
   messagesRef = ref(rtdb, `messages/${ROOM_ID}`);
   presenceRef = ref(rtdb, `presence/${ROOM_ID}/${uid}`);
 
-  /* presence */
+  // initial presence
   set(presenceRef, {
     nick: nickname,
     online: true,
-    lastSeen: serverTimestamp()
+    lastSeen: Date.now()
   });
 
+  // disconnect handler
   onDisconnect(presenceRef).set({
     online: false,
-    lastSeen: serverTimestamp()
+    lastSeen: Date.now()
   });
 
+  // listen presence
   onValue(ref(rtdb, `presence/${ROOM_ID}`), snap => {
     const data = snap.val() || {};
     const count = Object.values(data).filter(u => u.online).length;
     onlineCount.textContent = `${Math.max(1, count)} онлайн`;
   });
 
-  /* messages */
+  // listen messages
   let loaded = 0;
   onChildAdded(messagesRef, snap => {
-    if (++loaded > MSG_LIMIT) {
-      messagesEl.firstChild?.remove();
-    }
+    if (++loaded > MSG_LIMIT) messagesEl.firstChild?.remove();
     addMessageToUI(snap.val());
   });
+
+  // mark user as online periodically
+  let lastMark = 0;
+  const markOnline = () => {
+    const now = Date.now();
+    if (now - lastMark < MARK_DELTA) return;
+    lastMark = now;
+    if (!presenceRef) return;
+    set(presenceRef, {
+      nick: nickname,
+      online: true,
+      lastSeen: Date.now()
+    });
+  };
+  document.addEventListener('keydown', markOnline);
+  document.addEventListener('mousemove', markOnline);
+  setInterval(markOnline, MARK_DELTA);
+
+  // авто-выключение неактивных пользователей
+  setInterval(() => {
+    const presenceRoomRef = ref(rtdb, `presence/${ROOM_ID}`);
+    onValue(presenceRoomRef, snap => {
+      const data = snap.val() || {};
+      Object.entries(data).forEach(([id, user]) => {
+        if (Date.now() - user.lastSeen > STALE_MS && user.online) {
+          set(ref(rtdb, `presence/${ROOM_ID}/${id}`), {
+            ...user,
+            online: false
+          });
+        }
+      });
+    }, { onlyOnce: true });
+  }, 5 * 60 * 1000); // каждые 5 минут
 }
 
 /*  ===============  Send  ===============  */
@@ -259,6 +291,6 @@ function addMessageToUI(data) {
 
 /*  ===============  Leave  ===============  */
 leaveBtn.addEventListener('click', async () => {
-  if (presenceRef) await remove(presenceRef).catch(() => {});
+  if (presenceRef) await set(presenceRef, { online: false, lastSeen: Date.now(), nick: nickname });
   window.location.replace('/anonymous/');
 });
