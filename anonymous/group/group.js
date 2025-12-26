@@ -23,7 +23,8 @@ const firebaseConfig = {
   projectId: "stillylink-f1d0f",
   storageBucket: "stillylink-f1d0f.appspot.com",
   messagingSenderId: "772070114710",
-  appId: "1:772070114710:web:939bce83e4d3be14bdc9b7"
+  appId: "1:772070114710:web:939bce83e4d3be14bdc9b7",
+  databaseURL: "https://stillylink-f1d0f-default-rtdb.europe-west1.firebasedatabase.app"
 };
 
 const app = initializeApp(firebaseConfig);
