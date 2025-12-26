@@ -1,4 +1,4 @@
-/*  group.js – групповой анонимный чат (RTDB)
+/*  group.js – групповой анонимный чат (RTDB) с автоудалением inactive пользователей
 -------------------------------------------------- */
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js';
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js';
@@ -10,7 +10,9 @@ import {
   push,
   onChildAdded,
   onValue,
-  onDisconnect
+  onDisconnect,
+  remove,
+  serverTimestamp
 } from 'https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js';
 
 /*  ===============  Firebase-конфиг  ===============  */
@@ -20,13 +22,11 @@ const firebaseConfig = {
   projectId: "stillylink-f1d0f",
   storageBucket: "stillylink-f1d0f.appspot.com",
   messagingSenderId: "772070114710",
-  appId: "1:772070114710:web:939bce83e4d3be14bdc9b7",
-  databaseURL: "https://stillylink-f1d0f-default-rtdb.europe-west1.firebasedatabase.app"
+  appId: "1:772070114710:web:939bce83e4d3be14bdc9b7"
 };
-
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
-getFirestore(app); // Firestore оставляем для профиля/аватарки
+getFirestore(app); // оставляем Firestore для профиля и аватарки
 const rtdb = getDatabase(app);
 
 /*  ===============  DOM  ===============  */
@@ -56,13 +56,14 @@ const navToggle = document.querySelector('.nav-toggle');
 /*  ===============  Переменные  ===============  */
 const ROOM_ID = 'public_room';
 const MSG_LIMIT = 100;
-const STALE_MS = 120_000; // 2 минуты
-const MARK_DELTA = 30_000; // 30 секунд
+const STALE_MS = 120_000;    // 2 минуты бездействия
+const MARK_DELTA = 30_000;   // пинг не чаще 30 с
 
 let uid = null;
 let nickname = '';
 let presenceRef = null;
 let messagesRef = null;
+let lastMark = 0;
 
 /*  ===============  Utils  ===============  */
 const show = el => el.classList.remove('hidden');
@@ -83,7 +84,6 @@ document.addEventListener('click', e => {
       !userMenu.contains(e.target) && !avatar.contains(e.target))
     userMenu.classList.remove('open');
 });
-
 window.toggleMenu = () => document.querySelector('.nav-links').classList.toggle('open');
 document.addEventListener('click', e => {
   const menu = document.querySelector('.nav-links');
@@ -102,13 +102,8 @@ if (savedAvatar) {
 
 /*  ===============  Auth  ===============  */
 onAuthStateChanged(auth, user => {
-  if (!user) {
-    signInAnonymously(auth);
-    return;
-  }
-
+  if (!user) { signInAnonymously(auth); return; }
   uid = user.uid;
-
   if (user.email) {
     regBtn?.classList.add('hidden');
     avatar?.classList.remove('hidden');
@@ -120,105 +115,94 @@ onAuthStateChanged(auth, user => {
     avatar?.classList.add('hidden');
     localStorage.removeItem('userAvatarLetter');
   }
-
   show(joinScreen);
 });
 
 /*  ===============  Join  ===============  */
 function showNickError(msg) { nickError.textContent = msg; }
-
 joinBtn.addEventListener('click', () => {
   const raw = nickInput.value.trim();
-  if (raw.length < 3 || raw.length > 20) {
-    showNickError('Никнейм должен быть от 3 до 20 символов.');
-    return;
-  }
+  if (raw.length < 3 || raw.length > 20) { showNickError('Никнейм должен быть от 3 до 20 символов.'); return; }
   nickError.textContent = '';
   nickname = raw;
   hide(joinScreen);
   show(chatWindow);
   enterRoom();
 });
+nickInput.addEventListener('input', () => nickError.textContent = '');
 
 /*  ===============  Enter room (RTDB)  ===============  */
 function enterRoom() {
   messagesRef = ref(rtdb, `messages/${ROOM_ID}`);
   presenceRef = ref(rtdb, `presence/${ROOM_ID}/${uid}`);
 
-  // initial presence
-  set(presenceRef, {
-    nick: nickname,
-    online: true,
-    lastSeen: Date.now()
-  });
+  // создаём или обновляем пользователя
+  updatePresence();
 
-  // disconnect handler
-  onDisconnect(presenceRef).set({
-    online: false,
-    lastSeen: Date.now()
-  });
+  // удаление при потере соединения
+  onDisconnect(presenceRef).remove();
 
-  // listen presence
+  // слушаем онлайн
   onValue(ref(rtdb, `presence/${ROOM_ID}`), snap => {
     const data = snap.val() || {};
-    const count = Object.values(data).filter(u => u.online).length;
+    const count = Object.values(data).filter(u => u.lastSeen && Date.now() - u.lastSeen < STALE_MS).length;
     onlineCount.textContent = `${Math.max(1, count)} онлайн`;
   });
 
-  // listen messages
+  // слушаем сообщения
   let loaded = 0;
   onChildAdded(messagesRef, snap => {
     if (++loaded > MSG_LIMIT) messagesEl.firstChild?.remove();
     addMessageToUI(snap.val());
   });
 
-  // mark user as online periodically
-  let lastMark = 0;
-  const markOnline = () => {
-    const now = Date.now();
-    if (now - lastMark < MARK_DELTA) return;
-    lastMark = now;
-    if (!presenceRef) return;
-    set(presenceRef, {
-      nick: nickname,
-      online: true,
-      lastSeen: Date.now()
-    });
-  };
+  // события активности
   document.addEventListener('keydown', markOnline);
   document.addEventListener('mousemove', markOnline);
-  setInterval(markOnline, MARK_DELTA);
+  document.addEventListener('touchstart', markOnline);
 
-  // авто-выключение неактивных пользователей
-  setInterval(() => {
-    const presenceRoomRef = ref(rtdb, `presence/${ROOM_ID}`);
-    onValue(presenceRoomRef, snap => {
-      const data = snap.val() || {};
-      Object.entries(data).forEach(([id, user]) => {
-        if (Date.now() - user.lastSeen > STALE_MS && user.online) {
-          set(ref(rtdb, `presence/${ROOM_ID}/${id}`), {
-            ...user,
-            online: false
-          });
-        }
-      });
-    }, { onlyOnce: true });
-  }, 5 * 60 * 1000); // каждые 5 минут
+  // автоудаление stale пользователей раз в 30 секунд
+  setInterval(cleanStaleUsers, 30_000);
+}
+
+/* ===== обновление присутствия пользователя ===== */
+function updatePresence() {
+  if (!presenceRef) return;
+  set(presenceRef, {
+    nick: nickname,
+    lastSeen: Date.now()
+  });
+}
+
+/* =====  пинг-обновление (с защитой от дребезга) ===== */
+function markOnline() {
+  if (!presenceRef) return;
+  const now = Date.now();
+  if (now - lastMark < MARK_DELTA) return;
+  lastMark = now;
+  updatePresence();
+}
+
+/* =====  автоудаление stale пользователей ===== */
+async function cleanStaleUsers() {
+  const roomRef = ref(rtdb, `presence/${ROOM_ID}`);
+  onValue(roomRef, snap => {
+    const data = snap.val() || {};
+    for (const [uidKey, u] of Object.entries(data)) {
+      if (u.lastSeen && Date.now() - u.lastSeen > STALE_MS + 60_000) {
+        remove(ref(rtdb, `presence/${ROOM_ID}/${uidKey}`));
+      }
+    }
+  }, { onlyOnce: true });
 }
 
 /*  ===============  Send  ===============  */
 sendBtn.addEventListener('click', () => send(textInput.value.trim(), 'text'));
-textInput.addEventListener('keydown', e => {
-  if (e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault();
-    send(textInput.value.trim(), 'text');
-  }
-});
+textInput.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(textInput.value.trim(), 'text'); } });
 
 function send(text, type) {
   if (!text) return;
   textInput.value = '';
-
   push(messagesRef, {
     sender: uid,
     nick: nickname,
@@ -226,13 +210,13 @@ function send(text, type) {
     type,
     createdAt: Date.now()
   });
+  markOnline();
 }
 
 /*  ===============  Images  ===============  */
 photoBtn.addEventListener('click', () => photoInput.click());
 photoInput.addEventListener('change', () => {
-  const file = photoInput.files?.[0];
-  if (!file) return;
+  const file = photoInput.files?.[0]; if (!file) return;
   const reader = new FileReader();
   reader.onload = e => send(e.target.result, 'image');
   reader.readAsDataURL(file);
@@ -241,12 +225,7 @@ photoInput.addEventListener('change', () => {
 
 /*  ===============  Emoji  ===============  */
 emojiBtn.addEventListener('click', () => emojiPanel.classList.toggle('hidden'));
-document.querySelectorAll('.emoji').forEach(btn =>
-  btn.addEventListener('click', () => {
-    textInput.value += btn.textContent;
-    textInput.focus();
-  })
-);
+document.querySelectorAll('.emoji').forEach(btn => btn.addEventListener('click', () => { textInput.value += btn.textContent; textInput.focus(); }));
 
 /*  ===============  Render message  ===============  */
 function addMessageToUI(data) {
@@ -262,7 +241,6 @@ function addMessageToUI(data) {
 
   const msg = document.createElement('div');
   msg.className = 'message' + (isOwn ? ' own' : '');
-
   if (type === 'image') {
     const img = document.createElement('img');
     img.src = text;
@@ -270,16 +248,11 @@ function addMessageToUI(data) {
     img.style.borderRadius = '8px';
     img.onclick = () => window.open(text, '_blank');
     msg.appendChild(img);
-  } else {
-    msg.textContent = text;
-  }
+  } else msg.textContent = text;
 
   const meta = document.createElement('div');
   meta.className = 'msg-meta';
-  const time = createdAt
-    ? new Date(createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    : '';
-  meta.textContent = `${nick} · ${time}`;
+  meta.textContent = `${nick} · ${new Date(createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
   msg.appendChild(meta);
 
   if (isOwn) row.appendChild(msg);
@@ -291,6 +264,12 @@ function addMessageToUI(data) {
 
 /*  ===============  Leave  ===============  */
 leaveBtn.addEventListener('click', async () => {
-  if (presenceRef) await set(presenceRef, { online: false, lastSeen: Date.now(), nick: nickname });
+  if (presenceRef) await remove(presenceRef).catch(() => {});
   window.location.replace('/anonymous/');
+});
+
+/*  ===============  Уборка при закрытии вкладки  ===============  */
+window.addEventListener('beforeunload', async () => {
+  if (!presenceRef) return;
+  await remove(presenceRef).catch(() => {});
 });
