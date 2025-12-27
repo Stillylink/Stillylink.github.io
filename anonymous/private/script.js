@@ -94,6 +94,7 @@ function clearRoomStorage() {
 /* ---------- авторизация ---------- */
 onAuthStateChanged(auth, user => {
   if (!user) { signInAnonymously(auth); return; }
+
   uid = user.uid;
   isRealUser = !!user.email;
   if (isRealUser) {
@@ -113,13 +114,12 @@ onAuthStateChanged(auth, user => {
   onDisconnect(myWaitingRef).remove();
 
   const saved = loadRoomFromStorage();
-  if (saved.roomId) connectToRoom(saved.roomId);
-  else startSearch();
-
-    const url = new URL(location.href);
+  const url = new URL(location.href);
   const rId = url.searchParams.get('room');
-  if (rId) connectToRoom(rId);
-  else startSearch();
+
+  if (saved.roomId) connectToRoom(saved.roomId);
+  else if (rId)      connectToRoom(rId);
+  else               startSearch();
 });
 
 /* ---------- сообщения ---------- */
