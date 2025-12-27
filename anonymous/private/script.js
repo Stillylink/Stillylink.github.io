@@ -1,3 +1,4 @@
+/*  anon1x1.js  –  анонимный чат 1-on-1, полностью RTDB  */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
 import { getFirestore } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
@@ -52,6 +53,9 @@ let messagesUnsub = null, waitingUnsub = null, roomMetaUnsub = null, presenceUns
 let chatClosed = false, cleaning = false, searchCancelled = false;
 let presenceHeartbeatInterval = null, waitingHeartbeatInterval = null;
 
+/* ⬅️ добавлена ОДНА переменная */
+let myWaitingUnsub = null;
+
 const PRESENCE_PING_INTERVAL = 8000;
 const PRESENCE_STALE_MS      = 25000;
 const WAITING_HEARTBEAT_INTERVAL = 8000;
@@ -61,7 +65,7 @@ const WAITING_STALE_MS         = 30000;
 const show = el => el.classList.remove('hidden');
 const hide = el => el.classList.add('hidden');
 
-/* ---------- шапка (без изменений) ---------- */
+/* ---------- шапка ---------- */
 logoutBtn?.addEventListener("click", async e => {
   e.preventDefault();
   if (roomId && !chatClosed) {
@@ -77,7 +81,7 @@ logoutBtn?.addEventListener("click", async e => {
 window.toggleMenu = () => document.querySelector(".nav-links").classList.toggle('open');
 window.toggleUserMenu = () => userMenu.classList.toggle('open');
 
-/* ---------- хранилище комнаты ---------- */
+/* ---------- хранилище ---------- */
 function saveRoomToStorage(rId, pId) {
   if (rId) localStorage.setItem('roomId', rId); else localStorage.removeItem('roomId');
   if (pId) localStorage.setItem('partnerId', pId); else localStorage.removeItem('partnerId');
@@ -108,7 +112,6 @@ onAuthStateChanged(auth, user => {
     localStorage.removeItem("userAvatarLetter");
   }
 
-  /* onDisconnect ставим только теперь */
   myWaitingRef = ref(rtdb, `waiting/${uid}`);
   onDisconnect(myWaitingRef).remove();
 
@@ -216,7 +219,8 @@ async function startSearch() {
   myWaitingRef = ref(rtdb, `waiting/${uid}`);
   await set(myWaitingRef, { uid, claimed: false, roomId: null, lastSeen: Date.now() });
 
-  onValue(myWaitingRef, snap => {
+  /* ⬅️ сохраняем функцию-отписку */
+  myWaitingUnsub = onValue(myWaitingRef, snap => {
     if (!snap.exists()) return;
     const data = snap.val();
     if (data.claimed && data.roomId) {
@@ -311,7 +315,9 @@ async function finishChat() {
 function endChatUI() { connectedStopUI(); statusText.textContent = 'Чат завершен'; }
 function connectedStopUI() { hide(searchScreen); hide(chatWindow); show(endScreen); }
 
+/* ---------- очистка ---------- */
 async function clearAllListenersAndState() {
+  if (myWaitingUnsub) { myWaitingUnsub(); myWaitingUnsub = null; } // ⬅️ отписка
   if (messagesUnsub)  { messagesUnsub();  messagesUnsub  = null; }
   if (roomMetaUnsub)  { roomMetaUnsub();  roomMetaUnsub  = null; }
   if (waitingUnsub)   { waitingUnsub();   waitingUnsub   = null; }
@@ -319,13 +325,8 @@ async function clearAllListenersAndState() {
   if (presenceHeartbeatInterval)  { clearInterval(presenceHeartbeatInterval);  presenceHeartbeatInterval  = null; }
   if (waitingHeartbeatInterval)   { clearInterval(waitingHeartbeatInterval);   waitingHeartbeatInterval   = null; }
 
-  if (myWaitingRef) {
-    await remove(myWaitingRef).catch(() => {});
-    myWaitingRef = null;
-  }
-  if (roomId && uid) {
-    await remove(ref(rtdb, `rooms/${roomId}/presence/${uid}`)).catch(() => {});
-  }
+  if (myWaitingRef)   { await remove(myWaitingRef).catch(() => {}); myWaitingRef = null; }
+  if (roomId && uid)  { await remove(ref(rtdb, `rooms/${roomId}/presence/${uid}`)).catch(() => {}); }
   messagesEl.innerHTML = '';
   roomId = null; partnerId = null;
 }
@@ -349,7 +350,8 @@ async function deleteRoomFully(rId) {
 /* ---------- beforeunload / visibility ---------- */
 window.addEventListener('beforeunload', async () => {
   if (!uid) return;
-  if (myWaitingRef) await remove(myWaitingRef).catch(() => {});
+  if (myWaitingUnsub) { myWaitingUnsub(); myWaitingUnsub = null; }
+  if (myWaitingRef)   { await remove(myWaitingRef).catch(() => {}); }
   if (roomId) {
     await remove(ref(rtdb, `rooms/${roomId}/presence/${uid}`)).catch(() => {});
     const metaSnap = await get(ref(rtdb, `rooms/${roomId}/meta`));
@@ -368,8 +370,9 @@ window.addEventListener('beforeunload', async () => {
 document.addEventListener('visibilitychange', () => {
   if (!uid) return;
   if (document.visibilityState === 'hidden') {
-    if (myWaitingRef) remove(myWaitingRef).catch(() => {});
-    if (roomId) remove(ref(rtdb, `rooms/${roomId}/presence/${uid}`)).catch(() => {});
+    if (myWaitingUnsub) { myWaitingUnsub(); myWaitingUnsub = null; }
+    if (myWaitingRef)   { remove(myWaitingRef).catch(() => {}); }
+    if (roomId)         { remove(ref(rtdb, `rooms/${roomId}/presence/${uid}`)).catch(() => {}); }
   } else {
     if (!roomId && !myWaitingRef) startSearch();
   }
@@ -380,5 +383,5 @@ finishBtn.addEventListener('click', () => modal.classList.remove('hidden'));
 modalCancel.addEventListener('click', () => modal.classList.add('hidden'));
 modalFinish.addEventListener('click', async () => { modal.classList.add('hidden'); await finishChat(); });
 newChatBtn.addEventListener('click', async () => { searchCancelled = false; await fullRoomCleanup(); await clearAllListenersAndState(); clearRoomStorage(); startSearch(); });
-cancelSearch.addEventListener('click', async () => { searchCancelled = true; if (myWaitingRef) await remove(myWaitingRef).catch(() => {}); hide(searchScreen); show(endScreen); statusText.textContent = 'Поиск отменён'; });
-exitBtn.addEventListener('click', e => { e.preventDefault(); if (!uid) return; if (myWaitingRef) remove(myWaitingRef).catch(() => {}); if (roomId) remove(ref(rtdb, `rooms/${roomId}/presence/${uid}`)).catch(() => {}); clearAllListenersAndState(); clearRoomStorage(); window.location.replace('/anonymous/'); });
+cancelSearch.addEventListener('click', async () => { searchCancelled = true; if (myWaitingUnsub) { myWaitingUnsub(); myWaitingUnsub = null; } if (myWaitingRef) { await remove(myWaitingRef).catch(() => {}); } hide(searchScreen); show(endScreen); statusText.textContent = 'Поиск отменён'; });
+exitBtn.addEventListener('click', e => { e.preventDefault(); if (!uid) return; if (myWaitingUnsub) { myWaitingUnsub(); myWaitingUnsub = null; } if (myWaitingRef) { remove(myWaitingRef).catch(() => {}); } if (roomId) { remove(ref(rtdb, `rooms/${roomId}/presence/${uid}`)).catch(() => {}); } clearAllListenersAndState(); clearRoomStorage(); window.location.replace('/anonymous/'); });
