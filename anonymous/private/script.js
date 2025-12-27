@@ -251,35 +251,37 @@ async function startSearch() {
     limitToLast(20)
   );
 
-  waitingUnsub = onValue(qFree, async snap => {
-    if (!uid || roomId) return;
+waitingUnsub = onValue(qFree, async snap => {
+  if (!uid || roomId) return;
 
-    const now = Date.now();
-    let other = null;
+  const now = Date.now();
+  let otherUid = null;
 
-    snap.forEach(c => {
-      const d = c.val();
-      if (d.uid === uid) return;
-      if (now - (d.lastSeen || 0) > WAITING_STALE_MS) return;
-      other = d.uid;
-    });
-
-    if (!other) return;
-
-    const newRoomId = `${uid}_${other}_${Date.now()}`;
-
-    await update(ref(rtdb), {
-      [`waiting/${uid}/claimed`]: true,
-      [`waiting/${uid}/roomId`]: newRoomId,
-      [`waiting/${other}/claimed`]: true,
-      [`waiting/${other}/roomId`]: newRoomId,
-      [`rooms/${newRoomId}/meta`]: {
-        participants: [uid, other],
-        createdAt: Date.now(),
-        closed: false
-      }
-    });
+  snap.forEach(c => {
+    const d = c.val();
+    if (d.uid === uid) return;
+    if (now - (d.lastSeen || 0) > WAITING_STALE_MS) return;
+    if (!otherUid) otherUid = d.uid;
   });
+
+  if (!otherUid) return;
+
+  if (uid > otherUid) return;
+
+  const newRoomId = `${uid}_${otherUid}_${Date.now()}`;
+
+  await update(ref(rtdb), {
+    [`waiting/${uid}/claimed`]: true,
+    [`waiting/${uid}/roomId`]: newRoomId,
+    [`waiting/${otherUid}/claimed`]: true,
+    [`waiting/${otherUid}/roomId`]: newRoomId,
+    [`rooms/${newRoomId}/meta`]: {
+      participants: [uid, otherUid],
+      createdAt: Date.now(),
+      closed: false
+    }
+  });
+});
 }
 
 /* ---------- комната ---------- */
