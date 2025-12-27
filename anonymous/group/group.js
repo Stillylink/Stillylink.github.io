@@ -140,6 +140,8 @@ async function enterRoom() {
   const now = Date.now();
   await set(presenceRef, { nick: nickname, online: true, lastSeen: now });
 
+  onDisconnect(presenceRef).remove();
+
   /* 2. слушаем сообщения */
   let loaded = 0;
   onChildAdded(messagesRef, snap => {
