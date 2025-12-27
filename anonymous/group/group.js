@@ -48,7 +48,7 @@ const navToggle   = document.querySelector('.nav-toggle');
 
 /*  ===============  Переменные  =============== */
 const ROOM_ID   = 'public_room';
-const MSG_LIMIT = 100;
+const MSG_LIMIT = 80;
 const STALE_MS  = 120_000;   // 2 мин бездействия
 const MARK_DELTA= 30_000;    // пинг не чаще 30 с
 
