@@ -130,27 +130,24 @@ joinBtn.addEventListener('click', () => {
 });
 
 /*  ===============  Enter room (RTDB)  =============== */
-function enterRoom() {
+async function enterRoom() {
   messagesRef = ref(rtdb, `messages/${ROOM_ID}`);
   presenceRef = ref(rtdb, `presence/${ROOM_ID}/${uid}`);
 
-  onlineCount.classList.remove('hidden'); 
+  onlineCount.classList.remove('hidden');
 
-  /* 1. ставим себя онлайн */
+  /* 1. ждём, пока своя запись появится в базе */
   const now = Date.now();
-  set(presenceRef, { nick: nickname, online: true, lastSeen: now });
+  await set(presenceRef, { nick: nickname, online: true, lastSeen: now });
 
-  /* 2. при отключении – удаляем запись */
-  onDisconnect(presenceRef).remove();
-
-  /* 3. слушаем новые сообщения */
+  /* 2. слушаем сообщения */
   let loaded = 0;
   onChildAdded(messagesRef, snap => {
     if (++loaded > MSG_LIMIT) messagesEl.firstChild?.remove();
     addMessageToUI(snap.val());
   });
 
-  /* 4. слушаем онлайн и чистим зависших каждые 5 с */
+  /* 3. запускаем счётчик/чистку */
   const presenceRoot = ref(rtdb, `presence/${ROOM_ID}`);
   setInterval(async () => {
     const snap = await get(presenceRoot);
@@ -165,7 +162,7 @@ function enterRoom() {
     onlineCount.textContent = `${Math.max(1, onlineUsers)} онлайн`;
   }, 5_000);
 
-  /* 5. регулярный пинг */
+  /* 4. регулярный пинг */
   markOnlineEvents();
 }
 
