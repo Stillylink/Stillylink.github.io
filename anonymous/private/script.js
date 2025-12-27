@@ -266,7 +266,7 @@ waitingUnsub = onValue(qFree, async snap => {
 
   if (!otherUid) return;
 
-  if (uid > otherUid) return;
+  if (uid.localeCompare(otherUid) > 0) return;
 
   const newRoomId = `${uid}_${otherUid}_${Date.now()}`;
 
