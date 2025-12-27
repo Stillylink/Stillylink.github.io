@@ -134,6 +134,8 @@ function enterRoom() {
   messagesRef = ref(rtdb, `messages/${ROOM_ID}`);
   presenceRef = ref(rtdb, `presence/${ROOM_ID}/${uid}`);
 
+  onlineCount.classList.remove('hidden'); 
+
   /* 1. ставим себя онлайн */
   const now = Date.now();
   set(presenceRef, { nick: nickname, online: true, lastSeen: now });
