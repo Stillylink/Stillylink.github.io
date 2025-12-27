@@ -209,15 +209,30 @@ function stopWaitingHeartbeat() {
 /* ---------- поиск ---------- */
 async function startSearch() {
   if (!uid) return;
-  const saved = loadRoomFromStorage(); if (saved.roomId) return;
-  chatClosed = false; clearAllListenersAndState(); clearMessages();
-  show(searchScreen); hide(chatWindow); hide(endScreen);
+  const saved = loadRoomFromStorage();
+  if (saved.roomId) return;
+
+  chatClosed = false;
+  await clearAllListenersAndState();   // ⬅️ КРИТИЧНО
+  clearMessages();
+
+  show(searchScreen);
+  hide(chatWindow);
+  hide(endScreen);
   statusText.textContent = 'Ищем собеседника...';
 
   myWaitingRef = ref(rtdb, `waiting/${uid}`);
-  await set(myWaitingRef, { uid, claimed: false, roomId: null, lastSeen: Date.now() });
 
-  myWaitingUnsub = onValue(myWaitingRef, snap => {   // ⬅️ сохраняем отписку
+  await set(myWaitingRef, {
+    uid,
+    claimed: false,
+    roomId: null,
+    lastSeen: Date.now()
+  });
+
+  if (!myWaitingRef) return;
+
+  myWaitingUnsub = onValue(myWaitingRef, snap => {
     if (!snap.exists()) return;
     const data = snap.val();
     if (data.claimed && data.roomId) {
@@ -229,32 +244,41 @@ async function startSearch() {
 
   startWaitingHeartbeat();
 
-  const qFree = query(ref(rtdb, 'waiting'), orderByChild('claimed'), equalTo(false), limitToLast(20));
+  const qFree = query(
+    ref(rtdb, 'waiting'),
+    orderByChild('claimed'),
+    equalTo(false),
+    limitToLast(20)
+  );
+
   waitingUnsub = onValue(qFree, async snap => {
-    if (!uid) return;
+    if (!uid || roomId) return;
+
     const now = Date.now();
     let other = null;
+
     snap.forEach(c => {
       const d = c.val();
       if (d.uid === uid) return;
-      const ls = d.lastSeen || 0;
-      if (now - ls > WAITING_STALE_MS) return;
-      other = { ref: c.ref, val: d };
+      if (now - (d.lastSeen || 0) > WAITING_STALE_MS) return;
+      other = d.uid;
     });
+
     if (!other) return;
 
-    const newRoomId = `${uid}_${other.val.uid}_${Date.now()}`;
-    const updates = {};
-    updates[`waiting/${uid}/claimed`]   = true;
-    updates[`waiting/${uid}/roomId`]    = newRoomId;
-    updates[`waiting/${other.val.uid}/claimed`] = true;
-    updates[`waiting/${other.val.uid}/roomId`]  = newRoomId;
-    updates[`rooms/${newRoomId}/meta`] = {
-      participants: [uid, other.val.uid],
-      createdAt: Date.now(),
-      closed: false
-    };
-    await set(ref(rtdb), updates);
+    const newRoomId = `${uid}_${other}_${Date.now()}`;
+
+    await update(ref(rtdb), {
+      [`waiting/${uid}/claimed`]: true,
+      [`waiting/${uid}/roomId`]: newRoomId,
+      [`waiting/${other}/claimed`]: true,
+      [`waiting/${other}/roomId`]: newRoomId,
+      [`rooms/${newRoomId}/meta`]: {
+        participants: [uid, other],
+        createdAt: Date.now(),
+        closed: false
+      }
+    });
   });
 }
 
