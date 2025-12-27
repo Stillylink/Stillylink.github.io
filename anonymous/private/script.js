@@ -1,4 +1,4 @@
-/*  anon1x1.js  –  анонимный чат 1-on-1, полностью RTDB  */
+
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
 import { getFirestore } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js"; // только для аватарки
