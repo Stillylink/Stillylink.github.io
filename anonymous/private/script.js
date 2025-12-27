@@ -1,10 +1,9 @@
-/*  anon1x1.js  –  анонимный чат 1-on-1, полностью на RTDB  */
+/*  anon1x1.js  –  анонимный чат 1-on-1, полностью RTDB  */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
-import { getFirestore } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js"; // только для шапки
+import { getFirestore } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js"; // только для аватарки
 import {
-  getDatabase,
-  ref, set, push, onValue, onDisconnect, remove, get, query, limitToLast, orderByChild
+  getDatabase, ref, set, push, onValue, onDisconnect, remove, get, query, limitToLast, orderByChild, equalTo
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js";
 
 const firebaseConfig = {
@@ -19,7 +18,7 @@ const firebaseConfig = {
 
 const app   = initializeApp(firebaseConfig);
 const auth  = getAuth(app);
-getFirestore(app);                      // нужно только для аватарки
+getFirestore(app);                      // нужно только для шапки
 const rtdb  = getDatabase(app);
 
 /* ---------- DOM (ваш прежний) ---------- */
@@ -49,7 +48,7 @@ const userMenu     = document.querySelector(".user-menu");
 const logoutBtn    = document.getElementById("logoutBtn");
 
 /* ---------- глобальные переменные ---------- */
-let uid = null, isRealUser = false, myWaitingRef = null, roomRef = null, roomId = null, partnerId = null;
+let uid = null, isRealUser = false, myWaitingRef = null, roomId = null, partnerId = null;
 let messagesUnsub = null, waitingUnsub = null, roomMetaUnsub = null, presenceUnsub = null;
 let chatClosed = false, cleaning = false, searchCancelled = false;
 let presenceHeartbeatInterval = null, waitingHeartbeatInterval = null;
@@ -66,7 +65,7 @@ const hide = el => el.classList.add('hidden');
 /* ---------- шапка (без изменений) ---------- */
 logoutBtn?.addEventListener("click", async e => {
   e.preventDefault();
-  if (roomRef && !chatClosed) {
+  if (roomId && !chatClosed) {
     chatClosed = true;
     await set(ref(rtdb, `rooms/${roomId}/meta/closed`), true);
   }
@@ -109,15 +108,13 @@ onAuthStateChanged(auth, user => {
     localStorage.removeItem("userAvatarLetter");
   }
 
+  /* ставим onDisconnect только теперь */
+  myWaitingRef = ref(rtdb, `waiting/${uid}`);
+  onDisconnect(myWaitingRef).remove();
+
   const saved = loadRoomFromStorage();
-  if (saved.roomId) {
-    get(ref(rtdb, `rooms/${saved.roomId}/meta`)).then(snap => {
-      if (snap.exists() && !snap.val().closed) {
-        roomId = saved.roomId; partnerId = saved.partnerId;
-        connectToRoom(saved.roomId);
-      } else { clearRoomStorage(); startSearch(); }
-    });
-  } else startSearch();
+  if (saved.roomId) connectToRoom(saved.roomId);
+  else startSearch();
 });
 
 /* ---------- сообщения ---------- */
@@ -213,7 +210,7 @@ async function startSearch() {
 
   myWaitingRef = ref(rtdb, `waiting/${uid}`);
   await set(myWaitingRef, { uid, claimed: false, roomId: null, lastSeen: Date.now() });
-  onDisconnect(myWaitingRef).remove();                       // авто-удаление
+  /* onDisconnect уже вызван в onAuthStateChanged */
 
   /* слушаем свою запись */
   onValue(myWaitingRef, snap => {
