@@ -147,9 +147,10 @@ async function enterRoom() {
     addMessageToUI(snap.val());
   });
 
-  /* 3. запускаем счётчик/чистку */
+  /* 3. сразу считаем и показываем онлайн, потом таймер */
   const presenceRoot = ref(rtdb, `presence/${ROOM_ID}`);
-  setInterval(async () => {
+
+  async function countAndDisplay() {
     const snap = await get(presenceRoot);
     const data = snap.val() || {};
     let onlineUsers = 0;
@@ -160,7 +161,10 @@ async function enterRoom() {
       } else if (u.online) onlineUsers++;
     }
     onlineCount.textContent = `${Math.max(1, onlineUsers)} онлайн`;
-  }, 5_000);
+  }
+
+  await countAndDisplay();
+  setInterval(countAndDisplay, 5_000);
 
   /* 4. регулярный пинг */
   markOnlineEvents();
