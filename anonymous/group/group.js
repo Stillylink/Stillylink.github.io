@@ -114,6 +114,8 @@ onAuthStateChanged(auth, user => {
 /*  ===============  Join  =============== */
 function showNickError(msg) { nickError.textContent = msg; }
 
+nickInput.addEventListener('input', () => nickError.textContent = '');
+
 joinBtn.addEventListener('click', () => {
   const raw = nickInput.value.trim();
   if (raw.length < 3 || raw.length > 20) {
