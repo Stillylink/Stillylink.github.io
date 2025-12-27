@@ -1,7 +1,7 @@
-
+/*  anon1x1.js  –  анонимный чат 1-on-1, полностью RTDB  */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
-import { getFirestore } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js"; // только для аватарки
+import { getFirestore } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
 import {
   getDatabase, ref, set, push, onValue, onDisconnect, remove, get, query, limitToLast, orderByChild, equalTo
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js";
@@ -18,10 +18,10 @@ const firebaseConfig = {
 
 const app   = initializeApp(firebaseConfig);
 const auth  = getAuth(app);
-getFirestore(app);                      // нужно только для шапки
+getFirestore(app);
 const rtdb  = getDatabase(app);
 
-/* ---------- DOM (ваш прежний) ---------- */
+/* ---------- DOM ---------- */
 const searchScreen = document.getElementById('searchScreen');
 const chatWindow   = document.getElementById('chatWindow');
 const endScreen    = document.getElementById('endScreen');
@@ -91,7 +91,7 @@ function clearRoomStorage() {
   localStorage.removeItem('partnerId');
 }
 
-/* ---------- авторизация + восстановление сессии ---------- */
+/* ---------- авторизация ---------- */
 onAuthStateChanged(auth, user => {
   if (!user) { signInAnonymously(auth); return; }
   uid = user.uid;
@@ -108,7 +108,7 @@ onAuthStateChanged(auth, user => {
     localStorage.removeItem("userAvatarLetter");
   }
 
-  /* ставим onDisconnect только теперь */
+  /* onDisconnect ставим только теперь */
   myWaitingRef = ref(rtdb, `waiting/${uid}`);
   onDisconnect(myWaitingRef).remove();
 
@@ -144,7 +144,7 @@ function addMessageToUI(data) {
 }
 
 async function sendMessageToRoom(text, type = 'text') {
-  if (!roomId) return;
+  if (!uid || !roomId) return;
   await push(ref(rtdb, `rooms/${roomId}/messages`), {
     sender: uid,
     text,
@@ -153,7 +153,7 @@ async function sendMessageToRoom(text, type = 'text') {
   });
 }
 
-/* ---------- компоненты UI ---------- */
+/* ---------- UI ---------- */
 sendBtn.addEventListener('click', () => {
   const txt = textInput.value.trim(); if (!txt) return;
   textInput.value = '';
@@ -188,21 +188,22 @@ document.addEventListener('click', e => {
   emojiPanel.classList.add('hidden');
 });
 
-/* ---------- waiting (очередь) ---------- */
+/* ---------- waiting ---------- */
 async function startWaitingHeartbeat() {
-  if (!myWaitingRef) return;
+  if (!uid || !myWaitingRef) return;
   await set(myWaitingRef, { lastSeen: Date.now() });
   if (waitingHeartbeatInterval) clearInterval(waitingHeartbeatInterval);
   waitingHeartbeatInterval = setInterval(() => {
-    set(myWaitingRef, { lastSeen: Date.now() });
+    if (uid) set(myWaitingRef, { lastSeen: Date.now() });
   }, WAITING_HEARTBEAT_INTERVAL);
 }
 function stopWaitingHeartbeat() {
   if (waitingHeartbeatInterval) { clearInterval(waitingHeartbeatInterval); waitingHeartbeatInterval = null; }
 }
 
-/* ---------- поиск собеседника ---------- */
+/* ---------- поиск ---------- */
 async function startSearch() {
+  if (!uid) return;
   const saved = loadRoomFromStorage(); if (saved.roomId) return;
   chatClosed = false; clearAllListenersAndState(); clearMessages();
   show(searchScreen); hide(chatWindow); hide(endScreen);
@@ -210,9 +211,7 @@ async function startSearch() {
 
   myWaitingRef = ref(rtdb, `waiting/${uid}`);
   await set(myWaitingRef, { uid, claimed: false, roomId: null, lastSeen: Date.now() });
-  /* onDisconnect уже вызван в onAuthStateChanged */
 
-  /* слушаем свою запись */
   onValue(myWaitingRef, snap => {
     if (!snap.exists()) return;
     const data = snap.val();
@@ -225,9 +224,9 @@ async function startSearch() {
 
   startWaitingHeartbeat();
 
-  /* слушаем свободных */
   const qFree = query(ref(rtdb, 'waiting'), orderByChild('claimed'), equalTo(false), limitToLast(20));
   waitingUnsub = onValue(qFree, async snap => {
+    if (!uid) return;
     const now = Date.now();
     let other = null;
     snap.forEach(c => {
@@ -239,7 +238,6 @@ async function startSearch() {
     });
     if (!other) return;
 
-    /* транзакция RTDB */
     const newRoomId = `${uid}_${other.val.uid}_${Date.now()}`;
     const updates = {};
     updates[`waiting/${uid}/claimed`]   = true;
@@ -255,13 +253,13 @@ async function startSearch() {
   });
 }
 
-/* ---------- подключаемся к комнате ---------- */
+/* ---------- комната ---------- */
 function connectToRoom(rId) {
+  if (!uid) return;
   roomId = rId; saveRoomToStorage(roomId, null);
   hide(searchScreen); show(chatWindow); hide(endScreen);
   statusText.textContent = 'Соединено';
 
-  /* слушаем meta */
   roomMetaUnsub = onValue(ref(rtdb, `rooms/${roomId}/meta`), snap => {
     if (!snap.exists() || snap.val().closed) {
       chatClosed = true; if (messagesUnsub) messagesUnsub(); endChatUI();
@@ -272,7 +270,6 @@ function connectToRoom(rId) {
     }
   });
 
-  /* слушаем сообщения */
   const msgRef = query(ref(rtdb, `rooms/${roomId}/messages`), limitToLast(100));
   messagesUnsub = onValue(msgRef, snap => {
     if (chatClosed) return;
@@ -280,12 +277,13 @@ function connectToRoom(rId) {
     snap.forEach(c => addMessageToUI(c.val()));
   });
 
-  /* presence */
   const myPresRef = ref(rtdb, `rooms/${roomId}/presence/${uid}`);
   set(myPresRef, { lastSeen: Date.now() });
   onDisconnect(myPresRef).remove();
   if (presenceHeartbeatInterval) clearInterval(presenceHeartbeatInterval);
-  presenceHeartbeatInterval = setInterval(() => set(myPresRef, { lastSeen: Date.now() }), PRESENCE_PING_INTERVAL);
+  presenceHeartbeatInterval = setInterval(() => {
+    if (uid) set(myPresRef, { lastSeen: Date.now() });
+  }, PRESENCE_PING_INTERVAL);
 
   presenceUnsub = onValue(ref(rtdb, `rooms/${roomId}/presence`), snap => {
     const now = Date.now();
@@ -298,7 +296,7 @@ function connectToRoom(rId) {
   });
 }
 
-/* ---------- выход / завершение ---------- */
+/* ---------- завершение ---------- */
 async function finishChat() {
   endChatUI();
   if (roomId) await set(ref(rtdb, `rooms/${roomId}/meta/closed`), true);
@@ -332,7 +330,6 @@ async function fullRoomCleanup() {
   if (roomId && uid) await remove(ref(rtdb, `rooms/${roomId}/presence/${uid}`)).catch(() => {});
 }
 
-/* ---------- авто-удаление комнаты целиком ---------- */
 async function deleteRoomFully(rId) {
   if (!rId) return;
   const batch = {};
@@ -347,8 +344,9 @@ async function deleteRoomFully(rId) {
 
 /* ---------- beforeunload / visibility ---------- */
 window.addEventListener('beforeunload', async () => {
+  if (!uid) return;
   if (myWaitingRef) await remove(myWaitingRef).catch(() => {});
-  if (roomId && uid) {
+  if (roomId) {
     await remove(ref(rtdb, `rooms/${roomId}/presence/${uid}`)).catch(() => {});
     const metaSnap = await get(ref(rtdb, `rooms/${roomId}/meta`));
     if (metaSnap.exists()) {
@@ -364,9 +362,10 @@ window.addEventListener('beforeunload', async () => {
 });
 
 document.addEventListener('visibilitychange', () => {
+  if (!uid) return;
   if (document.visibilityState === 'hidden') {
     if (myWaitingRef) remove(myWaitingRef).catch(() => {});
-    if (roomId && uid) remove(ref(rtdb, `rooms/${roomId}/presence/${uid}`)).catch(() => {});
+    if (roomId) remove(ref(rtdb, `rooms/${roomId}/presence/${uid}`)).catch(() => {});
   } else {
     if (!roomId && !myWaitingRef) startSearch();
   }
@@ -378,10 +377,11 @@ modalCancel.addEventListener('click', () => modal.classList.add('hidden'));
 modalFinish.addEventListener('click', async () => { modal.classList.add('hidden'); await finishChat(); });
 newChatBtn.addEventListener('click', async () => { searchCancelled = false; await fullRoomCleanup(); await clearAllListenersAndState(); clearRoomStorage(); startSearch(); });
 cancelSearch.addEventListener('click', async () => { searchCancelled = true; if (myWaitingRef) await remove(myWaitingRef).catch(() => {}); hide(searchScreen); show(endScreen); statusText.textContent = 'Поиск отменён'; });
-exitBtn.addEventListener('click', e => { e.preventDefault(); if (myWaitingRef) remove(myWaitingRef).catch(() => {}); if (roomId && uid) remove(ref(rtdb, `rooms/${roomId}/presence/${uid}`)).catch(() => {}); clearAllListenersAndState(); clearRoomStorage(); window.location.replace('/anonymous/'); });
+exitBtn.addEventListener('click', e => { e.preventDefault(); if (!uid) return; if (myWaitingRef) remove(myWaitingRef).catch(() => {}); if (roomId) remove(ref(rtdb, `rooms/${roomId}/presence/${uid}`)).catch(() => {}); clearAllListenersAndState(); clearRoomStorage(); window.location.replace('/anonymous/'); });
 
 /* ---------- старт ---------- */
 setTimeout(() => {
+  if (!uid) return;
   const url = new URL(location.href);
   const rId = url.searchParams.get('room');
   if (rId) connectToRoom(rId); else startSearch();
