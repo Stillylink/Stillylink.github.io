@@ -52,9 +52,7 @@ let uid = null, isRealUser = false, myWaitingRef = null, roomId = null, partnerI
 let messagesUnsub = null, waitingUnsub = null, roomMetaUnsub = null, presenceUnsub = null;
 let chatClosed = false, cleaning = false, searchCancelled = false;
 let presenceHeartbeatInterval = null, waitingHeartbeatInterval = null;
-
-/* ⬅️ добавлена ОДНА переменная */
-let myWaitingUnsub = null;
+let myWaitingUnsub = null; // ⬅️ отписка от waiting
 
 const PRESENCE_PING_INTERVAL = 8000;
 const PRESENCE_STALE_MS      = 25000;
@@ -219,8 +217,7 @@ async function startSearch() {
   myWaitingRef = ref(rtdb, `waiting/${uid}`);
   await set(myWaitingRef, { uid, claimed: false, roomId: null, lastSeen: Date.now() });
 
-  /* ⬅️ сохраняем функцию-отписку */
-  myWaitingUnsub = onValue(myWaitingRef, snap => {
+  myWaitingUnsub = onValue(myWaitingRef, snap => {   // ⬅️ сохраняем отписку
     if (!snap.exists()) return;
     const data = snap.val();
     if (data.claimed && data.roomId) {
