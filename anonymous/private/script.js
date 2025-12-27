@@ -115,6 +115,11 @@ onAuthStateChanged(auth, user => {
   const saved = loadRoomFromStorage();
   if (saved.roomId) connectToRoom(saved.roomId);
   else startSearch();
+
+    const url = new URL(location.href);
+  const rId = url.searchParams.get('room');
+  if (rId) connectToRoom(rId);
+  else startSearch();
 });
 
 /* ---------- сообщения ---------- */
@@ -378,11 +383,3 @@ modalFinish.addEventListener('click', async () => { modal.classList.add('hidden'
 newChatBtn.addEventListener('click', async () => { searchCancelled = false; await fullRoomCleanup(); await clearAllListenersAndState(); clearRoomStorage(); startSearch(); });
 cancelSearch.addEventListener('click', async () => { searchCancelled = true; if (myWaitingRef) await remove(myWaitingRef).catch(() => {}); hide(searchScreen); show(endScreen); statusText.textContent = 'Поиск отменён'; });
 exitBtn.addEventListener('click', e => { e.preventDefault(); if (!uid) return; if (myWaitingRef) remove(myWaitingRef).catch(() => {}); if (roomId) remove(ref(rtdb, `rooms/${roomId}/presence/${uid}`)).catch(() => {}); clearAllListenersAndState(); clearRoomStorage(); window.location.replace('/anonymous/'); });
-
-/* ---------- старт ---------- */
-setTimeout(() => {
-  if (!uid) return;
-  const url = new URL(location.href);
-  const rId = url.searchParams.get('room');
-  if (rId) connectToRoom(rId); else startSearch();
-}, 600);
