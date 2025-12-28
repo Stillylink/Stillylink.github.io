@@ -16,8 +16,7 @@ import {
     get,
     remove,
     update,
-    serverTimestamp,
-    onDisconnect
+    serverTimestamp
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js";
 
 import {
@@ -83,6 +82,7 @@ let presenceHeartbeatInterval = null;
 let chatClosed = false;
 let cleaning = false;
 let searchCancelled = false;
+let matchInterval = null;
 
 const PRESENCE_PING_INTERVAL = 8000;
 const PRESENCE_STALE_MS = 25000;
@@ -149,7 +149,7 @@ function addMessageToUI(data){
 
 // ========================= MESSAGES =========================
 async function sendMessageToRoom(text, type = 'text'){
-    if(!roomRef) return;
+    if(!roomId) return;
     const msgRef = push(ref(db, `rooms/${roomId}/messages`));
     await set(msgRef, {
         sender: uid,
@@ -207,10 +207,9 @@ document.addEventListener('click', (e)=>{
 
 // ========================= PRESENCE =========================
 async function setMyPresence(){
-    if(!roomRef || !uid) return;
+    if(!roomId || !uid) return;
     const presRef = ref(db, `rooms/${roomId}/presence/${uid}`);
     await set(presRef, { lastSeen: Date.now() });
-    onDisconnect(presRef).remove();
     if(presenceHeartbeatInterval) clearInterval(presenceHeartbeatInterval);
     presenceHeartbeatInterval = setInterval(async ()=>{
         await update(presRef, { lastSeen: Date.now() }).catch(()=>{});
@@ -229,7 +228,6 @@ async function connectToRoom(rId){
     hide(endScreen);
     statusText.textContent = 'Соединено';
 
-    // Listen to room meta
     roomMetaUnsub = onValue(roomRef, async (snap) => {
         if(!snap.exists() || snap.val().closed){
             chatClosed = true;
@@ -242,7 +240,6 @@ async function connectToRoom(rId){
         }
     });
 
-    // Listen to messages
     const msgsRef = ref(db, `rooms/${roomId}/messages`);
     messagesUnsub = onValue(msgsRef, (snap) => {
         if(chatClosed) return;
@@ -291,50 +288,50 @@ async function startSearch(){
         }
     });
 
-    // Cleanup stale waiting
-    const waitingRef = ref(db, 'waiting');
-    onValue(waitingRef, async (snap) => {
+    // === MATCHMAKING: каждые 3 секунды ===
+    matchInterval = setInterval(async () => {
+        if (roomId || chatClosed || searchCancelled) {
+            clearInterval(matchInterval);
+            return;
+        }
+
+        const waitingRef = ref(db, 'waiting');
+        const snap = await get(waitingRef);
         const now = Date.now();
+
+        let otherKey = null;
+        let otherData = null;
+
         snap.forEach(child => {
             const data = child.val();
-            if(data.uid === uid) return;
-            if(data.claimed) return;
+            if (data.uid === uid) return;
+            if (data.claimed) return;
             const ls = data.lastSeen || 0;
-            if(now - ls > WAITING_STALE_MS){
-                remove(ref(db, `waiting/${child.key}`));
-            }
+            if (now - ls > WAITING_STALE_MS) return;
+            otherKey = child.key;
+            otherData = data;
         });
-    });
 
-    // Matchmaking
-    const q = ref(db, 'waiting');
-    onValue(q, async (snap) => {
-        const now = Date.now();
-        for(const child of snap.forEach(child => {
-            const data = child.val();
-            if(data.uid === uid) return;
-            if(data.claimed) return;
-            const ls = data.lastSeen || 0;
-            if(now - ls > WAITING_STALE_MS) return;
+        if (!otherKey) return;
 
-            // Create room
-            const newRoomRef = ref(db, 'rooms');
-            const newRoomKey = push(newRoomRef).key;
-            const updates = {};
-            updates[`rooms/${newRoomKey}`] = {
-                participants: [uid, data.uid],
-                createdAt: Date.now(),
-                closed: false
-            };
-            updates[`waiting/${uid}`] = { claimed: true, roomId: newRoomKey };
-            updates[`waiting/${data.uid}`] = { claimed: true, roomId: newRoomKey };
+        const roomKey = push(ref(db, 'rooms')).key;
+        const updates = {};
+        updates[`rooms/${roomKey}`] = {
+            participants: [uid, otherData.uid],
+            createdAt: Date.now(),
+            closed: false
+        };
+        updates[`waiting/${uid}`] = { claimed: true, roomId: roomKey };
+        updates[`waiting/${otherKey}`] = { claimed: true, roomId: roomKey };
 
-            update(ref(db), updates).then(()=>{
-                roomId = newRoomKey;
-                connectToRoom(roomId);
-            });
-        }));
-    });
+        try {
+            await update(ref(db), updates);
+            roomId = roomKey;
+            await connectToRoom(roomId);
+        } catch (e) {
+            console.warn("Match failed:", e);
+        }
+    }, 3000);
 }
 
 // ========================= END CHAT =========================
@@ -360,6 +357,7 @@ function endChatUI(){
 
 // ========================= CLEANUP =========================
 async function clearAllListenersAndState(){
+    if(matchInterval){ clearInterval(matchInterval); matchInterval = null; }
     if(messagesUnsub){ off(messagesUnsub); messagesUnsub = null; }
     if(roomMetaUnsub){ off(roomMetaUnsub); roomMetaUnsub = null; }
     if(presenceUnsub){ off(presenceUnsub); presenceUnsub = null; }
@@ -424,6 +422,7 @@ newChatBtn.addEventListener('click', async ()=>{
 
 cancelSearch.addEventListener('click', async ()=>{
     searchCancelled = true;
+    if(matchInterval){ clearInterval(matchInterval); matchInterval = null; }
     if(myWaitingRef){
         await remove(myWaitingRef);
         myWaitingRef = null;
@@ -442,6 +441,7 @@ exitBtn.addEventListener('click', function (e) {
 
 // ========================= CLEANUP ON LEAVE =========================
 window.addEventListener('beforeunload', async ()=>{
+    if(matchInterval){ clearInterval(matchInterval); matchInterval = null; }
     if(myWaitingRef){
         await remove(myWaitingRef);
     }
