@@ -209,79 +209,78 @@ function stopWaitingHeartbeat() {
 /* ---------- поиск ---------- */
 async function startSearch() {
   if (!uid) return;
-  const saved = loadRoomFromStorage();
-  if (saved.roomId) return;
+  if (loadRoomFromStorage().roomId) return;          // уже в комнате
 
   chatClosed = false;
-  await clearAllListenersAndState();   // ⬅️ КРИТИЧНО
+  await clearAllListenersAndState();
   clearMessages();
 
   show(searchScreen);
   hide(chatWindow);
   hide(endScreen);
-  statusText.textContent = 'Ищем собеседника...';
+  statusText.textContent = 'Ищем собеседника…';
 
   myWaitingRef = ref(rtdb, `waiting/${uid}`);
 
   await set(myWaitingRef, {
     uid,
     claimed: false,
-    roomId: null,
+    roomId : null,
     lastSeen: Date.now()
   });
-
-  if (!myWaitingRef) return;
+  onDisconnect(myWaitingRef).remove();
+  startWaitingHeartbeat();
 
   myWaitingUnsub = onValue(myWaitingRef, snap => {
     if (!snap.exists()) return;
     const data = snap.val();
-    if (data.claimed && data.roomId) {
+    if (data.claimed && data.roomId) {          // кто-то нас «забрал»
       roomId = data.roomId;
       saveRoomToStorage(roomId, null);
       connectToRoom(roomId);
     }
   });
 
-  startWaitingHeartbeat();
+  const tryGrabPartner = async () => {
+    if (roomId || searchCancelled) return;      // уже в комнате / отменили
 
-  const qFree = query(
-    ref(rtdb, 'waiting'),
-    orderByChild('claimed'),
-    equalTo(false),
-    limitToLast(20)
-  );
+    const queueSnap = await get(ref(rtdb, 'waiting')); // читаем всю очередь
+    if (!queueSnap.exists()) return;
 
-waitingUnsub = onValue(qFree, async snap => {
-  if (!uid || roomId) return;
+    let victimKey = null;
+    const now = Date.now();
+    queueSnap.forEach(c => {
+      const d = c.val();
+      if (d.uid !== uid && !d.claimed && (now - (d.lastSeen || 0) < WAITING_STALE_MS)) {
+        victimKey = c.key;   
+      }
+    });
+    if (!victimKey) return;
 
-  const now = Date.now();
-  let otherUid = null;
+    if (uid.localeCompare(victimKey) > 0) return;
 
-  snap.forEach(c => {
-    const d = c.val();
-    if (d.uid === uid) return;
-    if (now - (d.lastSeen || 0) > WAITING_STALE_MS) return;
-    if (!otherUid) otherUid = d.uid;
-  });
+    const newRoomId = `${uid}_${victimKey}_${Date.now()}`;
 
-  if (!otherUid) return;
+    const updates = {};
+    updates[`waiting/${uid}/claimed`]   = true;
+    updates[`waiting/${uid}/roomId`]    = newRoomId;
+    updates[`waiting/${victimKey}/claimed`] = true;
+    updates[`waiting/${victimKey}/roomId`]  = newRoomId;
+    updates[`rooms/${newRoomId}/meta`] = {
+      participants: [uid, victimKey],
+      createdAt   : Date.now(),
+      closed      : false
+    };
 
-  if (uid.localeCompare(otherUid) > 0) return;
+    await set(ref(rtdb), updates);
+  };
 
-  const newRoomId = `${uid}_${otherUid}_${Date.now()}`;
+  const grabInterval = setInterval(() => {
+    if (roomId || searchCancelled) { clearInterval(grabInterval); return; }
+    tryGrabPartner().catch(() => {});
+  }, 3000);
 
-  await update(ref(rtdb), {
-    [`waiting/${uid}/claimed`]: true,
-    [`waiting/${uid}/roomId`]: newRoomId,
-    [`waiting/${otherUid}/claimed`]: true,
-    [`waiting/${otherUid}/roomId`]: newRoomId,
-    [`rooms/${newRoomId}/meta`]: {
-      participants: [uid, otherUid],
-      createdAt: Date.now(),
-      closed: false
-    }
-  });
-});
+  window._grabInterval = grabInterval;
 }
 
 /* ---------- комната ---------- */
@@ -347,7 +346,7 @@ async function clearAllListenersAndState() {
   if (presenceUnsub)  { presenceUnsub();  presenceUnsub  = null; }
   if (presenceHeartbeatInterval)  { clearInterval(presenceHeartbeatInterval);  presenceHeartbeatInterval  = null; }
   if (waitingHeartbeatInterval)   { clearInterval(waitingHeartbeatInterval);   waitingHeartbeatInterval   = null; }
-
+  if (window._grabInterval) { clearInterval(window._grabInterval); window._grabInterval = null; }
   if (myWaitingRef)   { await remove(myWaitingRef).catch(() => {}); myWaitingRef = null; }
   if (roomId && uid)  { await remove(ref(rtdb, `rooms/${roomId}/presence/${uid}`)).catch(() => {}); }
   messagesEl.innerHTML = '';
