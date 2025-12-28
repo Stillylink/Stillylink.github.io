@@ -234,8 +234,8 @@ async function connectToRoom(rId){
             if(messagesUnsub){ off(messagesUnsub); messagesUnsub = null; }
             endChatUI();
         } else {
-            const participants = snap.val().participants || [];
-            partnerId = participants.find(p => p !== uid) || null;
+            const participants = snap.val().participants || {};
+            partnerId = Object.keys(participants).find(p => p !== uid) || null;
             saveRoomToStorage(roomId, partnerId);
         }
     });
@@ -316,11 +316,14 @@ async function startSearch(){
 
         const roomKey = push(ref(db, 'rooms')).key;
         const updates = {};
-        updates[`rooms/${roomKey}`] = {
-            participants: [uid, otherData.uid],
-            createdAt: Date.now(),
-            closed: false
-        };
+updates[`rooms/${roomKey}`] = {
+    participants: {
+        [uid]: true,
+        [otherData.uid]: true
+    },
+    createdAt: Date.now(),
+    closed: false
+};
         updates[`waiting/${uid}`] = { claimed: true, roomId: roomKey };
         updates[`waiting/${otherKey}`] = { claimed: true, roomId: roomKey };
 
