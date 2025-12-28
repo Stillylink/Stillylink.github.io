@@ -3,8 +3,19 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebas
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
 import { getFirestore } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
 import {
-  getDatabase, ref, set, push, onValue, onDisconnect, remove, get, query, limitToLast, orderByChild, equalTo
+  getDatabase,
+  ref,
+  set,
+  update,
+  push,
+  onValue,
+  onDisconnect,
+  remove,
+  get,
+  query,
+  limitToLast
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js";
+
 
 const firebaseConfig = {
   apiKey: "AIzaSyBWlR4QWdnbqXLKKaftEAzhXneTmV9xXX0",
@@ -272,7 +283,7 @@ async function startSearch() {
       closed      : false
     };
 
-    await set(ref(rtdb), updates);
+    await update(ref(rtdb), updates);
   };
 
   const grabInterval = setInterval(() => {
@@ -393,8 +404,10 @@ document.addEventListener('visibilitychange', () => {
   if (!uid) return;
   if (document.visibilityState === 'hidden') {
     if (myWaitingUnsub) { myWaitingUnsub(); myWaitingUnsub = null; }
-    if (myWaitingRef)   { remove(myWaitingRef).catch(() => {}); }
-    if (roomId)         { remove(ref(rtdb, `rooms/${roomId}/presence/${uid}`)).catch(() => {}); }
+    stopWaitingHeartbeat();
+    if (roomId) {
+      remove(ref(rtdb, `rooms/${roomId}/presence/${uid}`)).catch(() => {});
+    }
   } else {
     if (!roomId && !myWaitingRef) startSearch();
   }
