@@ -339,8 +339,9 @@ function connectToRoom(rId) {
       const ls = (c.val().lastSeen || 0);
       if (now - ls < PRESENCE_STALE_MS) alive.push(c.key);
     });
-    if (alive.length === 0) fullRoomCleanup().catch(() => {});
-  });
+    if (partnerId && !alive.includes(partnerId)) {
+  fullRoomCleanup().catch(() => {});
+}
 }
 
 /* ---------- завершение ---------- */
@@ -408,13 +409,10 @@ window.addEventListener('beforeunload', async () => {
 
 document.addEventListener('visibilitychange', () => {
   if (!uid) return;
-  if (document.visibilityState === 'hidden') {
-    if (myWaitingUnsub) { myWaitingUnsub(); myWaitingUnsub = null; }
-    stopWaitingHeartbeat();
-    if (roomId) {
-      remove(ref(rtdb, `rooms/${roomId}/presence/${uid}`)).catch(() => {});
-    }
-  } else {
+if (document.visibilityState === 'hidden') {
+  if (myWaitingUnsub) { myWaitingUnsub(); myWaitingUnsub = null; }
+  stopWaitingHeartbeat();
+} else {
     if (!roomId && !myWaitingRef) startSearch();
   }
 });
