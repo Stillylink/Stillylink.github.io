@@ -274,18 +274,22 @@ async function startSearch() {
 
     const newRoomId = `${uid}_${victimKey}_${Date.now()}`;
 
-    const updates = {};
-    updates[`waiting/${uid}/claimed`]   = true;
-    updates[`waiting/${uid}/roomId`]    = newRoomId;
-    updates[`waiting/${victimKey}/claimed`] = true;
-    updates[`waiting/${victimKey}/roomId`]  = newRoomId;
-    updates[`rooms/${newRoomId}/meta`] = {
-      participants: [uid, victimKey],
-      createdAt   : Date.now(),
-      closed      : false
-    };
+await update(ref(rtdb, `waiting/${uid}`), {
+  claimed: true,
+  roomId: newRoomId
+});
 
-    await update(ref(rtdb), updates);
+await update(ref(rtdb, `waiting/${victimKey}`), {
+  claimed: true,
+  roomId: newRoomId
+});
+
+await set(ref(rtdb, `rooms/${newRoomId}/meta`), {
+  participants: [uid, victimKey],
+  createdAt: Date.now(),
+  closed: false
+});
+
   };
 
   const grabInterval = setInterval(() => {
