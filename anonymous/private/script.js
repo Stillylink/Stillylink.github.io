@@ -342,7 +342,7 @@ function connectToRoom(rId) {
     if (partnerId && !alive.includes(partnerId)) {
   fullRoomCleanup().catch(() => {});
 }
-}
+})
 
 /* ---------- завершение ---------- */
 async function finishChat() {
