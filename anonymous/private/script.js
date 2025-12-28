@@ -332,7 +332,7 @@ function connectToRoom(rId) {
     if (uid) set(myPresRef, { lastSeen: Date.now() });
   }, PRESENCE_PING_INTERVAL);
 
-  presenceUnsub = onValue(ref(rtdb, `rooms/${roomId}/presence`), snap => {
+presenceUnsub = onValue(ref(rtdb, `rooms/${roomId}/presence`), snap => {
     const now = Date.now();
     const alive = [];
     snap.forEach(c => {
@@ -340,9 +340,9 @@ function connectToRoom(rId) {
       if (now - ls < PRESENCE_STALE_MS) alive.push(c.key);
     });
     if (partnerId && !alive.includes(partnerId)) {
-  fullRoomCleanup().catch(() => {});
-}
-})
+      fullRoomCleanup().catch(() => {});
+    }
+  });
 
 /* ---------- завершение ---------- */
 async function finishChat() {
@@ -424,3 +424,4 @@ modalFinish.addEventListener('click', async () => { modal.classList.add('hidden'
 newChatBtn.addEventListener('click', async () => { searchCancelled = false; await fullRoomCleanup(); await clearAllListenersAndState(); clearRoomStorage(); startSearch(); });
 cancelSearch.addEventListener('click', async () => { searchCancelled = true; if (myWaitingUnsub) { myWaitingUnsub(); myWaitingUnsub = null; } if (myWaitingRef) { await remove(myWaitingRef).catch(() => {}); } hide(searchScreen); show(endScreen); statusText.textContent = 'Поиск отменён'; });
 exitBtn.addEventListener('click', e => { e.preventDefault(); if (!uid) return; if (myWaitingUnsub) { myWaitingUnsub(); myWaitingUnsub = null; } if (myWaitingRef) { remove(myWaitingRef).catch(() => {}); } if (roomId) { remove(ref(rtdb, `rooms/${roomId}/presence/${uid}`)).catch(() => {}); } clearAllListenersAndState(); clearRoomStorage(); window.location.replace('/anonymous/'); });
+}
