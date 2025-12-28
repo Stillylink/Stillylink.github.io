@@ -207,10 +207,12 @@ document.addEventListener('click', e => {
 /* ---------- waiting ---------- */
 async function startWaitingHeartbeat() {
   if (!uid || !myWaitingRef) return;
-  await set(myWaitingRef, { lastSeen: Date.now() });
+  
+  await update(myWaitingRef, { lastSeen: Date.now() });
+  
   if (waitingHeartbeatInterval) clearInterval(waitingHeartbeatInterval);
   waitingHeartbeatInterval = setInterval(() => {
-    if (uid) set(myWaitingRef, { lastSeen: Date.now() });
+    if (uid) update(myWaitingRef, { lastSeen: Date.now() });
   }, WAITING_HEARTBEAT_INTERVAL);
 }
 function stopWaitingHeartbeat() {
