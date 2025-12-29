@@ -311,12 +311,21 @@ function connectToRoom(rId){
   });
 
   /* слушаем messages */
-  const msgRef = ref(rdb, `rooms/${roomId}/messages`);
-  messagesUnsub = onValue(query(msgRef, orderByChild('createdAt'), limitToLast(100), snap => {
-    if(chatClosed) return;
-    clearMessages();
-    snap.forEach(child => addMessageToUI(child.val()));
-  }));
+/* слушаем messages */
+const msgRef = ref(rdb, `rooms/${roomId}/messages`);
+const msgQuery = query(
+  msgRef,
+  orderByChild('createdAt'),
+  limitToLast(100)
+);
+
+messagesUnsub = onValue(msgQuery, snap => {
+  if (chatClosed) return;
+  clearMessages();
+  snap.forEach(child => {
+    addMessageToUI(child.val());
+  });
+});
 
   /* присутствие */
   setMyPresence();
@@ -447,7 +456,8 @@ window.addEventListener('beforeunload', async () => {
 /* ---------- авто-чистка старых комнат (по желанию) ---------- */
 setInterval(async () => {
   const now = Date.now();
-  const roomsSnap = await (await get(ref(rdb, 'rooms'))).val();
+  const snap = await get(ref(rdb, 'rooms'));
+  const roomsSnap = snap.val();
   if(!roomsSnap) return;
   for(const [rid, data] of Object.entries(roomsSnap)){
     if(data.meta?.closed){
