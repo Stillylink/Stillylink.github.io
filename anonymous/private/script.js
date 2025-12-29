@@ -84,9 +84,9 @@ let myWaitingRefRDB  = null;   // RTDB ref /waiting/{uid}
 let roomRefRDB       = null;   // RTDB ref /rooms/{roomId}
 let roomId           = null;
 let partnerId        = null;
-let messagesUnsub    = null;   // off() для messages
-let roomMetaUnsub    = null;   // off() для meta
-let presenceUnsub    = null;   // off() для presence
+let messagesCallback = null;
+let roomMetaCallback = null;
+let presenceCallback = null;
 let presenceInterval = null;
 let chatClosed       = false;
 let cleaning         = false;
@@ -153,7 +153,10 @@ onAuthStateChanged(auth, user => {
 function clearMessages(){ messagesEl.innerHTML = ''; }
 
 function addMessageToUI(data){
-  const { sender, text, type, createdAt } = data;
+  const { sender, text, type } = data;
+const createdAt = typeof data.createdAt === 'number'
+  ? data.createdAt
+  : Date.now();
   const isOwn = sender === uid;
   const wrap = document.createElement('div');
   wrap.className = 'msg-row ' + (isOwn ? 'own' : 'other');
@@ -299,44 +302,45 @@ function connectToRoom(rId){
 
   /* слушаем meta */
   const metaRef = ref(rdb, `rooms/${roomId}/meta`);
-  roomMetaUnsub = onValue(metaRef, snap => {
-    if(!snap.exists() || snap.val().closed){
-      chatClosed = true;
-      if(messagesUnsub){ off(messagesUnsub); messagesUnsub = null; }
-      endChatUI();
-    } else {
-      const parts = snap.val().participants || [];
-      partnerId = parts.find(p => p !== uid) || null;
-      saveRoomToStorage(roomId, partnerId);
-    }
-  });
+roomMetaCallback = snap => {
+  if (!snap.exists() || snap.val().closed) {
+    chatClosed = true;
+    endChatUI();
+  } else {
+    const parts = snap.val().participants || [];
+    partnerId = parts.find(p => p !== uid) || null;
+    saveRoomToStorage(roomId, partnerId);
+  }
+};
 
-  /* слушаем messages */
+onValue(metaRef, roomMetaCallback);
+
 const msgRef = ref(rdb, `rooms/${roomId}/messages`);
 clearMessages();
 
-messagesUnsub = onChildAdded(msgRef, snap => {
+messagesCallback = snap => {
   if (chatClosed) return;
-
   const msg = snap.val();
-
   if (!msg || !msg.sender) return;
-
   addMessageToUI(msg);
-});
+};
+
+onChildAdded(msgRef, messagesCallback);
 
   /* присутствие */
   setMyPresence();
   const presRef = ref(rdb, `rooms/${roomId}/presence`);
-  presenceUnsub = onValue(presRef, snap => {
-    const now = Date.now();
-    let alive = 0;
-    snap.forEach(child => {
-      const ls = child.val().lastSeen || 0;
-      if(now - ls < PRESENCE_STALE_MS) alive++;
-    });
-    if(!alive) fullRoomCleanup();
+presenceCallback = snap => {
+  const now = Date.now();
+  let alive = 0;
+  snap.forEach(child => {
+    const ls = child.val().lastSeen || 0;
+    if (now - ls < PRESENCE_STALE_MS) alive++;
   });
+  if (!alive) fullRoomCleanup();
+};
+
+onValue(presRef, presenceCallback);
 }
 
 function setMyPresence(){
@@ -354,7 +358,6 @@ async function finishChat(){
   if(roomId){
     await update(ref(rdb, `rooms/${roomId}/meta`), { closed: true });
   }
-  if(messagesUnsub){ off(messagesUnsub); messagesUnsub = null; }
   clearRoomStorage();
   setTimeout(async () => {
     /* удаляем всё под /rooms/{roomId} */
@@ -392,14 +395,38 @@ exitBtn.addEventListener('click', e => {
 
 /* ---------- очистка слушателей ---------- */
 async function clearAllListenersAndState(){
-  if(messagesUnsub){ off(messagesUnsub); messagesUnsub = null; }
-  if(roomMetaUnsub){ off(roomMetaUnsub); roomMetaUnsub = null; }
-  if(presenceUnsub){ off(presenceUnsub); presenceUnsub = null; }
-  if(presenceInterval){ clearInterval(presenceInterval); presenceInterval = null; }
-  if(myWaitingRefRDB){ await remove(myWaitingRefRDB); myWaitingRefRDB = null; }
-  if(roomId && uid) await remove(ref(rdb, `rooms/${roomId}/presence/${uid}`)).catch(()=>{});
+  if (messagesCallback && roomId) {
+    off(ref(rdb, `rooms/${roomId}/messages`), 'child_added', messagesCallback);
+    messagesCallback = null;
+  }
+
+  if (roomMetaCallback && roomId) {
+    off(ref(rdb, `rooms/${roomId}/meta`), 'value', roomMetaCallback);
+    roomMetaCallback = null;
+  }
+
+  if (presenceCallback && roomId) {
+    off(ref(rdb, `rooms/${roomId}/presence`), 'value', presenceCallback);
+    presenceCallback = null;
+  }
+
+  if (presenceInterval) {
+    clearInterval(presenceInterval);
+    presenceInterval = null;
+  }
+
+  if (myWaitingRefRDB) {
+    await remove(myWaitingRefRDB).catch(()=>{});
+    myWaitingRefRDB = null;
+  }
+
+  if (roomId && uid) {
+    await remove(ref(rdb, `rooms/${roomId}/presence/${uid}`)).catch(()=>{});
+  }
+
   messagesEl.innerHTML = '';
-  roomId = null; partnerId = null;
+  roomId = null;
+  partnerId = null;
 }
 
 async function fullRoomCleanup(){
