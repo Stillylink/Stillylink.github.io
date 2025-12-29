@@ -17,6 +17,7 @@ import {
   update,
   push,
   onValue,
+  onChildAdded,
   off,
   remove,
   query,
@@ -311,20 +312,17 @@ function connectToRoom(rId){
   });
 
   /* слушаем messages */
-/* слушаем messages */
 const msgRef = ref(rdb, `rooms/${roomId}/messages`);
-const msgQuery = query(
-  msgRef,
-  orderByChild('createdAt'),
-  limitToLast(100)
-);
+clearMessages();
 
-messagesUnsub = onValue(msgQuery, snap => {
+messagesUnsub = onChildAdded(msgRef, snap => {
   if (chatClosed) return;
-  clearMessages();
-  snap.forEach(child => {
-    addMessageToUI(child.val());
-  });
+
+  const msg = snap.val();
+
+  if (!msg || !msg.sender) return;
+
+  addMessageToUI(msg);
 });
 
   /* присутствие */
