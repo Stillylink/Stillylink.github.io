@@ -91,6 +91,7 @@ let presenceInterval = null;
 let chatClosed       = false;
 let cleaning         = false;
 let searchCancelled  = false;
+let waitingHeartbeatInterval = null;
 
 const PRESENCE_PING_MS  = 8000;
 const PRESENCE_STALE_MS = 25000;
@@ -228,11 +229,39 @@ document.addEventListener('click', e=>{
   emojiPanel.classList.add('hidden');
 });
 
+function startWaitingHeartbeat() {
+  if (!myWaitingRefRDB) return;
+  waitingHeartbeatInterval = setInterval(() => {
+    update(myWaitingRefRDB, {
+      lastSeen: { '.sv': 'timestamp' }
+    }).catch(()=>{});
+  }, 8000);
+}
+
+function stopWaitingHeartbeat() {
+  if (waitingHeartbeatInterval) {
+    clearInterval(waitingHeartbeatInterval);
+    waitingHeartbeatInterval = null;
+  }
+}
+
+async function cleanupWaitingGhosts() {
+  const wSnap = await get(ref(rdb, 'waiting'));
+  if (!wSnap.exists()) return;
+
+  wSnap.forEach(child => {
+    const v = child.val();
+    if (!v.searching) {
+      remove(child.ref).catch(()=>{});
+    }
+  });
+}
 /* ---------- поиск собеседника (RTDB) ---------- */
 async function startSearch(){
   const saved = loadRoomFromStorage();
   if(saved.roomId) return;
-
+  await cleanupWaitingGhosts();
+  
   chatClosed = false;
   await clearAllListenersAndState();
   clearMessages();
@@ -240,12 +269,14 @@ async function startSearch(){
   statusText.textContent = 'Ищем собеседника...';
 
   myWaitingRefRDB = ref(rdb, `waiting/${uid}`);
-  await set(myWaitingRefRDB, {
-    uid,
-    claimed: false,
-    roomId: null,
-    lastSeen: { '.sv': 'timestamp' }
-  });
+ await set(myWaitingRefRDB, {
+  uid,
+  searching: true,
+  claimed: false,
+  roomId: null,
+  lastSeen: { '.sv': 'timestamp' }
+});
+  startWaitingHeartbeat();
 
   /* слушаем свою запись – если нас пригласили – заходим */
   onValue(myWaitingRefRDB, snap => {
@@ -260,18 +291,28 @@ async function startSearch(){
 
   /* сканер свободных – берём первого не себя */
   const waitingRef = ref(rdb, 'waiting');
-  onValue(waitingRef, async snap => {
-    if(snap.exists()){
-      const now = Date.now();
-      let other = null;
-      snap.forEach(child => {
-        const v = child.val();
-        if(v.uid === uid || v.claimed) return;
-        const ls = v.lastSeen || 0;
-        if(now - ls > WAITING_STALE_MS) return;
-        other = { key: child.key, val: v };
-      });
-      if(!other) return;
+onValue(waitingRef, async snap => {
+  if (snap.exists()) {
+    const now = Date.now();
+    let other = null;
+
+    snap.forEach(child => {
+      const v = child.val();
+
+      if (
+        v.uid === uid ||
+        v.claimed === true ||
+        v.searching !== true
+      ) return;
+
+      const ls = v.lastSeen || 0;
+      if (now - ls > WAITING_STALE_MS) return;
+
+      other = { key: child.key, val: v };
+    });
+
+    if (!other) return;
+    if (roomId) return;
 
       /* транзакция – создаём комнату, обновляем waiting */
       const newRoomRef = push(ref(rdb, 'rooms'));
@@ -355,8 +396,18 @@ function setMyPresence(){
 /* ---------- завершение чата ---------- */
 async function finishChat(){
   endChatUI();
+  if (myWaitingRefRDB) {
+  await update(myWaitingRefRDB, {
+    searching: false,
+    claimed: false,
+    roomId: null
+  }).catch(()=>{});
+}
   if(roomId){
-    await update(ref(rdb, `rooms/${roomId}/meta`), { closed: true });
+    await update(ref(rdb, `rooms/${roomId}/meta`), {
+  closed: true,
+  closedAt: Date.now()
+});
   }
   clearRoomStorage();
   setTimeout(async () => {
@@ -382,10 +433,15 @@ newChatBtn.addEventListener('click', async ()=>{
 });
 cancelSearch.addEventListener('click', async ()=>{
   searchCancelled = true;
-  if(myWaitingRefRDB) await remove(myWaitingRefRDB);
-  hide(searchScreen); show(endScreen);
-  statusText.textContent = 'Поиск отменён';
-});
+if (myWaitingRefRDB) {
+  await update(myWaitingRefRDB, {
+    searching: false,
+    claimed: false,
+    roomId: null
+  }).catch(()=>{});
+}
+stopWaitingHeartbeat();
+  });
 
 exitBtn.addEventListener('click', e => {
   e.preventDefault();
@@ -415,10 +471,12 @@ async function clearAllListenersAndState(){
     presenceInterval = null;
   }
 
-  if (myWaitingRefRDB) {
-    await remove(myWaitingRefRDB).catch(()=>{});
-    myWaitingRefRDB = null;
-  }
+if (myWaitingRefRDB) {
+  await remove(myWaitingRefRDB).catch(()=>{});
+  myWaitingRefRDB = null;
+}
+stopWaitingHeartbeat();
+
 
   if (roomId && uid) {
     await remove(ref(rdb, `rooms/${roomId}/presence/${uid}`)).catch(()=>{});
@@ -478,20 +536,19 @@ window.addEventListener('beforeunload', async () => {
   }
 });
 
-/* ---------- авто-чистка старых комнат (по желанию) ---------- */
+/* ---------- авто-чистка завершённых комнат ---------- */
 setInterval(async () => {
   const now = Date.now();
   const snap = await get(ref(rdb, 'rooms'));
-  const roomsSnap = snap.val();
-  if(!roomsSnap) return;
-  for(const [rid, data] of Object.entries(roomsSnap)){
-    if(data.meta?.closed){
-      await remove(ref(rdb, `rooms/${rid}`));
-      continue;
+  const rooms = snap.val();
+  if (!rooms) return;
+
+  for (const [rid, data] of Object.entries(rooms)) {
+    if (data.meta?.closed && data.meta?.closedAt) {
+      if (now - data.meta.closedAt > 30000) {
+        await remove(ref(rdb, `rooms/${rid}`)).catch(()=>{});
+      }
     }
-    const created = data.meta?.createdAt || 0;
-    const lastMsg = data.messages ? Math.max(...Object.values(data.messages).map(m => m.createdAt || 0)) : 0;
-    const lastActive = lastMsg || created;
-    if(now - lastActive > 20*60*1000) await remove(ref(rdb, `rooms/${rid}`));
   }
-}, 5*60*1000);
+}, 15000);
+
