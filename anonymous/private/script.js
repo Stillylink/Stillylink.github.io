@@ -1,7 +1,3 @@
-/********************************************************************
- * 1-to-1 анонимный чат на Realtime Database
- * Firestore используется ТОЛЬКО для аватарки/никнейма
- *******************************************************************/
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
 import {
   getAuth,
@@ -92,6 +88,9 @@ let chatClosed       = false;
 let cleaning         = false;
 let searchCancelled  = false;
 let waitingHeartbeatInterval = null;
+let waitingListCallback = null;
+let myWaitingCallback   = null;
+let connected           = false;
 
 const PRESENCE_PING_MS  = 8000;
 const PRESENCE_STALE_MS = 25000;
@@ -279,63 +278,70 @@ async function startSearch(){
   startWaitingHeartbeat();
 
   /* слушаем свою запись – если нас пригласили – заходим */
-  onValue(myWaitingRefRDB, snap => {
-    if(!snap.exists()) return;
-    const d = snap.val();
-    if(d.claimed && d.roomId){
-      roomId = d.roomId;
-      saveRoomToStorage(roomId, null);
-      connectToRoom(roomId);
-    }
+  myWaitingCallback = snap => {
+  if (!snap.exists()) return;
+  const d = snap.val();
+
+  if (d.claimed && d.roomId && !connected) {
+    connected = true;
+    roomId = d.roomId;
+    saveRoomToStorage(roomId, null);
+    connectToRoom(roomId);
+  }
+};
+
+onValue(myWaitingRefRDB, myWaitingCallback);
+
+ const waitingRef = ref(rdb, 'waiting');
+
+waitingListCallback = async snap => {
+  if (connected || roomId) return;
+  if (!snap.exists()) return;
+
+  const now = Date.now();
+  let other = null;
+
+  snap.forEach(child => {
+    const v = child.val();
+    if (
+      v.uid === uid ||
+      v.claimed ||
+      v.searching !== true ||
+      now - (v.lastSeen || 0) > WAITING_STALE_MS
+    ) return;
+
+    other = { key: child.key, val: v };
   });
 
-  /* сканер свободных – берём первого не себя */
-  const waitingRef = ref(rdb, 'waiting');
-onValue(waitingRef, async snap => {
-  if (snap.exists()) {
-    const now = Date.now();
-    let other = null;
+  if (!other) return;
 
-    snap.forEach(child => {
-      const v = child.val();
+  const newRoomRef = push(ref(rdb, 'rooms'));
+  connected = true;
 
-      if (
-        v.uid === uid ||
-        v.claimed === true ||
-        v.searching !== true
-      ) return;
+  const updates = {};
+  updates[`waiting/${other.key}/claimed`] = true;
+  updates[`waiting/${other.key}/roomId`]  = newRoomRef.key;
+  updates[`waiting/${uid}/claimed`]       = true;
+  updates[`waiting/${uid}/roomId`]        = newRoomRef.key;
 
-      const ls = v.lastSeen || 0;
-      if (now - ls > WAITING_STALE_MS) return;
+  updates[`rooms/${newRoomRef.key}/meta`] = {
+    participants: [uid, other.val.uid],
+    createdAt: { '.sv': 'timestamp' },
+    closed: false
+  };
 
-      other = { key: child.key, val: v };
-    });
+  await update(ref(rdb), updates);
+  roomId = newRoomRef.key;
+  saveRoomToStorage(roomId, null);
+};
 
-    if (!other) return;
-    if (roomId) return;
-
-      /* транзакция – создаём комнату, обновляем waiting */
-      const newRoomRef = push(ref(rdb, 'rooms'));
-      const updates = {};
-      updates[`waiting/${other.key}/claimed`] = true;
-      updates[`waiting/${other.key}/roomId`]  = newRoomRef.key;
-      updates[`waiting/${uid}/claimed`]       = true;
-      updates[`waiting/${uid}/roomId`]        = newRoomRef.key;
-
-      updates[`rooms/${newRoomRef.key}/meta`] = {
-        participants: [uid, other.val.uid],
-        createdAt: { '.sv': 'timestamp' },
-        closed: false
-      };
-      await update(ref(rdb), updates);
-      roomId = newRoomRef.key;
-      saveRoomToStorage(roomId, null);
-    }
-  });
+onValue(waitingRef, waitingListCallback);
 }
 
 /* ---------- подключаемся к комнате ---------- */
 function connectToRoom(rId){
+  if (connected) return;
+  connected = true;
   roomId = rId;
   saveRoomToStorage(roomId, null);
   hide(searchScreen); show(chatWindow); hide(endScreen);
@@ -451,6 +457,18 @@ exitBtn.addEventListener('click', e => {
 
 /* ---------- очистка слушателей ---------- */
 async function clearAllListenersAndState(){
+  connected = false;
+  
+  if (waitingListCallback) {
+  off(ref(rdb, 'waiting'), 'value', waitingListCallback);
+  waitingListCallback = null;
+}
+
+if (myWaitingCallback && myWaitingRefRDB) {
+  off(myWaitingRefRDB, 'value', myWaitingCallback);
+  myWaitingCallback = null;
+}
+
   if (messagesCallback && roomId) {
     off(ref(rdb, `rooms/${roomId}/messages`), 'child_added', messagesCallback);
     messagesCallback = null;
