@@ -125,7 +125,11 @@ function clearRoomStorage(){
 
 /* ---------- инициализация профиля (Firestore) ---------- */
 onAuthStateChanged(auth, user => {
-  if (!user) { signInAnonymously(auth); return; }
+  if (!user || user.isAnonymous) {
+  await auth.signOut();
+  await signInAnonymously(auth);
+  return;
+}
   uid = user.uid;
   isRealUser = !!user.email;
 
