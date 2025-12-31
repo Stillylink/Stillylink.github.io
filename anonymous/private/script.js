@@ -92,6 +92,8 @@ let waitingListCallback = null;
 let myWaitingCallback   = null;
 let connected           = false;
 
+const sessionId = crypto.randomUUID();
+
 const PRESENCE_PING_MS  = 8000;
 const PRESENCE_STALE_MS = 25000;
 const WAITING_STALE_MS  = 30000;
@@ -274,6 +276,7 @@ async function startSearch(){
   myWaitingRefRDB = ref(rdb, `waiting/${uid}`);
  await set(myWaitingRefRDB, {
   uid,
+  sessionId,
   searching: true,
   claimed: false,
   roomId: null,
@@ -287,7 +290,6 @@ async function startSearch(){
   const d = snap.val();
 
   if (d.claimed && d.roomId && !connected) {
-    connected = true;
     roomId = d.roomId;
     saveRoomToStorage(roomId, null);
     connectToRoom(roomId);
@@ -309,6 +311,7 @@ waitingListCallback = async snap => {
     const v = child.val();
     if (
       v.uid === uid ||
+      v.sessionId === sessionId ||
       v.claimed ||
       v.searching !== true ||
       now - (v.lastSeen || 0) > WAITING_STALE_MS
@@ -322,7 +325,6 @@ waitingListCallback = async snap => {
   if (!shouldCreateRoom(uid, other.val.uid)) return;
 
   const newRoomRef = push(ref(rdb, 'rooms'));
-  connected = true;
 
   const updates = {};
   updates[`waiting/${other.key}/claimed`] = true;
@@ -339,6 +341,7 @@ waitingListCallback = async snap => {
   await update(ref(rdb), updates);
   roomId = newRoomRef.key;
   saveRoomToStorage(roomId, null);
+  connectToRoom(roomId);
 };
 
 onValue(waitingRef, waitingListCallback);
