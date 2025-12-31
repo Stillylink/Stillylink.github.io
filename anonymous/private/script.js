@@ -100,6 +100,10 @@ const WAITING_STALE_MS  = 30000;
 const show = el => el.classList.remove('hidden');
 const hide = el => el.classList.add('hidden');
 
+function shouldCreateRoom(myUid, otherUid){
+  return myUid < otherUid;
+}
+
 function saveRoomToStorage(rId, pId){
   if(rId) localStorage.setItem('roomId', rId);
   else localStorage.removeItem('roomId');
@@ -314,6 +318,8 @@ waitingListCallback = async snap => {
   });
 
   if (!other) return;
+
+  if (!shouldCreateRoom(uid, other.val.uid)) return;
 
   const newRoomRef = push(ref(rdb, 'rooms'));
   connected = true;
