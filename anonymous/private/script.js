@@ -141,18 +141,19 @@ onAuthStateChanged(auth, user => {
     localStorage.removeItem("userAvatarLetter");
   }
 
-  const saved = loadRoomFromStorage();
-  if(saved.roomId){
-    const metaRef = ref(rdb, `rooms/${saved.roomId}/meta`);
-    onValue(metaRef, snap => {
-      if(snap.exists() && !snap.val().closed){
-        roomId = saved.roomId; partnerId = saved.partnerId;
-        connectToRoom(saved.roomId);
-      }else{
-        clearRoomStorage(); startSearch();
-      }
-    }, { onlyOnce: true });
-  } else startSearch();
+const saved = loadRoomFromStorage();
+if (saved.roomId) {
+  const metaRef = ref(rdb, `rooms/${saved.roomId}/meta`);
+  onValue(metaRef, snap => {
+    if (snap.exists() && !snap.val().closed) {
+      roomId = saved.roomId; partnerId = saved.partnerId;
+      connectToRoom(saved.roomId);
+    } else {
+      clearRoomStorage();
+      startSearch();
+    }
+  }, { onlyOnce: true });
+} else startSearch();
 });
 
 /* ---------- отрисовка сообщений ---------- */
@@ -262,89 +263,97 @@ async function cleanupWaitingGhosts() {
   });
 }
 /* ---------- поиск собеседника (RTDB) ---------- */
-async function startSearch(){
+async function startSearch() {
   const saved = loadRoomFromStorage();
-  if(saved.roomId) return;
+  if (saved.roomId) return;               // уже в комнате
   await cleanupWaitingGhosts();
-  
+
   chatClosed = false;
   await clearAllListenersAndState();
   clearMessages();
   show(searchScreen); hide(chatWindow); hide(endScreen);
-  statusText.textContent = 'Ищем собеседника...';
+  statusText.textContent = 'Ищем собеседника…';
 
+  /* 1. Помещаем себя в очередь */
   myWaitingRefRDB = ref(rdb, `waiting/${uid}`);
- await set(myWaitingRefRDB, {
-  uid,
-  sessionId,
-  searching: true,
-  claimed: false,
-  roomId: null,
-  lastSeen: { '.sv': 'timestamp' }
-});
+  await set(myWaitingRefRDB, {
+    uid,
+    sessionId,
+    searching: true,
+    claimed: false,
+    roomId: null,
+    lastSeen: { '.sv': 'timestamp' }
+  });
   startWaitingHeartbeat();
 
-  /* слушаем свою запись – если нас пригласили – заходим */
+  /* 2. Слушаем, если кто-то заберёт нас */
   myWaitingCallback = snap => {
-  if (!snap.exists()) return;
-  const d = snap.val();
+    if (!snap.exists()) return;
+    const d = snap.val();
+    if (d.claimed && d.roomId && !connected) {
+      roomId = d.roomId;
+      saveRoomToStorage(roomId, null);
+      connectToRoom(roomId);
+    }
+  };
+  onValue(myWaitingRefRDB, myWaitingCallback);
 
-  if (d.claimed && d.roomId && !connected) {
-    roomId = d.roomId;
-    saveRoomToStorage(roomId, null);
-    connectToRoom(roomId);
-  }
-};
+  /* 3. Пытаемся атомарно «забрать» кого-то из очереди */
+  tryToMatch();
+}
 
-onValue(myWaitingRefRDB, myWaitingCallback);
-
- const waitingRef = ref(rdb, 'waiting');
-
-waitingListCallback = async snap => {
+/* ---------- атомарный матч ---------- */
+async function tryToMatch() {
   if (connected || roomId) return;
-  if (!snap.exists()) return;
 
-  const now = Date.now();
-  let other = null;
+  const waitingRef = ref(rdb, 'waiting');
+  const snap = await get(query(waitingRef, orderByChild('searching'), equalTo(true)));
+  if (!snap.exists()) {           // никого нет – повторим через секунду
+    return setTimeout(tryToMatch, 1000);
+  }
 
+  let victimKey = null;
+  let victimVal = null;
   snap.forEach(child => {
     const v = child.val();
-    if (
-      v.uid === uid ||
-      v.sessionId === sessionId ||
-      v.claimed ||
-      v.searching !== true ||
-      now - (v.lastSeen || 0) > WAITING_STALE_MS
-    ) return;
-
-    other = { key: child.key, val: v };
+    if (v.uid !== uid && !v.claimed) {   // берём первого попавшегося
+      victimKey = child.key;
+      victimVal = v;
+    }
   });
 
-  if (!other) return;
+  if (!victimKey) {                 // всё ещё никого
+    return setTimeout(tryToMatch, 1000);
+  }
 
-  if (!shouldCreateRoom(uid, other.val.uid)) return;
+  /* пробуем атомарно отметить запись как claimed */
+  const victimRef = ref(rdb, `waiting/${victimKey}`);
+  await runTransaction(victimRef, data => {
+    if (!data || data.claimed) return;   // кто-то успел раньше
+    return { ...data, claimed: true, roomId: 'placeholder' };
+  }).then(async res => {
+    if (!res.committed) {                // не получилось – повторим
+      return tryToMatch();
+    }
 
-  const newRoomRef = push(ref(rdb, 'rooms'));
+    /* создаём комнату */
+    const newRoomRef = push(ref(rdb, 'rooms'));
+    const updates = {};
+    updates[`waiting/${uid}/claimed`]   = true;
+    updates[`waiting/${uid}/roomId`]    = newRoomRef.key;
+    updates[`waiting/${victimKey}/roomId`] = newRoomRef.key;
 
-  const updates = {};
-  updates[`waiting/${other.key}/claimed`] = true;
-  updates[`waiting/${other.key}/roomId`]  = newRoomRef.key;
-  updates[`waiting/${uid}/claimed`]       = true;
-  updates[`waiting/${uid}/roomId`]        = newRoomRef.key;
+    updates[`rooms/${newRoomRef.key}/meta`] = {
+      participants: [uid, victimVal.uid],
+      createdAt: { '.sv': 'timestamp' },
+      closed: false
+    };
 
-  updates[`rooms/${newRoomRef.key}/meta`] = {
-    participants: [uid, other.val.uid],
-    createdAt: { '.sv': 'timestamp' },
-    closed: false
-  };
-
-  await update(ref(rdb), updates);
-  roomId = newRoomRef.key;
-  saveRoomToStorage(roomId, null);
-  connectToRoom(roomId);
-};
-
-onValue(waitingRef, waitingListCallback);
+    await update(ref(rdb), updates);
+    roomId = newRoomRef.key;
+    saveRoomToStorage(roomId, null);
+    connectToRoom(roomId);
+  });
 }
 
 /* ---------- подключаемся к комнате ---------- */
