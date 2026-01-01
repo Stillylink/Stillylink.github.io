@@ -19,9 +19,7 @@ import {
   query,
   orderByChild,
   limitToLast,
-  get,
-  equalTo,
-  runTransaction
+  get 
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js";
 
 /* ==========  Firestore (только для аватарки)  ========== */
@@ -126,13 +124,8 @@ function clearRoomStorage(){
 }
 
 /* ---------- инициализация профиля (Firestore) ---------- */
-onAuthStateChanged(auth, async user => {
-  if (!user || user.isAnonymous) {
-    await auth.signOut();
-    await signInAnonymously(auth);
-    return;
-  }
-
+onAuthStateChanged(auth, user => {
+  if (!user) { signInAnonymously(auth); return; }
   uid = user.uid;
   isRealUser = !!user.email;
 
@@ -148,22 +141,19 @@ onAuthStateChanged(auth, async user => {
     localStorage.removeItem("userAvatarLetter");
   }
 
-  const saved = loadRoomFromStorage();
-  if (saved.roomId) {
-    const metaRef = ref(rdb, `rooms/${saved.roomId}/meta`);
-    onValue(metaRef, snap => {
-      if (snap.exists() && !snap.val().closed) {
-        roomId = saved.roomId;
-        partnerId = saved.partnerId;
-        connectToRoom(saved.roomId);
-      } else {
-        clearRoomStorage();
-        startSearch();
-      }
-    }, { onlyOnce: true });
-  } else {
-    startSearch();
-  }
+const saved = loadRoomFromStorage();
+if (saved.roomId) {
+  const metaRef = ref(rdb, `rooms/${saved.roomId}/meta`);
+  onValue(metaRef, snap => {
+    if (snap.exists() && !snap.val().closed) {
+      roomId = saved.roomId; partnerId = saved.partnerId;
+      connectToRoom(saved.roomId);
+    } else {
+      clearRoomStorage();
+      startSearch();
+    }
+  }, { onlyOnce: true });
+} else startSearch();
 });
 
 /* ---------- отрисовка сообщений ---------- */
@@ -597,4 +587,3 @@ setInterval(async () => {
     }
   }
 }, 15000);
-
