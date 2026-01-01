@@ -19,7 +19,8 @@ import {
   query,
   orderByChild,
   limitToLast,
-  get 
+  get,
+  equalTo
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js";
 
 /* ==========  Firestore (только для аватарки)  ========== */
