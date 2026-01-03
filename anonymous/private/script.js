@@ -441,11 +441,23 @@ async function startSearch() {
                 get(myRef)
             ]);
 
+            // Проверки валидности
             if (!otherSnap.exists() || !mySnap.exists()) {
                 matchmakingInProgress = false;
                 return;
             }
-            if (otherSnap.val().claimed || mySnap.val().claimed) {
+            
+            const otherData = otherSnap.val();
+            const myData = mySnap.val();
+            
+            if (otherData.claimed || myData.claimed) {
+                matchmakingInProgress = false;
+                return;
+            }
+            
+            // КРИТИЧНО: ещё раз проверяем что это не мы сами
+            if (otherData.uid === uid || otherUid === uid) {
+                console.warn('Попытка создать комнату с самим собой!');
                 matchmakingInProgress = false;
                 return;
             }
@@ -465,7 +477,7 @@ async function startSearch() {
                 update(myRef, { claimed: true, roomId: newRoomId })
             ]);
 
-            console.log('Room created:', newRoomId);
+            console.log('✅ Комната создана:', newRoomId, 'участники:', uid, otherUid);
             
         } catch (err) {
             console.log('Matchmaking race condition:', err);
@@ -518,15 +530,28 @@ async function connectToRoom(rId) {
             saveRoomToStorage(roomId, partnerId);
         }
 
+        // Слушаем мета-данные комнаты (для закрытия)
         onValue(roomRef, (snap) => {
-            if (!snap.exists() || snap.val().closed) {
+            if (!snap.exists()) {
+                console.log('Комната удалена');
                 chatClosed = true;
                 endChatUI();
-            } else {
-                const participants = snap.val().participants || [];
-                partnerId = participants.find(p => p !== uid) || null;
-                saveRoomToStorage(roomId, partnerId);
+                return;
             }
+            
+            const data = snap.val();
+            
+            if (data.closed === true) {
+                console.log('Комната закрыта собеседником');
+                chatClosed = true;
+                endChatUI();
+                return;
+            }
+            
+            // Обновляем partnerId
+            const participants = data.participants || [];
+            partnerId = participants.find(p => p !== uid) || null;
+            saveRoomToStorage(roomId, partnerId);
         });
 
         const messagesRef = ref(rtdb, `rooms/${roomId}/messages`);
@@ -534,42 +559,52 @@ async function connectToRoom(rId) {
         
         clearMessages();
         
-        // Загружаем существующие сообщения
+        // Загружаем ВСЕ существующие сообщения
         try {
-            const existingQuery = query(messagesRef, orderByChild('createdAt'));
-            const existingSnap = await get(existingQuery);
+            const existingSnap = await get(messagesRef);
             
+            const messages = [];
             if (existingSnap.exists()) {
-                const messages = [];
                 existingSnap.forEach(child => {
                     messages.push({ key: child.key, data: child.val() });
                 });
-                
-                // Сортируем и отображаем
-                messages.sort((a, b) => (a.data.createdAt || 0) - (b.data.createdAt || 0));
-                messages.forEach(msg => {
-                    addMessageToUI(msg.data);
-                });
-                
-                console.log(`Загружено ${messages.length} сообщений`);
             }
+            
+            // Сортируем и отображаем
+            messages.sort((a, b) => (a.data.createdAt || 0) - (b.data.createdAt || 0));
+            messages.forEach(msg => {
+                addMessageToUI(msg.data);
+            });
+            
+            console.log(`[ПК] Загружено ${messages.length} существующих сообщений`);
         } catch (err) {
             console.warn('Ошибка загрузки сообщений:', err);
         }
         
-        // Слушаем новые сообщения
-        const startTime = Date.now();
-        const newMessagesQuery = query(messagesRef, orderByChild('createdAt'));
+        // Слушаем ТОЛЬКО новые сообщения (добавленные после этого момента)
+        let isInitialLoad = true;
+        const loadedMessageKeys = new Set();
         
-        onChildAdded(newMessagesQuery, (snap) => {
+        // Запоминаем уже загруженные ключи
+        const currentSnap = await get(messagesRef);
+        if (currentSnap.exists()) {
+            currentSnap.forEach(child => {
+                loadedMessageKeys.add(child.key);
+            });
+        }
+        
+        onChildAdded(messagesRef, (snap) => {
             if (chatClosed) return;
             
-            const msgTime = snap.val().createdAt || 0;
-            
-            // Добавляем только сообщения созданные ПОСЛЕ подключения
-            if (msgTime >= startTime) {
-                addMessageToUI(snap.val());
+            // Пропускаем уже загруженные
+            if (loadedMessageKeys.has(snap.key)) {
+                return;
             }
+            
+            // Добавляем новое сообщение
+            console.log('[Новое сообщение]', snap.key);
+            addMessageToUI(snap.val());
+            loadedMessageKeys.add(snap.key);
         });
 
         await setMyPresence();
@@ -627,17 +662,33 @@ async function setMyPresence() {
 }
 
 async function finishChat() {
-    endChatUI();
-
-    if (roomId) {
-        await update(ref(rtdb, `rooms/${roomId}`), { closed: true }).catch(() => { });
-        
-        setTimeout(async () => {
-            await deleteRoomFully(roomId);
-        }, 500);
+    console.log('🛑 Завершаем чат');
+    
+    const currentRoomId = roomId;
+    
+    // Помечаем комнату как закрытую
+    if (currentRoomId) {
+        try {
+            await update(ref(rtdb, `rooms/${currentRoomId}`), { closed: true });
+            console.log('✅ Комната помечена как закрытая:', currentRoomId);
+        } catch (err) {
+            console.warn('Ошибка закрытия комнаты:', err);
+        }
     }
-
+    
+    // Показываем экран завершения
+    endChatUI();
+    
+    // Очищаем слушатели
+    await clearAllListenersAndState();
     clearRoomStorage();
+    
+    // Удаляем комнату через 2 секунды
+    if (currentRoomId) {
+        setTimeout(async () => {
+            await deleteRoomFully(currentRoomId);
+        }, 2000);
+    }
 }
 
 function endChatUI() {
@@ -862,30 +913,41 @@ async function cleanupRoomsByInactivity() {
 
             const created = data.createdAt || 0;
             
+            // Удаляем сразу закрытые комнаты
             if (data.closed === true) {
+                console.log('Удаляем закрытую комнату:', rId);
                 deletePromises.push(deleteRoomFully(rId));
                 return;
             }
             
+            // Пропускаем новые комнаты (младше 2 минут)
             if (created && (now - created) < 2 * 60 * 1000) return;
 
+            // Проверяем неактивность для старых комнат
             const checkInactivity = async () => {
-                let lastActive = 0;
+                try {
+                    let lastActive = created || 0;
 
-                const msgsRef = ref(rtdb, `rooms/${rId}/messages`);
-                const msgsQuery = query(msgsRef, orderByChild('createdAt'), limitToLast(1));
-                const msgsSnap = await get(msgsQuery);
-                
-                if (msgsSnap.exists()) {
-                    msgsSnap.forEach(msg => {
-                        lastActive = msg.val().createdAt || 0;
-                    });
-                }
+                    // Ищем последнее сообщение БЕЗ индекса (чтобы не было ошибки)
+                    const msgsRef = ref(rtdb, `rooms/${rId}/messages`);
+                    const msgsSnap = await get(msgsRef);
+                    
+                    if (msgsSnap.exists()) {
+                        let maxTime = 0;
+                        msgsSnap.forEach(msg => {
+                            const msgTime = msg.val().createdAt || 0;
+                            if (msgTime > maxTime) maxTime = msgTime;
+                        });
+                        if (maxTime > 0) lastActive = maxTime;
+                    }
 
-                if (!lastActive) lastActive = created;
-
-                if (now - lastActive > 20 * 60 * 1000) {
-                    await deleteRoomFully(rId);
+                    // Удаляем комнаты неактивные более 20 минут
+                    if (now - lastActive > 20 * 60 * 1000) {
+                        console.log('Удаляем неактивную комнату:', rId, 'неактивна', Math.floor((now - lastActive) / 60000), 'минут');
+                        await deleteRoomFully(rId);
+                    }
+                } catch (err) {
+                    console.warn('Ошибка проверки комнаты', rId, err);
                 }
             };
 
@@ -933,7 +995,7 @@ async function cleanupStaleWaitingUsers() {
 setInterval(() => {
     cleanupRoomsByInactivity();
     cleanupStaleWaitingUsers();
-}, 5 * 60 * 1000);
+}, 2 * 60 * 1000); // Каждые 2 минуты
 
 setTimeout(() => {
     cleanupRoomsByInactivity();
