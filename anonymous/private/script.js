@@ -5,12 +5,10 @@ import {
     onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
 
-// Firestore только для профиля/навигации
 import {
     getFirestore
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
 
-// Realtime Database для чата
 import {
     getDatabase,
     ref,
@@ -23,7 +21,6 @@ import {
     get,
     query,
     orderByChild,
-    limitToFirst,
     limitToLast,
     serverTimestamp as rtdbServerTimestamp,
     onDisconnect,
@@ -42,8 +39,8 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
-const db = getFirestore(app); // Firestore для профиля
-const rtdb = getDatabase(app); // Realtime DB для чата
+const db = getFirestore(app);
+const rtdb = getDatabase(app);
 
 const searchScreen = document.getElementById('searchScreen');
 const chatWindow = document.getElementById('chatWindow');
@@ -90,7 +87,7 @@ window.addEventListener("DOMContentLoaded", () => {
             chatClosed = true;
             try {
                 await update(ref(rtdb, `rooms/${roomId}`), { closed: true });
-            } catch (err) { /* silent */ }
+            } catch (err) { }
         }
 
         await clearAllListenersAndState();
@@ -137,13 +134,12 @@ let partnerId = null;
 let chatClosed = false;
 let cleaning = false;
 let searchCancelled = false;
-let isConnecting = false; // Флаг для предотвращения множественных подключений
-let matchmakingInProgress = false; // Флаг для предотвращения race condition
+let isConnecting = false;
+let matchmakingInProgress = false;
 
 let waitingHeartbeatInterval = null;
 let presenceHeartbeatInterval = null;
 
-// Для хранения refs слушателей
 let myWaitingRefPath = null;
 let waitingRefPath = null;
 let currentRoomRefPath = null;
@@ -158,7 +154,6 @@ const WAITING_STALE_MS = 30000;
 function show(el) { el.classList.remove('hidden'); }
 function hide(el) { el.classList.add('hidden'); }
 
-// =================== ХРАНИЛИЩЕ КОМНАТЫ =====================
 function saveRoomToStorage(rId, pId) {
     if (rId) localStorage.setItem('roomId', rId);
     else localStorage.removeItem('roomId');
@@ -177,7 +172,6 @@ function clearRoomStorage() {
     localStorage.removeItem('roomId');
     localStorage.removeItem('partnerId');
 }
-// ==========================================================
 
 onAuthStateChanged(auth, user => {
     if (!user) {
@@ -294,8 +288,7 @@ sendBtn.addEventListener('click', () => {
     textInput.offsetHeight;
     textInput.style.display = '';
 
-    sendMessageToRoom(txt, 'text')
-        .catch(err => console.error(err));
+    sendMessageToRoom(txt, 'text').catch(err => console.error(err));
 });
 
 textInput.addEventListener('keydown', (e) => {
@@ -304,8 +297,7 @@ textInput.addEventListener('keydown', (e) => {
         const txt = textInput.value.trim();
         if (!txt) return;
         textInput.value = '';
-        sendMessageToRoom(txt, 'text')
-            .catch(err => console.error('send failed:', err));
+        sendMessageToRoom(txt, 'text').catch(err => console.error('send failed:', err));
     }
 });
 
@@ -389,7 +381,6 @@ async function startSearch() {
         return;
     }
 
-    // Слушаем своё состояние
     onValue(myWaitingRef, (snap) => {
         if (!snap.exists()) return;
         const data = snap.val();
@@ -398,7 +389,6 @@ async function startSearch() {
             saveRoomToStorage(roomId, null);
             stopWaitingHeartbeat();
             
-            // Отписываемся от очереди ожидания
             if (waitingRefPath) {
                 off(ref(rtdb, waitingRefPath));
                 waitingRefPath = null;
@@ -410,13 +400,12 @@ async function startSearch() {
 
     startWaitingHeartbeat();
 
-    // Слушаем очередь ожидания
     const waitingRef = ref(rtdb, 'waiting');
     waitingRefPath = 'waiting';
     
     onValue(waitingRef, async (snap) => {
         if (!snap.exists()) return;
-        if (matchmakingInProgress) return; // Предотвращаем race condition
+        if (matchmakingInProgress) return;
         
         const now = Date.now();
         let otherUid = null;
@@ -438,7 +427,6 @@ async function startSearch() {
 
         matchmakingInProgress = true;
 
-        // Проверяем ещё раз перед созданием комнаты
         try {
             const otherRef = ref(rtdb, `waiting/${otherUid}`);
             const myRef = ref(rtdb, `waiting/${uid}`);
@@ -457,7 +445,6 @@ async function startSearch() {
                 return;
             }
 
-            // Создаём комнату
             const roomsRef = ref(rtdb, 'rooms');
             const newRoomRef = push(roomsRef);
             const newRoomId = newRoomRef.key;
@@ -468,22 +455,7 @@ async function startSearch() {
                 closed: false
             });
 
-            // Помечаем обоих как claimed
-            await Promise.all(deletePromises);
-    } catch (e) {
-        console.warn('Ошибка при чистке waiting:', e);
-    }
-})
-
-setInterval(() => {
-    cleanupRoomsByInactivity();
-    cleanupStaleWaitingUsers();
-}, 5 * 60 * 1000);
-
-setTimeout(() => {
-    cleanupRoomsByInactivity();
-    cleanupStaleWaitingUsers();
-}, 20000);all([
+            await Promise.all([
                 update(otherRef, { claimed: true, roomId: newRoomId }),
                 update(myRef, { claimed: true, roomId: newRoomId })
             ]);
@@ -507,7 +479,6 @@ async function connectToRoom(rId) {
 
         isConnecting = true;
 
-        // Полностью очищаем старые слушатели
         if (currentRoomRefPath) {
             off(ref(rtdb, currentRoomRefPath));
         }
@@ -529,7 +500,6 @@ async function connectToRoom(rId) {
         hide(endScreen);
         statusText.textContent = 'Соединено';
 
-        // Добавляем себя в participants если нужно
         const roomSnap = await get(roomRef);
         if (roomSnap.exists()) {
             const data = roomSnap.val();
@@ -543,7 +513,6 @@ async function connectToRoom(rId) {
             saveRoomToStorage(roomId, partnerId);
         }
 
-        // Слушаем мета-данные комнаты
         onValue(roomRef, (snap) => {
             if (!snap.exists() || snap.val().closed) {
                 chatClosed = true;
@@ -555,7 +524,6 @@ async function connectToRoom(rId) {
             }
         });
 
-        // Слушаем сообщения - ОДИН РАЗ
         const messagesRef = ref(rtdb, `rooms/${roomId}/messages`);
         messagesRefPath = `rooms/${roomId}/messages`;
         const messagesQuery = query(messagesRef, orderByChild('createdAt'));
@@ -567,10 +535,8 @@ async function connectToRoom(rId) {
             addMessageToUI(snap.val());
         });
 
-        // Устанавливаем presence
         await setMyPresence();
         
-        // Слушаем presence других
         const presenceRef = ref(rtdb, `rooms/${roomId}/presence`);
         presenceRefPath = `rooms/${roomId}/presence`;
         
@@ -610,10 +576,7 @@ async function setMyPresence() {
     
     try {
         await set(presRef, { lastSeen: rtdbServerTimestamp() });
-        
-        // Устанавливаем onDisconnect
         onDisconnect(presRef).remove();
-        
     } catch (e) {
         console.warn('set presence failed', e);
     }
@@ -632,7 +595,6 @@ async function finishChat() {
     if (roomId) {
         await update(ref(rtdb, `rooms/${roomId}`), { closed: true }).catch(() => { });
         
-        // Удаляем комнату полностью
         setTimeout(async () => {
             await deleteRoomFully(roomId);
         }, 500);
@@ -680,7 +642,6 @@ async function cancelSearchHandler() {
 }
 
 async function clearAllListenersAndState() {
-    // Отписываемся от всех слушателей
     if (messagesRefPath) {
         off(ref(rtdb, messagesRefPath));
         messagesRefPath = null;
@@ -825,8 +786,6 @@ exitBtn.addEventListener('click', function (e) {
     clearRoomStorage();
 });
 
-// ========================= АВТО-УДАЛЕНИЕ НЕАКТИВНЫХ КОМНАТ =========================
-
 async function deleteRoomFully(rId) {
     try {
         const roomRef = ref(rtdb, `rooms/${rId}`);
@@ -858,7 +817,6 @@ async function cleanupRoomsByInactivity() {
         if (!snap.exists()) return;
         
         const now = Date.now();
-
         const deletePromises = [];
 
         snap.forEach((child) => {
@@ -867,16 +825,13 @@ async function cleanupRoomsByInactivity() {
 
             const created = data.createdAt || 0;
             
-            // Удаляем закрытые комнаты
             if (data.closed === true) {
                 deletePromises.push(deleteRoomFully(rId));
                 return;
             }
             
-            // Удаляем комнаты старше 2 минут без активности
             if (created && (now - created) < 2 * 60 * 1000) return;
 
-            // Проверяем последнюю активность
             const checkInactivity = async () => {
                 let lastActive = 0;
 
@@ -906,7 +861,6 @@ async function cleanupRoomsByInactivity() {
     }
 }
 
-// ========== УДАЛЕНИЕ ЗАВИСШИХ В ОЧЕРЕДИ ==========
 async function cleanupStaleWaitingUsers() {
     try {
         const waitingRef = ref(rtdb, 'waiting');
@@ -915,7 +869,6 @@ async function cleanupStaleWaitingUsers() {
         if (!snap.exists()) return;
         
         const now = Date.now();
-
         const deletePromises = [];
 
         snap.forEach((child) => {
