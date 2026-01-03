@@ -526,13 +526,33 @@ async function connectToRoom(rId) {
 
         const messagesRef = ref(rtdb, `rooms/${roomId}/messages`);
         messagesRefPath = `rooms/${roomId}/messages`;
-        const messagesQuery = query(messagesRef, orderByChild('createdAt'));
         
         clearMessages();
         
-        onChildAdded(messagesQuery, (snap) => {
+        // Сначала загружаем все существующие сообщения
+        const existingQuery = query(messagesRef, orderByChild('createdAt'));
+        const existingSnap = await get(existingQuery);
+        
+        const messages = [];
+        existingSnap.forEach(child => {
+            messages.push({ key: child.key, data: child.val() });
+        });
+        
+        // Сортируем по времени и отображаем
+        messages.sort((a, b) => (a.data.createdAt || 0) - (b.data.createdAt || 0));
+        messages.forEach(msg => addMessageToUI(msg.data));
+        
+        // Теперь слушаем новые сообщения
+        const newMessagesQuery = query(messagesRef, orderByChild('createdAt'));
+        const loadedKeys = new Set(messages.map(m => m.key));
+        
+        onChildAdded(newMessagesQuery, (snap) => {
             if (chatClosed) return;
-            addMessageToUI(snap.val());
+            // Добавляем только если это новое сообщение
+            if (!loadedKeys.has(snap.key)) {
+                addMessageToUI(snap.val());
+                loadedKeys.add(snap.key);
+            }
         });
 
         await setMyPresence();
