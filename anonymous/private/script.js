@@ -387,6 +387,11 @@ async function startSearch() {
     }
 
     // Слушаем своё состояние
+    if (myWaitingListener) {
+        off(myWaitingRef);
+        myWaitingListener = null;
+    }
+    
     myWaitingListener = onValue(myWaitingRef, (snap) => {
         if (!snap.exists()) return;
         const data = snap.val();
@@ -401,6 +406,12 @@ async function startSearch() {
 
     // Слушаем очередь ожидания
     const waitingRef = ref(rtdb, 'waiting');
+    
+    if (waitingQueueListener) {
+        off(waitingRef);
+        waitingQueueListener = null;
+    }
+    
     waitingQueueListener = onValue(waitingRef, async (snap) => {
         if (!snap.exists()) return;
         
@@ -513,6 +524,12 @@ async function connectToRoom(rId) {
         const messagesRef = ref(rtdb, `rooms/${roomId}/messages`);
         const messagesQuery = query(messagesRef, orderByChild('createdAt'));
         
+        // ВАЖНО: Отписываемся от старого слушателя перед созданием нового
+        if (messagesListener) {
+            off(messagesRef);
+            messagesListener = null;
+        }
+        
         clearMessages();
         
         messagesListener = onChildAdded(messagesQuery, (snap) => {
@@ -525,6 +542,12 @@ async function connectToRoom(rId) {
         
         // Слушаем presence других
         const presenceRef = ref(rtdb, `rooms/${roomId}/presence`);
+        
+        if (presenceListener) {
+            off(presenceRef);
+            presenceListener = null;
+        }
+        
         presenceListener = onValue(presenceRef, async (snap) => {
             if (!snap.exists()) return;
             
