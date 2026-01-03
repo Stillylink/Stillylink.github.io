@@ -473,7 +473,7 @@ async function startSearch() {
     } catch (e) {
         console.warn('Ошибка при чистке waiting:', e);
     }
-}
+})
 
 setInterval(() => {
     cleanupRoomsByInactivity();
