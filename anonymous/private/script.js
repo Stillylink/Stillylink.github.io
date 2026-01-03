@@ -412,7 +412,9 @@ async function startSearch() {
 
         snap.forEach(child => {
             const data = child.val();
-            if (data.uid === uid) return;
+            
+            // КРИТИЧНО: Пропускаем самого себя
+            if (child.key === uid || data.uid === uid) return;
             if (data.claimed) return;
             
             const ls = data.lastSeen || data.createdAt || 0;
@@ -424,6 +426,9 @@ async function startSearch() {
         });
 
         if (!otherUid) return;
+        
+        // Дополнительная проверка что это не мы
+        if (otherUid === uid) return;
 
         matchmakingInProgress = true;
 
@@ -529,29 +534,41 @@ async function connectToRoom(rId) {
         
         clearMessages();
         
-        // Сначала загружаем все существующие сообщения
-        const existingQuery = query(messagesRef, orderByChild('createdAt'));
-        const existingSnap = await get(existingQuery);
+        // Загружаем существующие сообщения
+        try {
+            const existingQuery = query(messagesRef, orderByChild('createdAt'));
+            const existingSnap = await get(existingQuery);
+            
+            if (existingSnap.exists()) {
+                const messages = [];
+                existingSnap.forEach(child => {
+                    messages.push({ key: child.key, data: child.val() });
+                });
+                
+                // Сортируем и отображаем
+                messages.sort((a, b) => (a.data.createdAt || 0) - (b.data.createdAt || 0));
+                messages.forEach(msg => {
+                    addMessageToUI(msg.data);
+                });
+                
+                console.log(`Загружено ${messages.length} сообщений`);
+            }
+        } catch (err) {
+            console.warn('Ошибка загрузки сообщений:', err);
+        }
         
-        const messages = [];
-        existingSnap.forEach(child => {
-            messages.push({ key: child.key, data: child.val() });
-        });
-        
-        // Сортируем по времени и отображаем
-        messages.sort((a, b) => (a.data.createdAt || 0) - (b.data.createdAt || 0));
-        messages.forEach(msg => addMessageToUI(msg.data));
-        
-        // Теперь слушаем новые сообщения
+        // Слушаем новые сообщения
+        const startTime = Date.now();
         const newMessagesQuery = query(messagesRef, orderByChild('createdAt'));
-        const loadedKeys = new Set(messages.map(m => m.key));
         
         onChildAdded(newMessagesQuery, (snap) => {
             if (chatClosed) return;
-            // Добавляем только если это новое сообщение
-            if (!loadedKeys.has(snap.key)) {
+            
+            const msgTime = snap.val().createdAt || 0;
+            
+            // Добавляем только сообщения созданные ПОСЛЕ подключения
+            if (msgTime >= startTime) {
                 addMessageToUI(snap.val());
-                loadedKeys.add(snap.key);
             }
         });
 
