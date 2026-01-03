@@ -132,22 +132,23 @@ document.addEventListener("click", e => {
 
 let uid = null;
 let isRealUser = false;
-let myWaitingRef = null;
 let roomId = null;
 let partnerId = null;
 let chatClosed = false;
 let cleaning = false;
 let searchCancelled = false;
+let isConnecting = false; // Флаг для предотвращения множественных подключений
+let matchmakingInProgress = false; // Флаг для предотвращения race condition
 
 let waitingHeartbeatInterval = null;
 let presenceHeartbeatInterval = null;
 
-// Слушатели для отписки
-let messagesListener = null;
-let roomMetaListener = null;
-let waitingQueueListener = null;
-let myWaitingListener = null;
-let presenceListener = null;
+// Для хранения refs слушателей
+let myWaitingRefPath = null;
+let waitingRefPath = null;
+let currentRoomRefPath = null;
+let messagesRefPath = null;
+let presenceRefPath = null;
 
 const PRESENCE_PING_INTERVAL = 8000;
 const PRESENCE_STALE_MS = 25000;
@@ -327,7 +328,7 @@ document.addEventListener('click', (e) => {
 });
 
 async function startWaitingHeartbeat() {
-    if (!myWaitingRef || !uid) return;
+    if (!uid) return;
     
     const waitingRef = ref(rtdb, `waiting/${uid}`);
     
@@ -363,15 +364,17 @@ async function startSearch() {
     if (saved.roomId) return;
 
     chatClosed = false;
+    matchmakingInProgress = false;
 
-    clearAllListenersAndState();
+    await clearAllListenersAndState();
     clearMessages();
     show(searchScreen);
     hide(chatWindow);
     hide(endScreen);
     statusText.textContent = 'Ищем собеседника...';
 
-    myWaitingRef = ref(rtdb, `waiting/${uid}`);
+    const myWaitingRef = ref(rtdb, `waiting/${uid}`);
+    myWaitingRefPath = `waiting/${uid}`;
     
     try {
         await set(myWaitingRef, {
@@ -387,17 +390,20 @@ async function startSearch() {
     }
 
     // Слушаем своё состояние
-    if (myWaitingListener) {
-        off(myWaitingRef);
-        myWaitingListener = null;
-    }
-    
-    myWaitingListener = onValue(myWaitingRef, (snap) => {
+    onValue(myWaitingRef, (snap) => {
         if (!snap.exists()) return;
         const data = snap.val();
         if (data.claimed && data.roomId) {
             roomId = data.roomId;
             saveRoomToStorage(roomId, null);
+            stopWaitingHeartbeat();
+            
+            // Отписываемся от очереди ожидания
+            if (waitingRefPath) {
+                off(ref(rtdb, waitingRefPath));
+                waitingRefPath = null;
+            }
+            
             connectToRoom(roomId).catch(console.warn);
         }
     });
@@ -406,18 +412,14 @@ async function startSearch() {
 
     // Слушаем очередь ожидания
     const waitingRef = ref(rtdb, 'waiting');
+    waitingRefPath = 'waiting';
     
-    if (waitingQueueListener) {
-        off(waitingRef);
-        waitingQueueListener = null;
-    }
-    
-    waitingQueueListener = onValue(waitingRef, async (snap) => {
+    onValue(waitingRef, async (snap) => {
         if (!snap.exists()) return;
+        if (matchmakingInProgress) return; // Предотвращаем race condition
         
         const now = Date.now();
         let otherUid = null;
-        let otherData = null;
 
         snap.forEach(child => {
             const data = child.val();
@@ -429,11 +431,12 @@ async function startSearch() {
             
             if (!otherUid) {
                 otherUid = child.key;
-                otherData = data;
             }
         });
 
         if (!otherUid) return;
+
+        matchmakingInProgress = true;
 
         // Проверяем ещё раз перед созданием комнаты
         try {
@@ -445,8 +448,14 @@ async function startSearch() {
                 get(myRef)
             ]);
 
-            if (!otherSnap.exists() || !mySnap.exists()) return;
-            if (otherSnap.val().claimed || mySnap.val().claimed) return;
+            if (!otherSnap.exists() || !mySnap.exists()) {
+                matchmakingInProgress = false;
+                return;
+            }
+            if (otherSnap.val().claimed || mySnap.val().claimed) {
+                matchmakingInProgress = false;
+                return;
+            }
 
             // Создаём комнату
             const roomsRef = ref(rtdb, 'rooms');
@@ -460,17 +469,30 @@ async function startSearch() {
             });
 
             // Помечаем обоих как claimed
-            await Promise.all([
+            await Promise.all(deletePromises);
+    } catch (e) {
+        console.warn('Ошибка при чистке waiting:', e);
+    }
+}
+
+setInterval(() => {
+    cleanupRoomsByInactivity();
+    cleanupStaleWaitingUsers();
+}, 5 * 60 * 1000);
+
+setTimeout(() => {
+    cleanupRoomsByInactivity();
+    cleanupStaleWaitingUsers();
+}, 20000);all([
                 update(otherRef, { claimed: true, roomId: newRoomId }),
                 update(myRef, { claimed: true, roomId: newRoomId })
             ]);
 
-            roomId = newRoomId;
-            saveRoomToStorage(roomId, null);
-            stopWaitingHeartbeat();
-            await connectToRoom(roomId);
+            console.log('Room created:', newRoomId);
+            
         } catch (err) {
             console.log('Matchmaking race condition:', err);
+            matchmakingInProgress = false;
         }
     });
 }
@@ -478,13 +500,27 @@ async function startSearch() {
 async function connectToRoom(rId) {
     try {
         if (!rId) return;
+        if (isConnecting) {
+            console.log('Already connecting to a room');
+            return;
+        }
 
-        if (roomId && roomId !== rId) {
-            await clearAllListenersAndState();
+        isConnecting = true;
+
+        // Полностью очищаем старые слушатели
+        if (currentRoomRefPath) {
+            off(ref(rtdb, currentRoomRefPath));
+        }
+        if (messagesRefPath) {
+            off(ref(rtdb, messagesRefPath));
+        }
+        if (presenceRefPath) {
+            off(ref(rtdb, presenceRefPath));
         }
 
         roomId = rId;
         const roomRef = ref(rtdb, `rooms/${roomId}`);
+        currentRoomRefPath = `rooms/${roomId}`;
         
         saveRoomToStorage(roomId, partnerId);
 
@@ -502,16 +538,15 @@ async function connectToRoom(rId) {
                 parts.push(uid);
                 await update(roomRef, { participants: parts });
             }
+            
+            partnerId = parts.find(p => p !== uid) || null;
+            saveRoomToStorage(roomId, partnerId);
         }
 
         // Слушаем мета-данные комнаты
-        roomMetaListener = onValue(roomRef, (snap) => {
+        onValue(roomRef, (snap) => {
             if (!snap.exists() || snap.val().closed) {
                 chatClosed = true;
-                if (messagesListener) {
-                    off(ref(rtdb, `rooms/${roomId}/messages`));
-                    messagesListener = null;
-                }
                 endChatUI();
             } else {
                 const participants = snap.val().participants || [];
@@ -520,19 +555,14 @@ async function connectToRoom(rId) {
             }
         });
 
-        // Слушаем сообщения
+        // Слушаем сообщения - ОДИН РАЗ
         const messagesRef = ref(rtdb, `rooms/${roomId}/messages`);
+        messagesRefPath = `rooms/${roomId}/messages`;
         const messagesQuery = query(messagesRef, orderByChild('createdAt'));
-        
-        // ВАЖНО: Отписываемся от старого слушателя перед созданием нового
-        if (messagesListener) {
-            off(messagesRef);
-            messagesListener = null;
-        }
         
         clearMessages();
         
-        messagesListener = onChildAdded(messagesQuery, (snap) => {
+        onChildAdded(messagesQuery, (snap) => {
             if (chatClosed) return;
             addMessageToUI(snap.val());
         });
@@ -542,13 +572,9 @@ async function connectToRoom(rId) {
         
         // Слушаем presence других
         const presenceRef = ref(rtdb, `rooms/${roomId}/presence`);
+        presenceRefPath = `rooms/${roomId}/presence`;
         
-        if (presenceListener) {
-            off(presenceRef);
-            presenceListener = null;
-        }
-        
-        presenceListener = onValue(presenceRef, async (snap) => {
+        onValue(presenceRef, async (snap) => {
             if (!snap.exists()) return;
             
             const now = Date.now();
@@ -562,15 +588,18 @@ async function connectToRoom(rId) {
                 }
             });
 
-            if (!hasAlive) {
+            if (!hasAlive && !chatClosed) {
                 try {
                     await fullRoomCleanup();
                 } catch (e) { }
             }
         });
 
+        isConnecting = false;
+
     } catch (err) {
         console.error('connectToRoom error', err);
+        isConnecting = false;
     }
 }
 
@@ -602,32 +631,14 @@ async function finishChat() {
 
     if (roomId) {
         await update(ref(rtdb, `rooms/${roomId}`), { closed: true }).catch(() => { });
-    }
-
-    if (messagesListener) {
-        off(ref(rtdb, `rooms/${roomId}/messages`));
-        messagesListener = null;
+        
+        // Удаляем комнату полностью
+        setTimeout(async () => {
+            await deleteRoomFully(roomId);
+        }, 500);
     }
 
     clearRoomStorage();
-
-    setTimeout(async () => {
-        if (roomId) {
-            const roomRef = ref(rtdb, `rooms/${roomId}`);
-            const snap = await get(roomRef);
-            
-            if (snap.exists()) {
-                const parts = snap.val().participants || [];
-                for (const p of parts) {
-                    await remove(ref(rtdb, `waiting/${p}`)).catch(() => { });
-                }
-            }
-
-            await remove(ref(rtdb, `rooms/${roomId}/messages`)).catch(() => { });
-            await remove(ref(rtdb, `rooms/${roomId}/presence`)).catch(() => { });
-            await remove(roomRef).catch(() => { });
-        }
-    }, 300);
 }
 
 function endChatUI() {
@@ -644,22 +655,24 @@ function connectedStopUI() {
 async function cancelSearchHandler() {
     searchCancelled = true;
     
-    if (myWaitingRef) {
+    if (myWaitingRefPath) {
+        const myWaitingRef = ref(rtdb, myWaitingRefPath);
         try {
             await remove(myWaitingRef);
         } catch (e) { }
-        myWaitingRef = null;
+        myWaitingRefPath = null;
     }
     
-    if (myWaitingListener) {
-        off(ref(rtdb, `waiting/${uid}`));
-        myWaitingListener = null;
+    if (myWaitingRefPath) {
+        off(ref(rtdb, myWaitingRefPath));
     }
     
-    if (waitingQueueListener) {
-        off(ref(rtdb, 'waiting'));
-        waitingQueueListener = null;
+    if (waitingRefPath) {
+        off(ref(rtdb, waitingRefPath));
+        waitingRefPath = null;
     }
+    
+    stopWaitingHeartbeat();
     
     hide(searchScreen);
     show(endScreen);
@@ -668,29 +681,29 @@ async function cancelSearchHandler() {
 
 async function clearAllListenersAndState() {
     // Отписываемся от всех слушателей
-    if (messagesListener) {
-        off(ref(rtdb, `rooms/${roomId}/messages`));
-        messagesListener = null;
+    if (messagesRefPath) {
+        off(ref(rtdb, messagesRefPath));
+        messagesRefPath = null;
     }
     
-    if (roomMetaListener) {
-        off(ref(rtdb, `rooms/${roomId}`));
-        roomMetaListener = null;
+    if (currentRoomRefPath) {
+        off(ref(rtdb, currentRoomRefPath));
+        currentRoomRefPath = null;
     }
     
-    if (waitingQueueListener) {
-        off(ref(rtdb, 'waiting'));
-        waitingQueueListener = null;
+    if (waitingRefPath) {
+        off(ref(rtdb, waitingRefPath));
+        waitingRefPath = null;
     }
     
-    if (myWaitingListener) {
-        off(ref(rtdb, `waiting/${uid}`));
-        myWaitingListener = null;
+    if (myWaitingRefPath) {
+        off(ref(rtdb, myWaitingRefPath));
+        myWaitingRefPath = null;
     }
     
-    if (presenceListener) {
-        off(ref(rtdb, `rooms/${roomId}/presence`));
-        presenceListener = null;
+    if (presenceRefPath) {
+        off(ref(rtdb, presenceRefPath));
+        presenceRefPath = null;
     }
     
     if (presenceHeartbeatInterval) {
@@ -700,7 +713,8 @@ async function clearAllListenersAndState() {
     
     stopWaitingHeartbeat();
 
-    if (myWaitingRef) {
+    if (uid) {
+        const myWaitingRef = ref(rtdb, `waiting/${uid}`);
         try {
             const snap = await get(myWaitingRef);
             if (snap.exists()) {
@@ -709,7 +723,6 @@ async function clearAllListenersAndState() {
         } catch (e) {
             console.warn('clear waiting error', e);
         }
-        myWaitingRef = null;
     }
     
     if (roomId && uid) {
@@ -721,6 +734,7 @@ async function clearAllListenersAndState() {
     messagesEl.innerHTML = '';
     roomId = null;
     partnerId = null;
+    isConnecting = false;
 }
 
 async function fullRoomCleanup() {
@@ -733,29 +747,12 @@ window.addEventListener('beforeunload', async (ev) => {
     try {
         stopWaitingHeartbeat();
         
-        if (myWaitingRef) {
-            await remove(myWaitingRef).catch(() => { });
+        if (uid) {
+            await remove(ref(rtdb, `waiting/${uid}`)).catch(() => { });
         }
         
         if (roomId && uid) {
             await remove(ref(rtdb, `rooms/${roomId}/presence/${uid}`)).catch(() => { });
-            
-            try {
-                const roomRef = ref(rtdb, `rooms/${roomId}`);
-                const rSnap = await get(roomRef);
-                
-                if (rSnap.exists()) {
-                    const parts = rSnap.val().participants || [];
-                    const newParts = parts.filter(p => p !== uid);
-                    
-                    if (newParts.length === 0) {
-                        await remove(ref(rtdb, `rooms/${roomId}/messages`)).catch(() => { });
-                        await remove(roomRef).catch(() => { });
-                    } else {
-                        await update(roomRef, { participants: newParts }).catch(() => { });
-                    }
-                }
-            } catch (e) { }
         }
     } catch (e) { }
 });
@@ -766,14 +763,10 @@ async function handlePageExit() {
     if (cleaning) return;
     cleaning = true;
 
-    const isInSearch = !chatClosed && !roomId && myWaitingRef;
-
     const promises = [];
 
-    if (isMobile && isInSearch && myWaitingRef) {
-        promises.push(remove(myWaitingRef).catch(() => { }));
-        clearRoomStorage();
-        myWaitingRef = null;
+    if (uid) {
+        promises.push(remove(ref(rtdb, `waiting/${uid}`)).catch(() => { }));
     }
 
     if (roomId && uid) {
@@ -786,18 +779,10 @@ async function handlePageExit() {
 async function handlePageReturn() {
     cleaning = false;
 
-    if (!roomId) {
-        if (!isMobile) return;
-        if (searchCancelled) return;
-        
-        if (!myWaitingRef) {
-            startSearch();
-            return;
-        }
-        
+    if (!roomId && !searchCancelled && isMobile) {
+        const myWaitingRef = ref(rtdb, `waiting/${uid}`);
         const snap = await get(myWaitingRef);
         if (!snap.exists()) {
-            myWaitingRef = null;
             startSearch();
         }
     }
@@ -813,7 +798,10 @@ document.addEventListener('visibilitychange', () => {
 
 finishBtn.addEventListener('click', () => { modal.classList.remove('hidden'); });
 modalCancel.addEventListener('click', () => { modal.classList.add('hidden'); });
-modalFinish.addEventListener('click', async () => { modal.classList.add('hidden'); await finishChat(); });
+modalFinish.addEventListener('click', async () => { 
+    modal.classList.add('hidden'); 
+    await finishChat(); 
+});
 
 newChatBtn.addEventListener('click', async () => {
     searchCancelled = false;
@@ -856,9 +844,9 @@ async function deleteRoomFully(rId) {
         await remove(ref(rtdb, `rooms/${rId}/presence`)).catch(() => { });
         await remove(roomRef).catch(() => { });
 
-        console.log("Комната и пользователи удалены автоматически:", rId);
+        console.log("Комната удалена:", rId);
     } catch (e) {
-        console.warn("Ошибка авто-удаления:", e);
+        console.warn("Ошибка удаления комнаты:", e);
     }
 }
 
@@ -871,36 +859,48 @@ async function cleanupRoomsByInactivity() {
         
         const now = Date.now();
 
-        snap.forEach(async (child) => {
+        const deletePromises = [];
+
+        snap.forEach((child) => {
             const data = child.val();
             const rId = child.key;
 
             const created = data.createdAt || 0;
-            if (now - created < 2 * 60 * 1000) return;
-
+            
+            // Удаляем закрытые комнаты
             if (data.closed === true) {
-                await deleteRoomFully(rId);
+                deletePromises.push(deleteRoomFully(rId));
                 return;
             }
-
-            let lastActive = 0;
-
-            const msgsRef = ref(rtdb, `rooms/${rId}/messages`);
-            const msgsQuery = query(msgsRef, orderByChild('createdAt'), limitToLast(1));
-            const msgsSnap = await get(msgsQuery);
             
-            if (msgsSnap.exists()) {
-                msgsSnap.forEach(msg => {
-                    lastActive = msg.val().createdAt || 0;
-                });
-            }
+            // Удаляем комнаты старше 2 минут без активности
+            if (created && (now - created) < 2 * 60 * 1000) return;
 
-            if (!lastActive) lastActive = created;
+            // Проверяем последнюю активность
+            const checkInactivity = async () => {
+                let lastActive = 0;
 
-            if (now - lastActive > 20 * 60 * 1000) {
-                await deleteRoomFully(rId);
-            }
+                const msgsRef = ref(rtdb, `rooms/${rId}/messages`);
+                const msgsQuery = query(msgsRef, orderByChild('createdAt'), limitToLast(1));
+                const msgsSnap = await get(msgsQuery);
+                
+                if (msgsSnap.exists()) {
+                    msgsSnap.forEach(msg => {
+                        lastActive = msg.val().createdAt || 0;
+                    });
+                }
+
+                if (!lastActive) lastActive = created;
+
+                if (now - lastActive > 20 * 60 * 1000) {
+                    await deleteRoomFully(rId);
+                }
+            };
+
+            deletePromises.push(checkInactivity());
         });
+
+        await Promise.all(deletePromises);
     } catch (e) {
         console.warn("Ошибка проверки старых комнат:", e);
     }
@@ -916,7 +916,9 @@ async function cleanupStaleWaitingUsers() {
         
         const now = Date.now();
 
-        snap.forEach(async (child) => {
+        const deletePromises = [];
+
+        snap.forEach((child) => {
             const data = child.val();
             if (data.claimed === true) return;
 
@@ -924,10 +926,15 @@ async function cleanupStaleWaitingUsers() {
             if (!ls) return;
 
             if (now - ls > WAITING_STALE_MS) {
-                await remove(child.ref).catch(() => { });
-                console.log('удалён зависший пользователь из waiting:', child.key);
+                deletePromises.push(
+                    remove(child.ref).then(() => {
+                        console.log('Удалён зависший пользователь:', child.key);
+                    }).catch(() => {})
+                );
             }
         });
+
+        await Promise.all(deletePromises);
     } catch (e) {
         console.warn('Ошибка при чистке waiting:', e);
     }
