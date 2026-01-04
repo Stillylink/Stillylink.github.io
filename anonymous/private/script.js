@@ -22,7 +22,7 @@ import {
     query,
     orderByChild,
     limitToLast,
-    Date.now(),
+    serverTimestamp as rtdbServerTimestamp,
     onDisconnect,
     off
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js";
