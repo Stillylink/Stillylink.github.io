@@ -262,7 +262,7 @@ async function sendMessageToRoom(text, type = 'text') {
         sender: uid,
         text,
         type,
-        createdAt: rtdbServerTimestamp()
+        createdAt: Date.now()
     });
 }
 
@@ -328,7 +328,7 @@ async function startWaitingHeartbeat() {
         await update(waitingRef, { lastSeen: rtdbServerTimestamp() }).catch(async () => {
             await set(waitingRef, {
                 uid,
-                createdAt: rtdbServerTimestamp(),
+                createdAt: Date.now(),
                 claimed: false,
                 roomId: null,
                 lastSeen: rtdbServerTimestamp()
@@ -371,7 +371,7 @@ async function startSearch() {
     try {
         await set(myWaitingRef, {
             uid,
-            createdAt: rtdbServerTimestamp(),
+            createdAt: Date.now(),
             claimed: false,
             roomId: null,
             lastSeen: rtdbServerTimestamp()
@@ -426,9 +426,10 @@ async function startSearch() {
         });
 
         if (!otherUid) return;
-        
-        // Дополнительная проверка что это не мы
-        if (otherUid === uid) return;
+
+if (uid > otherUid) {
+    return;
+}
 
         matchmakingInProgress = true;
 
@@ -468,16 +469,21 @@ async function startSearch() {
 
             await set(newRoomRef, {
                 participants: [uid, otherUid],
-                createdAt: rtdbServerTimestamp(),
+                createdAt: Date.now(),
                 closed: false
             });
 
-            await Promise.all([
-                update(otherRef, { claimed: true, roomId: newRoomId }),
-                update(myRef, { claimed: true, roomId: newRoomId })
-            ]);
+await Promise.all([
+    update(otherRef, { claimed: true, roomId: newRoomId }),
+    update(myRef, { claimed: true, roomId: newRoomId })
+]);
 
-            console.log('✅ Комната создана:', newRoomId, 'участники:', uid, otherUid);
+await Promise.all([
+    remove(otherRef),
+    remove(myRef)
+]);
+
+console.log('✅ Комната создана:', newRoomId);
             
         } catch (err) {
             console.log('Matchmaking race condition:', err);
@@ -647,7 +653,7 @@ async function setMyPresence() {
     const presRef = ref(rtdb, `rooms/${roomId}/presence/${uid}`);
     
     try {
-        await set(presRef, { lastSeen: rtdbServerTimestamp() });
+        await set(presRef, { lastSeen: Date.now() });
         onDisconnect(presRef).remove();
     } catch (e) {
         console.warn('set presence failed', e);
@@ -656,7 +662,7 @@ async function setMyPresence() {
     if (presenceHeartbeatInterval) clearInterval(presenceHeartbeatInterval);
     presenceHeartbeatInterval = setInterval(async () => {
         try {
-            await update(presRef, { lastSeen: rtdbServerTimestamp() });
+            await update(presRef, { lastSeen: Date.now() });
         } catch (e) { }
     }, PRESENCE_PING_INTERVAL);
 }
