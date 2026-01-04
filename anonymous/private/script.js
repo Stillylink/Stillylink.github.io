@@ -22,7 +22,7 @@ import {
     query,
     orderByChild,
     limitToLast,
-    serverTimestamp as rtdbServerTimestamp,
+    Date.now(),
     onDisconnect,
     off
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js";
@@ -325,13 +325,13 @@ async function startWaitingHeartbeat() {
     const waitingRef = ref(rtdb, `waiting/${uid}`);
     
     try {
-        await update(waitingRef, { lastSeen: rtdbServerTimestamp() }).catch(async () => {
+        await update(waitingRef, { lastSeen: Date.now() }).catch(async () => {
             await set(waitingRef, {
                 uid,
                 createdAt: Date.now(),
                 claimed: false,
                 roomId: null,
-                lastSeen: rtdbServerTimestamp()
+                lastSeen: Date.now()
             });
         });
     } catch (e) { }
@@ -339,7 +339,7 @@ async function startWaitingHeartbeat() {
     if (waitingHeartbeatInterval) clearInterval(waitingHeartbeatInterval);
     waitingHeartbeatInterval = setInterval(async () => {
         try {
-            await update(waitingRef, { lastSeen: rtdbServerTimestamp() });
+            await update(waitingRef, { lastSeen: Date.now() });
         } catch (e) { }
     }, WAITING_HEARTBEAT_INTERVAL);
 }
@@ -374,7 +374,7 @@ async function startSearch() {
             createdAt: Date.now(),
             claimed: false,
             roomId: null,
-            lastSeen: rtdbServerTimestamp()
+            lastSeen: Date.now()
         });
     } catch (e) {
         console.error('Failed to create waiting entry', e);
