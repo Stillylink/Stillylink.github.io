@@ -564,54 +564,11 @@ async function connectToRoom(rId) {
         messagesRefPath = `rooms/${roomId}/messages`;
         
         clearMessages();
-        
-        // Загружаем ВСЕ существующие сообщения
-        try {
-            const existingSnap = await get(messagesRef);
-            
-            const messages = [];
-            if (existingSnap.exists()) {
-                existingSnap.forEach(child => {
-                    messages.push({ key: child.key, data: child.val() });
-                });
-            }
-            
-            // Сортируем и отображаем
-            messages.sort((a, b) => (a.data.createdAt || 0) - (b.data.createdAt || 0));
-            messages.forEach(msg => {
-                addMessageToUI(msg.data);
-            });
-            
-            console.log(`[ПК] Загружено ${messages.length} существующих сообщений`);
-        } catch (err) {
-            console.warn('Ошибка загрузки сообщений:', err);
-        }
-        
-        // Слушаем ТОЛЬКО новые сообщения (добавленные после этого момента)
-        let isInitialLoad = true;
-        const loadedMessageKeys = new Set();
-        
-        // Запоминаем уже загруженные ключи
-        const currentSnap = await get(messagesRef);
-        if (currentSnap.exists()) {
-            currentSnap.forEach(child => {
-                loadedMessageKeys.add(child.key);
-            });
-        }
-        
-        onChildAdded(messagesRef, (snap) => {
-            if (chatClosed) return;
-            
-            // Пропускаем уже загруженные
-            if (loadedMessageKeys.has(snap.key)) {
-                return;
-            }
-            
-            // Добавляем новое сообщение
-            console.log('[Новое сообщение]', snap.key);
-            addMessageToUI(snap.val());
-            loadedMessageKeys.add(snap.key);
-        });
+
+    onChildAdded(messagesRef, (snap) => {
+    if (chatClosed) return;
+    addMessageToUI(snap.val());
+});
 
         await setMyPresence();
         
