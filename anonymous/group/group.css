@@ -1,36 +1,36 @@
 /* ========== БАЗОВЫЕ СТИЛИ ========== */
-body, html {
+* {
   margin: 0;
   padding: 0;
+  box-sizing: border-box;
+}
+
+body, html {
   height: 100%;
   overflow: hidden;
-  background: #2a2a2a;
+  background: #2a2a2a !important;
 }
 
 /* ========== КОНТЕЙНЕР ========== */
 .group-container{
-  max-width: 980px;
+  max-width: 900px;
   width: 100%;
   height: 100vh;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 12px;
-  box-sizing: border-box;
+  padding: 0;
 }
 
-/* ========== ШАПКА ========== */
+/* ========== ШАПКА (внутри окна чата) ========== */
 .chat-header{
   display: flex;
   align-items: center;
   gap: 12px;
   background: var(--bg-card);
-  padding: 12px 16px;
-  border-radius: 10px;
-  border: 1px solid var(--border);
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
   width: 100%;
-  box-sizing: border-box;
   flex-shrink: 0;
 }
 .chat-header .title{
@@ -53,9 +53,11 @@ body, html {
   padding: 8px 12px;
   border-radius: 8px;
   cursor: pointer;
+  transition: all 0.2s;
 }
 .finish-btn:hover{
   color: var(--accent);
+  border-color: var(--accent);
 }
 
 /* ========== ЭКРАН ВХОДА ========== */
@@ -65,10 +67,12 @@ body, html {
   align-items: center;
   flex: 1;
   min-height: 0;
+  background: #2a2a2a;
 }
 .join-screen .card{
   width: 100%;
-  max-width: 360px;
+  max-width: 400px;
+  padding: 0 20px;
 }
 .join-screen h3{
   margin-bottom: 16px;
@@ -83,39 +87,37 @@ body, html {
   text-align: left;
 }
 
-/* ========== ОКНО ЧАТА ========== */
+/* ========== ОКНО ЧАТА (на всю высоту) ========== */
 .chat-box {
   width: 100%;
-  max-width: 740px;
-  margin: 0 auto;
+  height: 100vh;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  flex: 1;
-  min-height: 0;
+  background: linear-gradient(180deg, #0f1112, #0b0b0b);
+  overflow: hidden;
 }
+
 .chat-window {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  border-radius: 10px;
-  overflow: hidden;
-  border: 1px solid var(--border);
-  background: linear-gradient(180deg, #0f1112, #0b0b0b);
   flex: 1;
   min-height: 0;
+  overflow: hidden;
 }
+
 .messages{
   padding: 18px;
-  overflow: auto;
-  flex: 1 1 auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
+
 .message{
   max-width: 70%;
-  padding: 10px 12px;
+  padding: 10px 14px;
   border-radius: 12px;
   background: var(--bg-card);
   color: var(--text-main);
@@ -127,13 +129,18 @@ body, html {
   background: #1f1f1f;
   color: #e0e0e0;
 }
+
 .msg-row{
   display: flex;
   gap: 10px;
   align-items: flex-end;
 }
-.msg-row.own{ flex-direction: row-reverse; }
-.msg-row.other{ flex-direction: row; }
+.msg-row.own{ 
+  flex-direction: row-reverse; 
+}
+.msg-row.other{ 
+  flex-direction: row; 
+}
 .msg-row .avatar{
   width: 36px;
   height: 36px;
@@ -153,25 +160,22 @@ body, html {
   margin-top: 6px;
 }
 
-/* ========== ПОЛЕ ВВОДА ========== */
-#sendBtn {
-  padding: 10px 14px;
-  width: auto;
-}
+/* ========== ПОЛЕ ВВОДА (футер внутри чата) ========== */
 .composer{
   display: flex;
   gap: 8px;
   align-items: flex-end;
-  padding: 12px;
-  border-top: 1px solid rgba(255,255,255,.03);
-  background: linear-gradient(180deg,#0d0d0d,#0b0b0b);
+  padding: 14px 18px;
+  border-top: 1px solid rgba(255,255,255,.05);
+  background: linear-gradient(180deg, #0d0d0d, #0a0a0a);
   flex-shrink: 0;
 }
+
 .text-input{
-  flex: 1 1 auto;
+  flex: 1;
   min-height: 44px;
   max-height: 140px;
-  padding: 10px 12px;
+  padding: 10px 14px;
   border-radius: 10px;
   resize: none;
   border: 1px solid var(--border);
@@ -179,103 +183,138 @@ body, html {
   color: var(--text-main);
   font-size: 16px;
   outline: none;
+  font-family: inherit;
 }
+
 .tool-btn{
-  padding: 8px;
+  padding: 10px;
   border-radius: 8px;
   border: 1px solid var(--border);
   background: transparent;
   color: var(--text-secondary);
   cursor: pointer;
   flex-shrink: 0;
+  transition: all 0.2s;
 }
-.tool-btn:hover{ color: var(--accent); }
+.tool-btn:hover{ 
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+#sendBtn {
+  padding: 10px 16px;
+  width: auto;
+  min-width: 60px;
+}
 
 /* ========== ЭМОДЗИ-ПАНЕЛЬ ========== */
 .emoji-panel{
   position: absolute;
-  bottom: 76px;
+  bottom: 80px;
   right: 24px;
   background: var(--bg-card);
   border: 1px solid var(--border);
-  padding: 8px;
-  border-radius: 8px;
+  padding: 10px;
+  border-radius: 10px;
   display: flex;
   gap: 6px;
   flex-wrap: wrap;
-  width: 220px;
-  max-height: 200px;
+  width: 260px;
+  max-height: 240px;
   overflow-y: auto;
+  box-shadow: 0 4px 12px rgba(0,0,0,.4);
 }
 
 /* ========== АДАПТИВ ========== */
-@media (max-width: 768px){
+@media (max-width: 900px){
   .group-container{
-    padding: 8px;
-    gap: 8px;
+    max-width: 100%;
   }
+}
+
+@media (max-width: 768px){
   .chat-header{
-    padding: 10px 12px;
+    padding: 12px 16px;
   }
   .chat-header .title{ 
-    font-size: 16px; 
+    font-size: 17px; 
+  }
+  .messages{
+    padding: 14px;
+  }
+  .composer{
+    padding: 12px 16px;
   }
 }
 
 @media (max-width: 480px){
-  body, html {
-    background: #0b0b0b;
-  }
   .group-container{
-    padding: 0;
-    gap: 0;
     max-width: 100%;
   }
-  .chat-header{
-    padding: 10px 12px;
-    font-size: 16px;
-    border-radius: 0;
-    border-left: none;
-    border-right: none;
-    border-top: none;
+  
+  .chat-box{
+    height: 100dvh; /* для мобильных браузеров */
   }
+  
+  .chat-header{
+    padding: 12px 14px;
+  }
+  
   .chat-header .title{ 
     font-size: 16px; 
   }
-  .chat-box{
-    gap: 0;
-    max-width: 100%;
+  
+  .chat-actions{
+    font-size: 13px;
   }
-  .chat-window{
-    border-radius: 0;
-    border-left: none;
-    border-right: none;
-    border-bottom: none;
-  }
+  
   .messages{ 
-    padding: 10px; 
-    gap: 8px; 
+    padding: 12px; 
+    gap: 10px; 
   }
+  
   .message{ 
-    max-width: 85%; 
-    font-size: 15px; 
+    max-width: 82%; 
+    font-size: 15px;
+    padding: 9px 12px;
   }
+  
+  .msg-row .avatar{
+    width: 32px;
+    height: 32px;
+    font-size: 13px;
+  }
+  
   .composer{ 
-    padding: 8px; 
+    padding: 10px 12px; 
     gap: 6px; 
   }
+  
   .text-input{ 
     font-size: 16px; 
-    padding: 8px 10px; 
+    padding: 9px 12px;
+    min-height: 40px;
   }
+  
+  .tool-btn{
+    padding: 8px;
+  }
+  
+  #sendBtn{
+    padding: 9px 14px;
+    min-width: 50px;
+  }
+  
   .emoji-panel{
-    right: 8px; 
-    left: 8px; 
+    right: 12px; 
+    left: 12px; 
     width: auto; 
-    bottom: 72px;
+    bottom: 70px;
+    max-height: 200px;
   }
+  
   .join-screen .card{
-    max-width: 320px;
-    margin: 0 16px;
+    max-width: 340px;
+    padding: 0 16px;
   }
 }
