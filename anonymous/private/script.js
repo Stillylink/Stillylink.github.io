@@ -256,14 +256,23 @@ function addMessageToUI(data) {
 
 async function sendMessageToRoom(text, type = 'text') {
     if (!roomId) return;
+
+    const now = Date.now();
+    const roomRef = ref(rtdb, `rooms/${roomId}`);
     const messagesRef = ref(rtdb, `rooms/${roomId}/messages`);
     const newMsgRef = push(messagesRef);
-    await set(newMsgRef, {
-        sender: uid,
-        text,
-        type,
-        createdAt: Date.now()
-    });
+
+    await Promise.all([
+        set(newMsgRef, {
+            sender: uid,
+            text,
+            type,
+            createdAt: now
+        }),
+        update(roomRef, {
+            lastActivity: now
+        })
+    ]);
 }
 
 photoBtn.addEventListener('click', () => photoInput.click());
@@ -470,6 +479,7 @@ if (uid > otherUid) {
             await set(newRoomRef, {
                 participants: [uid, otherUid],
                 createdAt: Date.now(),
+                lastActivity: Date.now(),
                 closed: false
             });
 
@@ -860,68 +870,52 @@ async function deleteRoomFully(rId) {
     }
 }
 
+const ROOM_TTL = 20 * 60 * 1000; 
+
 async function cleanupRoomsByInactivity() {
     try {
         const roomsRef = ref(rtdb, 'rooms');
         const snap = await get(roomsRef);
-        
+
         if (!snap.exists()) return;
-        
+
         const now = Date.now();
-        const deletePromises = [];
+        const jobs = [];
 
-        snap.forEach((child) => {
-            const data = child.val();
-            const rId = child.key;
+        snap.forEach(roomSnap => {
+            const room = roomSnap.val();
+            const rId = roomSnap.key;
 
-            const created = data.createdAt || 0;
-            
-            // Удаляем сразу закрытые комнаты
-            if (data.closed === true) {
-                console.log('Удаляем закрытую комнату:', rId);
-                deletePromises.push(deleteRoomFully(rId));
+            // Удаляем закрытые комнаты сразу
+            if (room.closed === true) {
+                console.log('🧹 Удаляем закрытую комнату:', rId);
+                jobs.push(deleteRoomFully(rId));
                 return;
             }
-            
-            // Пропускаем новые комнаты (младше 2 минут)
-            if (created && (now - created) < 2 * 60 * 1000) return;
 
-            // Проверяем неактивность для старых комнат
-            const checkInactivity = async () => {
-                try {
-                    let lastActive = created || 0;
+            const last =
+                room.lastActivity ||
+                room.createdAt ||
+                0;
 
-                    // Ищем последнее сообщение БЕЗ индекса (чтобы не было ошибки)
-                    const msgsRef = ref(rtdb, `rooms/${rId}/messages`);
-                    const msgsSnap = await get(msgsRef);
-                    
-                    if (msgsSnap.exists()) {
-                        let maxTime = 0;
-                        msgsSnap.forEach(msg => {
-                            const msgTime = msg.val().createdAt || 0;
-                            if (msgTime > maxTime) maxTime = msgTime;
-                        });
-                        if (maxTime > 0) lastActive = maxTime;
-                    }
-
-                    // Удаляем комнаты неактивные более 20 минут
-                    if (now - lastActive > 20 * 60 * 1000) {
-                        console.log('Удаляем неактивную комнату:', rId, 'неактивна', Math.floor((now - lastActive) / 60000), 'минут');
-                        await deleteRoomFully(rId);
-                    }
-                } catch (err) {
-                    console.warn('Ошибка проверки комнаты', rId, err);
-                }
-            };
-
-            deletePromises.push(checkInactivity());
+            if (now - last > ROOM_TTL) {
+                console.log(
+                    '🧹 Удаляем неактивную комнату:',
+                    rId,
+                    'неактивна',
+                    Math.floor((now - last) / 60000),
+                    'минут'
+                );
+                jobs.push(deleteRoomFully(rId));
+            }
         });
 
-        await Promise.all(deletePromises);
+        await Promise.all(jobs);
     } catch (e) {
-        console.warn("Ошибка проверки старых комнат:", e);
+        console.warn('cleanupRoomsByInactivity error', e);
     }
 }
+
 
 async function cleanupStaleWaitingUsers() {
     try {
