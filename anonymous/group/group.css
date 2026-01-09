@@ -1,3 +1,8 @@
+/* ======== GROUP CHAT PAGE BACKGROUND ======== */
+body.group-page .site-wrapper {
+    background: #121316; /* тёмно-серый, не чёрный */
+}
+
 /* ========== КОНТЕЙНЕР ========== */
 .group-container{
   max-width:980px;
