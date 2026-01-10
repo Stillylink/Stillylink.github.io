@@ -3,19 +3,34 @@ body.group-page .site-wrapper {
     background: #121316; /* тёмно-серый, не чёрный */
 }
 
+html, body {
+  margin: 0;
+}
+
+body {
+  margin: 0;
+}
+
+.site-wrapper{
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
 /* ========== КОНТЕЙНЕР ========== */
 .group-container{
-  max-width:980px;
-  margin:24px auto;
-  display:flex;
-  flex-direction:column;
-  gap:18px;
-  padding:0 18px;
-  align-items:center;
+  flex: 1 1 auto;
+  max-width: 980px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
 }
 
 /* ========== ШАПКА ========== */
 .chat-header{
+  flex: 0 0 auto;
   display:flex;
   align-items:center;
   gap:12px;
@@ -25,6 +40,7 @@ body.group-page .site-wrapper {
   border:none;
   width:100%;
   box-sizing:border-box;
+  border-bottom: 1px solid var(--border);
 }
 .chat-header .title{
   font-size:18px;
@@ -53,10 +69,11 @@ body.group-page .site-wrapper {
 
 /* ========== ЭКРАН ВХОДА ========== */
 .join-screen{
+  flex: 1 1 auto;
   display:flex;
   justify-content:center;
   align-items:center;
-  min-height:420px;
+  min-height: 0;
 }
 .chat-shell .card {
   background: transparent;
@@ -79,6 +96,7 @@ body.group-page .site-wrapper {
 
 /* ======== ОБЩИЙ БЛОК: ШАПКА + ВХОД ======== */
 .chat-shell {
+  flex: 1 1 auto;
   width: 100%;
   border: 1px solid var(--border);
   border-radius: 12px;
@@ -102,7 +120,7 @@ body.group-page .site-wrapper {
   gap: 12px;
 }
 .chat-window {
-  height: 64vh;
+  flex: 1 1 auto;
   min-height: 0;
   display: flex;
   flex-direction: column;
@@ -111,6 +129,7 @@ body.group-page .site-wrapper {
   border-radius: 0;
   overflow: hidden;
   background: linear-gradient(180deg, #0f1112, #0b0b0b);
+  min-height: 0;
 }
 .messages{
   padding:18px;
@@ -232,13 +251,16 @@ body.group-page .site-wrapper {
   width:220px;
 }
 
+.footer{
+  margin-top: auto;
+}
+
 /* ========== АДАПТИВ ========== */
 @media (max-width:480px){
   .chat-window{
-    width:auto;
-    height:64vh;
-    min-height:420px;
-    border-radius:8px;
+    flex: 1 1 auto;
+    min-height: 0;
+    border-radius: 0;
   }
   .chat-box{
     width:auto;
