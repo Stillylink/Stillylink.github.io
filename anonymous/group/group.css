@@ -58,7 +58,7 @@ body.group-page .site-wrapper {
   align-items:center;
   min-height:420px;
 }
-.chat-panel .card {
+.chat-shell .card {
   background: transparent;
   border: none;
   box-shadow: none;
@@ -78,15 +78,18 @@ body.group-page .site-wrapper {
 }
 
 /* ======== ОБЩИЙ БЛОК: ШАПКА + ВХОД ======== */
-.chat-panel {
+.chat-shell {
   width: 100%;
   border: 1px solid var(--border);
   border-radius: 12px;
   background: var(--bg-card);
-  overflow: hidden; /* склеивает углы */
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
-.chat-panel .chat-header {
+/* разделитель под шапкой */
+.chat-shell .chat-header {
   border-bottom: 1px solid var(--border);
 }
 
@@ -104,9 +107,9 @@ body.group-page .site-wrapper {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  border-radius: 10px;
+  border: none;
+  border-radius: 0;
   overflow: hidden;
-  border: 1px solid var(--border);
   background: linear-gradient(180deg, #0f1112, #0b0b0b);
 }
 .messages{
