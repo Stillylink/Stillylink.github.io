@@ -5,6 +5,8 @@ body.group-page .site-wrapper {
 
 html, body {
   margin: 0;
+  height: 100%;
+  overflow: hidden;
 }
 
 body {
@@ -12,7 +14,7 @@ body {
 }
 
 .site-wrapper{
-  height: 100vh;
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
 }
@@ -102,6 +104,7 @@ body {
   border-radius: 12px;
   background: var(--bg-card);
   overflow: hidden;
+  min-height: 0;
   display: flex;
   flex-direction: column;
 }
@@ -131,13 +134,13 @@ body {
   border-radius: 0;
   overflow: hidden;
   background: linear-gradient(180deg, #0f1112, #0b0b0b);
-  min-height: 0;
 }
 .messages{
   padding:18px;
   padding-right:14px;
   overflow:auto;
   flex:1 1 auto;
+  min-height: 0;
   display:flex;
   flex-direction:column;
   gap:12px;
