@@ -1,18 +1,18 @@
 /* ======== GROUP CHAT PAGE BACKGROUND ======== */
 body.group-page .site-wrapper {
-    background: #121316; /* тёмно-серый, не чёрный */
+    background: #121316;
 }
 
 /* ======== ПЕРЕОПРЕДЕЛЕНИЕ ДЛЯ СТРАНИЦЫ ЧАТА ======== */
 body.group-page {
   height: 100vh;
-  padding-top: 60px; /* оставляем место для navbar */
+  padding-top: 60px;
   overflow: hidden;
 }
 
 body.group-page .site-wrapper {
-  height: calc(100vh - 60px); /* вычитаем высоту navbar */
-  min-height: auto; /* отменяем min-height: 100vh из общих стилей */
+  height: calc(100vh - 60px);
+  min-height: auto;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -120,7 +120,6 @@ body.group-page .site-wrapper {
   flex-direction: column;
 }
 
-/* разделитель под шапкой */
 .chat-shell .chat-header {
   border-bottom: 1px solid var(--border);
 }
@@ -133,20 +132,18 @@ body.group-page .site-wrapper {
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 0;
   overflow: hidden;
 }
+
 .chat-window {
   flex: 1 1 auto;
   min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 0;
-  border: none;
-  border-radius: 0;
   overflow: hidden;
   background: linear-gradient(180deg, #0f1112, #0b0b0b);
 }
+
 .messages{
   padding:18px;
   padding-right:14px;
@@ -157,7 +154,6 @@ body.group-page .site-wrapper {
   display:flex;
   flex-direction:column;
   gap:12px;
-
   scrollbar-width: thin;
   scrollbar-color: rgba(255,255,255,.25) transparent;
 }
@@ -165,16 +161,13 @@ body.group-page .site-wrapper {
 .messages::-webkit-scrollbar{
   width:6px;
 }
-
 .messages::-webkit-scrollbar-track{
   background:transparent;
 }
-
 .messages::-webkit-scrollbar-thumb{
   background:rgba(255,255,255,.18);
   border-radius:6px;
 }
-
 .messages::-webkit-scrollbar-thumb:hover{
   background:rgba(255,255,255,.32);
 }
@@ -273,91 +266,66 @@ body.group-page .site-wrapper {
 /* ========== ФУТЕР ДЛЯ СТРАНИЦЫ ЧАТА ========== */
 body.group-page .footer {
   flex: 0 0 auto;
-  margin-top: 0; /* отменяем margin-top: auto из общих стилей */
+  margin-top: 0;
 }
 
 /* ========== АДАПТИВ ДЛЯ МОБИЛЬНЫХ ========== */
 @media (max-width:768px){
-  /* Убираем padding у body для мобильных */
+  /* КРИТИЧНО: убираем все отступы и делаем на весь экран */
   body.group-page {
     padding-top: 60px;
-    height: 100vh;
-    overflow: hidden;
   }
   
   body.group-page .site-wrapper {
     height: calc(100vh - 60px);
-    overflow: hidden;
   }
   
-  /* Контейнер без padding, на всю высоту */
-  .group-container {
-    padding: 0;
-    height: 100%;
-    overflow: hidden;
-  }
-  
-  /* Скрываем футер на мобильных */
+  /* Скрываем футер полностью */
   body.group-page .footer {
     display: none !important;
   }
   
-  /* Chat shell на весь экран, на всю высоту */
-  .chat-shell {
-    border: none;
-    border-radius: 0;
-    height: 100%;
-    flex: 1 1 auto;
-    min-height: 0;
-    overflow: hidden;
+  /* Контейнер на весь экран БЕЗ отступов */
+  .group-container {
+    padding: 0 !important;
+    max-width: none !important;
   }
   
-  /* Chat box на всю ширину и высоту */
+  /* Chat-box на всю ширину и высоту */
   .chat-box {
-    width: 100%;
-    margin: 0;
-    height: 100%;
-    flex: 1 1 auto;
-    min-height: 0;
-    overflow: hidden;
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
   }
   
-  /* Окно чата - flexbox структура */
+  /* Chat-shell без границ, на весь экран */
+  .chat-shell {
+    border: none !important;
+    border-radius: 0 !important;
+  }
+  
+  /* Chat-window flexbox на весь экран */
   .chat-window {
-    border-radius: 0;
-    height: 100%;
-    flex: 1 1 auto;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 0;
-    overflow: hidden;
+    border-radius: 0 !important;
   }
   
-  /* Шапка чата - фиксированная высота */
+  /* Шапка */
   .chat-header {
-    flex: 0 0 auto;
     padding: 12px 16px;
-    border-radius: 0;
   }
   
   .chat-header .title {
     font-size: 17px;
   }
   
-  /* Область сообщений - растягивается и скроллится */
+  /* Messages с прокруткой */
   .messages {
-    flex: 1 1 auto;
-    min-height: 0;
     padding: 12px;
     padding-right: 8px;
     gap: 10px;
-    overflow-y: auto;
-    overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
   }
   
-  /* Сообщения */
   .message {
     max-width: 80%;
     font-size: 15px;
@@ -370,12 +338,10 @@ body.group-page .footer {
     font-size: 13px;
   }
   
-  /* Composer - фиксированный внизу */
+  /* Composer внизу */
   .composer {
-    flex: 0 0 auto;
     padding: 10px 12px;
     gap: 8px;
-    border-top: 1px solid rgba(255,255,255,.05);
   }
   
   .text-input {
@@ -387,11 +353,6 @@ body.group-page .footer {
   
   #sendBtn {
     padding: 10px 12px;
-    flex-shrink: 0;
-  }
-  
-  .tool-btn {
-    flex-shrink: 0;
   }
   
   /* Эмодзи панель */
@@ -402,13 +363,15 @@ body.group-page .footer {
     bottom: 70px;
   }
   
-  /* Экран входа */
+  /* Экран входа - ВАЖНО убрать лишние отступы */
   .join-screen {
-    padding: 20px 16px;
+    padding: 0 16px;
   }
   
   .join-screen .card {
-    padding: 20px 16px;
+    padding: 20px 0;
+    max-width: 400px;
+    width: 100%;
   }
   
   .join-screen h3 {
@@ -416,7 +379,7 @@ body.group-page .footer {
   }
 }
 
-/* Дополнительная оптимизация для очень маленьких экранов */
+/* Для маленьких экранов */
 @media (max-width:480px){
   .chat-header {
     padding: 10px 12px;
@@ -470,5 +433,9 @@ body.group-page .footer {
   
   #sendBtn {
     padding: 9px 11px;
+  }
+  
+  .join-screen .card {
+    padding: 16px 0;
   }
 }
