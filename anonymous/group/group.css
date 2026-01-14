@@ -5,17 +5,13 @@ body.group-page .site-wrapper {
 
 html, body {
   margin: 0;
-  height: auto;
-  overflow: hidden;
 }
 
 body {
   margin: 0;
 }
 
-.site-wrapper {
-  height: calc(100vh - 60px);
-  margin-top: 60px;
+.site-wrapper {а
   display: flex;
   flex-direction: column;
 }
