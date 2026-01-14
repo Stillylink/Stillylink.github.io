@@ -1,20 +1,18 @@
 /* ======== GROUP CHAT PAGE BACKGROUND ======== */
 body.group-page .site-wrapper {
-    background: #121316;
+    background: #121316; /* тёмно-серый, не чёрный */
 }
 
-html, body {
-  height: 100%;
-  margin: 0;
+/* ======== ПЕРЕОПРЕДЕЛЕНИЕ ДЛЯ СТРАНИЦЫ ЧАТА ======== */
+body.group-page {
+  height: 100vh;
+  padding-top: 60px; /* оставляем место для navbar */
   overflow: hidden;
 }
 
-body {
-  margin: 0;
-}
-
-.site-wrapper {
-  height: 100vh;
+body.group-page .site-wrapper {
+  height: calc(100vh - 60px); /* вычитаем высоту navbar */
+  min-height: auto; /* отменяем min-height: 100vh из общих стилей */
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -127,7 +125,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 0;
-  overflow: hidden; /* убираем скролл */
+  overflow: hidden;
 }
 .chat-window {
   flex: 1 1 auto;
@@ -261,9 +259,10 @@ body {
   width:220px;
 }
 
-.footer {
-  flex: 0 0 auto; /* изменено с 46px на auto */
-  height: auto; /* изменено на auto */
+/* ========== ФУТЕР ДЛЯ СТРАНИЦЫ ЧАТА ========== */
+body.group-page .footer {
+  flex: 0 0 auto;
+  margin-top: 0; /* отменяем margin-top: auto из общих стилей */
 }
 
 /* ========== АДАПТИВ ========== */
