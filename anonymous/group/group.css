@@ -292,12 +292,7 @@ body.group-page .footer {
     padding: 0;
     max-width: 100%;
     height: 100%;
-  }
-  
-  .chat-shell {
-    border: none;
-    border-radius: 0;
-    height: 100%;
+    overflow: hidden;
   }
   
   .chat-box{
@@ -305,36 +300,59 @@ body.group-page .footer {
     margin: 0;
     gap: 0;
     height: 100%;
+    overflow: hidden;
   }
   
-  .chat-window{
-    flex: 1 1 auto;
-    min-height: 0;
+  .chat-shell {
+    border: none;
     border-radius: 0;
     height: 100%;
-  }
-  
-  .messages{ 
-    padding:10px; 
-    gap:8px;
-    flex: 1 1 auto;
-    min-height: 0;
-    overflow-y: auto;
-    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
   }
   
   .chat-header{
     padding:10px 12px;
     font-size:16px;
-    flex-shrink: 0;
+    flex: 0 0 auto;
   }
   .chat-header .title{ font-size:16px; }
-  .message{ max-width:85%; font-size:15px; }
-  .composer{ 
-    padding:8px; 
-    gap:6px;
-    flex-shrink: 0;
+  
+  /* Экран входа на весь экран */
+  .join-screen {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
   }
+  
+  /* Окно чата на весь экран */
+  .chat-window{
+    flex: 1 1 auto;
+    min-height: 0;
+    border-radius: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  
+  .messages{ 
+    padding: 10px; 
+    gap: 8px;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto !important;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .composer{ 
+    padding: 8px; 
+    gap: 6px;
+    flex: 0 0 auto;
+  }
+  
+  .message{ max-width:85%; font-size:15px; }
   .text-input{ font-size:16px; padding:8px 10px; }
   .emoji-panel{
     right:8px; left:8px; width:auto; bottom:72px;
