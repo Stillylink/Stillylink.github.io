@@ -276,16 +276,41 @@ body.group-page .footer {
 
 /* ========== АДАПТИВ ========== */
 @media (max-width:480px){
+  /* Мобильная версия - чат на весь экран */
+  body.group-page {
+    height: 100vh;
+    padding-top: 60px;
+    overflow: hidden;
+  }
+  
+  body.group-page .site-wrapper {
+    height: calc(100vh - 60px);
+  }
+  
+  .group-container {
+    padding: 0;
+    max-width: 100%;
+  }
+  
+  .chat-shell {
+    border: none;
+    border-radius: 0;
+    height: 100%;
+  }
+  
+  .chat-box{
+    width: 100%;
+    margin: 0;
+    gap: 0;
+    height: 100%;
+  }
+  
   .chat-window{
     flex: 1 1 auto;
     min-height: 0;
     border-radius: 0;
   }
-  .chat-box{
-    width:auto;
-    margin:0 8px;
-    gap:8px;
-  }
+  
   .chat-header{
     padding:10px 12px;
     font-size:16px;
@@ -297,5 +322,10 @@ body.group-page .footer {
   .text-input{ font-size:16px; padding:8px 10px; }
   .emoji-panel{
     right:8px; left:8px; width:auto; bottom:72px;
+  }
+  
+  /* Скрываем футер на мобильных */
+  body.group-page .footer {
+    display: none;
   }
 }
