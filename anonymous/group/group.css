@@ -4,6 +4,7 @@ body.group-page .site-wrapper {
 }
 
 html, body {
+  height: 100%;
   margin: 0;
 }
 
@@ -12,9 +13,9 @@ body {
 }
 
 .site-wrapper {
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
-  flex: 1 0 auto;
 }
 
 /* ========== КОНТЕЙНЕР ========== */
