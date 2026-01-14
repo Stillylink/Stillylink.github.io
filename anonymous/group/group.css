@@ -5,7 +5,7 @@ body.group-page .site-wrapper {
 
 html, body {
   margin: 0;
-  height: 100%;
+  height: auto;
   overflow: hidden;
 }
 
@@ -13,15 +13,17 @@ body {
   margin: 0;
 }
 
-.site-wrapper{
-  height: 100vh;
+.site-wrapper {
+  height: calc(100vh - 60px);
+  margin-top: 60px;
   display: flex;
   flex-direction: column;
 }
 
 /* ========== КОНТЕЙНЕР ========== */
-.group-container{
+.group-container {
   flex: 1 1 auto;
+  min-height: 0;
   max-width: 980px;
   width: 100%;
   margin: 0 auto;
@@ -256,8 +258,8 @@ body {
   width:220px;
 }
 
-.footer{
-  margin-top: auto;
+.footer {
+  flex: 0 0 auto;
 }
 
 /* ========== АДАПТИВ ========== */
