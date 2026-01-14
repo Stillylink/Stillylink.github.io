@@ -1,25 +1,21 @@
 /* ======== GROUP CHAT PAGE BACKGROUND ======== */
 body.group-page .site-wrapper {
-    background: #121316; /* тёмно-серый, не чёрный */
+    background: #121316;
 }
 
 /* ======== ПЕРЕОПРЕДЕЛЕНИЕ ДЛЯ СТРАНИЦЫ ЧАТА ======== */
 body.group-page {
-  margin: 0;
-  padding: 0;
   height: 100vh;
-  height: 100dvh;
   overflow: hidden;
+  padding-top: 60px;
 }
 
 body.group-page .site-wrapper {
-  height: 100vh;
-  height: 100dvh;
+  height: calc(100vh - 60px);
   min-height: auto;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  padding-top: 60px;
 }
 
 /* ========== КОНТЕЙНЕР ========== */
@@ -154,7 +150,7 @@ body.group-page .site-wrapper {
   min-height: 0;
   padding:18px;
   padding-right:14px;
-  overflow-y: auto !important;
+  overflow-y: auto;
   overflow-x: hidden;
   display:flex;
   flex-direction:column;
@@ -277,131 +273,106 @@ body.group-page .footer {
   margin-top: 0;
 }
 
-/* ========== АДАПТИВ ДЛЯ МОБИЛЬНЫХ ========== */
-@media (max-width: 768px) {
-  /* КРИТИЧНО: переопределяем правило из общих стилей */
-  body.group-page main.group-container {
-    flex: 1 !important;
-    min-height: 0 !important;
-    display: flex !important;
-    flex-direction: column !important;
-  }
+/* ========== МОБИЛЬНАЯ ВЕРСИЯ - КРИТИЧНЫЕ ИЗМЕНЕНИЯ ========== */
+@media (max-width: 480px) {
+  /* ===== ШАГИ ДЛЯ ИСПРАВЛЕНИЯ ===== 
+     1. Убрать футер
+     2. Убрать padding у контейнера
+     3. Сделать chat-box на всю ширину (ВАЖНО!)
+     4. Убрать border и radius
+     5. Убедиться что вся цепочка имеет flex: 1 + min-height: 0
+  */
   
-  /* Убираем футер на мобильных */
+  /* 1. Убираем футер */
   body.group-page .footer {
-    display: none !important;
+    display: none;
   }
   
-  /* Убираем padding у body */
-  body.group-page {
-    padding-top: 0 !important;
+  /* 2. Убираем padding у контейнера */
+  body.group-page .group-container {
+    padding: 0;
   }
   
-  /* site-wrapper */
-  body.group-page .site-wrapper {
-    padding-top: 60px !important;
-    height: 100vh !important;
-    height: 100dvh !important;
-    min-height: 0 !important;
+  /* 3. КРИТИЧНО! chat-box на всю ширину */
+  body.group-page .chat-box {
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
   }
   
-  /* Убираем padding у контейнера */
-  .group-container {
-    padding: 0 !important;
+  /* 4. Убираем границы */
+  body.group-page .chat-shell {
+    border: none;
+    border-radius: 0;
   }
   
-  /* КРИТИЧНО: chat-box на всю ширину */
-  .chat-box {
-    width: 100% !important;
-    max-width: 100% !important;
-    margin: 0 !important;
-    flex: 1 !important;
-    min-height: 0 !important;
+  /* 5. Шапка компактнее */
+  body.group-page .chat-header {
+    padding: 10px 12px;
   }
   
-  /* Чат-шелл без границ */
-  .chat-shell {
-    border: none !important;
-    border-radius: 0 !important;
-    flex: 1 !important;
-    min-height: 0 !important;
+  body.group-page .chat-header .title {
+    font-size: 16px;
   }
   
-  /* Чат-окно */
-  .chat-window {
-    flex: 1 !important;
-    min-height: 0 !important;
+  body.group-page .chat-actions {
+    font-size: 12px;
+    gap: 6px;
   }
   
-  /* Шапка чата */
-  .chat-header {
-    flex: 0 0 auto !important;
-    padding: 12px 16px !important;
-  }
-  .chat-header .title { 
-    font-size: 16px; 
-  }
-  .chat-actions {
-    font-size: 13px;
-  }
-  .finish-btn {
+  body.group-page .finish-btn {
     padding: 6px 10px;
-    font-size: 13px;
+    font-size: 12px;
   }
   
-  /* КРИТИЧНО: messages со скроллом */
-  .messages { 
-    flex: 1 !important;
-    min-height: 0 !important;
-    padding: 12px !important;
-    gap: 10px !important;
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
-    -webkit-overflow-scrolling: touch !important;
-    overscroll-behavior: contain !important;
+  /* 6. Messages - компактнее padding */
+  body.group-page .messages {
+    padding: 10px;
+    gap: 8px;
   }
   
-  .message { 
-    max-width: 85%; 
-    font-size: 15px; 
+  body.group-page .message {
+    max-width: 80%;
+    font-size: 15px;
+    padding: 8px 10px;
   }
   
-  /* Composer фиксированный */
-  .composer { 
-    flex: 0 0 auto !important;
-    padding: 10px 12px !important; 
-    gap: 8px !important;
+  /* 7. Composer компактнее */
+  body.group-page .composer {
+    padding: 8px 10px;
+    gap: 6px;
   }
   
-  .text-input { 
-    font-size: 16px !important; 
-    padding: 10px 12px !important;
-    min-height: 42px !important;
+  body.group-page .text-input {
+    font-size: 15px;
+    padding: 8px 10px;
+    min-height: 40px;
   }
   
-  #sendBtn {
-    padding: 8px 12px !important;
-    font-size: 15px !important;
+  body.group-page #sendBtn {
+    padding: 8px 12px;
+    font-size: 14px;
   }
   
-  .tool-btn {
-    padding: 6px !important;
+  body.group-page .tool-btn {
+    padding: 6px 8px;
+    font-size: 18px;
   }
   
-  /* Эмодзи-панель */
-  .emoji-panel {
-    right: 12px !important; 
-    left: 12px !important; 
-    width: auto !important; 
-    bottom: 70px !important;
+  /* 8. Эмодзи панель */
+  body.group-page .emoji-panel {
+    left: 10px;
+    right: 10px;
+    width: auto;
+    bottom: 64px;
   }
   
-  /* Экран входа */
-  .join-screen {
-    padding: 0 16px !important;
+  /* 9. Экран входа */
+  body.group-page .join-screen {
+    padding: 0 16px;
   }
   
-  .chat-shell .card {
-    padding: 20px 16px !important;
+  body.group-page .chat-shell .card {
+    padding: 16px;
   }
 }
