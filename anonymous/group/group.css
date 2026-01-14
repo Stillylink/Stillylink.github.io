@@ -14,6 +14,7 @@ body {
 .site-wrapper {
   display: flex;
   flex-direction: column;
+  flex: 1 0 auto;
 }
 
 /* ========== КОНТЕЙНЕР ========== */
@@ -255,7 +256,8 @@ body {
 }
 
 .footer {
-  flex: 0 0 auto;
+  flex: 0 0 46px;
+  height: 46px;
 }
 
 /* ========== АДАПТИВ ========== */
