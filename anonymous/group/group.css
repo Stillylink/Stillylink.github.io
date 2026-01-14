@@ -6,16 +6,19 @@ body.group-page .site-wrapper {
 /* ======== ПЕРЕОПРЕДЕЛЕНИЕ ДЛЯ СТРАНИЦЫ ЧАТА ======== */
 body.group-page {
   height: 100vh;
-  padding-top: 60px; /* оставляем место для navbar */
+  height: 100dvh; /* динамическая высота для мобильных */
+  padding-top: 0; /* ВАЖНО: убираем padding-top */
   overflow: hidden;
 }
 
 body.group-page .site-wrapper {
-  height: calc(100vh - 60px); /* вычитаем высоту navbar */
+  height: 100vh;
+  height: 100dvh;
   min-height: auto; /* отменяем min-height: 100vh из общих стилей */
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  padding-top: 60px; /* Место для navbar перенесено сюда */
 }
 
 /* ========== КОНТЕЙНЕР ========== */
@@ -141,7 +144,7 @@ body.group-page .site-wrapper {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 0; /* ВАЖНО: убираем gap */
   border: none;
   border-radius: 0;
   overflow: hidden;
@@ -150,7 +153,8 @@ body.group-page .site-wrapper {
 .messages{
   padding:18px;
   padding-right:14px;
-  overflow:auto;
+  overflow-y:auto; /* только вертикальный скролл */
+  overflow-x:hidden;
   flex:1 1 auto;
   min-height: 0;
   display:flex;
@@ -223,6 +227,7 @@ body.group-page .site-wrapper {
   width: auto;
 }
 .composer{
+  flex: 0 0 auto; /* ВАЖНО: фиксированная высота */
   display:flex;
   gap:8px;
   align-items:flex-end;
@@ -281,6 +286,11 @@ body.group-page .footer {
     display: none;
   }
   
+  /* Переопределяем padding для мобильных */
+  body.group-page .site-wrapper {
+    padding-top: 60px;
+  }
+  
   /* Убираем padding у контейнера для полноэкранного чата */
   .group-container {
     padding: 0;
@@ -322,14 +332,15 @@ body.group-page .footer {
     font-size: 16px; 
   }
   
-  /* Область сообщений - скроллируемая */
+  /* Область сообщений - скроллируемая, БЕЗ gap */
   .messages { 
     flex: 1 1 auto;
     min-height: 0;
-    padding: 12px; 
+    padding: 12px;
     gap: 10px;
     overflow-y: auto;
     overflow-x: hidden;
+    -webkit-overflow-scrolling: touch; /* плавный скролл на iOS */
   }
   
   .message { 
