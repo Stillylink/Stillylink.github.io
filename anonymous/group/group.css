@@ -141,7 +141,7 @@ body.group-page .site-wrapper {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 0;
   border: none;
   border-radius: 0;
   overflow: hidden;
@@ -150,7 +150,8 @@ body.group-page .site-wrapper {
 .messages{
   padding:18px;
   padding-right:14px;
-  overflow:auto;
+  overflow-y:auto;
+  overflow-x:hidden;
   flex:1 1 auto;
   min-height: 0;
   display:flex;
@@ -223,6 +224,7 @@ body.group-page .site-wrapper {
   width: auto;
 }
 .composer{
+  flex: 0 0 auto;
   display:flex;
   gap:8px;
   align-items:flex-end;
@@ -279,40 +281,62 @@ body.group-page .footer {
   /* Убираем padding у body для мобильных */
   body.group-page {
     padding-top: 60px;
+    height: 100vh;
+    overflow: hidden;
   }
   
-  /* Контейнер без padding */
+  body.group-page .site-wrapper {
+    height: calc(100vh - 60px);
+    overflow: hidden;
+  }
+  
+  /* Контейнер без padding, на всю высоту */
   .group-container {
     padding: 0;
+    height: 100%;
+    overflow: hidden;
   }
   
   /* Скрываем футер на мобильных */
   body.group-page .footer {
-    display: none;
+    display: none !important;
   }
   
-  /* Chat shell на весь экран */
+  /* Chat shell на весь экран, на всю высоту */
   .chat-shell {
     border: none;
     border-radius: 0;
     height: 100%;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
   }
   
-  /* Chat box на всю ширину */
+  /* Chat box на всю ширину и высоту */
   .chat-box {
     width: 100%;
     margin: 0;
     height: 100%;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
   }
   
-  /* Окно чата занимает всё доступное пространство */
+  /* Окно чата - flexbox структура */
   .chat-window {
     border-radius: 0;
     height: 100%;
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    overflow: hidden;
   }
   
-  /* Шапка чата */
+  /* Шапка чата - фиксированная высота */
   .chat-header {
+    flex: 0 0 auto;
     padding: 12px 16px;
     border-radius: 0;
   }
@@ -321,12 +345,13 @@ body.group-page .footer {
     font-size: 17px;
   }
   
-  /* Область сообщений со скроллом */
+  /* Область сообщений - растягивается и скроллится */
   .messages {
+    flex: 1 1 auto;
+    min-height: 0;
     padding: 12px;
     padding-right: 8px;
     gap: 10px;
-    /* Скролл внутри сообщений */
     overflow-y: auto;
     overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
@@ -345,8 +370,9 @@ body.group-page .footer {
     font-size: 13px;
   }
   
-  /* Composer всегда внизу */
+  /* Composer - фиксированный внизу */
   .composer {
+    flex: 0 0 auto;
     padding: 10px 12px;
     gap: 8px;
     border-top: 1px solid rgba(255,255,255,.05);
@@ -356,11 +382,16 @@ body.group-page .footer {
     font-size: 16px;
     padding: 10px 12px;
     min-height: 42px;
-    max-height: 120px;
+    max-height: 100px;
   }
   
   #sendBtn {
     padding: 10px 12px;
+    flex-shrink: 0;
+  }
+  
+  .tool-btn {
+    flex-shrink: 0;
   }
   
   /* Эмодзи панель */
@@ -372,6 +403,10 @@ body.group-page .footer {
   }
   
   /* Экран входа */
+  .join-screen {
+    padding: 20px 16px;
+  }
+  
   .join-screen .card {
     padding: 20px 16px;
   }
@@ -426,6 +461,7 @@ body.group-page .footer {
     font-size: 16px;
     padding: 9px 11px;
     min-height: 40px;
+    max-height: 90px;
   }
   
   .tool-btn {
