@@ -274,28 +274,165 @@ body.group-page .footer {
   margin-top: 0; /* отменяем margin-top: auto из общих стилей */
 }
 
-/* ========== АДАПТИВ ========== */
-@media (max-width:480px){
-  .chat-window{
-    flex: 1 1 auto;
-    min-height: 0;
+/* ========== АДАПТИВ ДЛЯ МОБИЛЬНЫХ ========== */
+@media (max-width:768px){
+  /* Убираем padding у body для мобильных */
+  body.group-page {
+    padding-top: 60px;
+  }
+  
+  /* Контейнер без padding */
+  .group-container {
+    padding: 0;
+  }
+  
+  /* Скрываем футер на мобильных */
+  body.group-page .footer {
+    display: none;
+  }
+  
+  /* Chat shell на весь экран */
+  .chat-shell {
+    border: none;
+    border-radius: 0;
+    height: 100%;
+  }
+  
+  /* Chat box на всю ширину */
+  .chat-box {
+    width: 100%;
+    margin: 0;
+    height: 100%;
+  }
+  
+  /* Окно чата занимает всё доступное пространство */
+  .chat-window {
+    border-radius: 0;
+    height: 100%;
+  }
+  
+  /* Шапка чата */
+  .chat-header {
+    padding: 12px 16px;
     border-radius: 0;
   }
-  .chat-box{
-    width:auto;
-    margin:0 8px;
-    gap:8px;
+  
+  .chat-header .title {
+    font-size: 17px;
   }
-  .chat-header{
-    padding:10px 12px;
-    font-size:16px;
+  
+  /* Область сообщений со скроллом */
+  .messages {
+    padding: 12px;
+    padding-right: 8px;
+    gap: 10px;
+    /* Скролл внутри сообщений */
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
   }
-  .chat-header .title{ font-size:16px; }
-  .messages{ padding:10px; gap:8px; }
-  .message{ max-width:85%; font-size:15px; }
-  .composer{ padding:8px; gap:6px; }
-  .text-input{ font-size:16px; padding:8px 10px; }
-  .emoji-panel{
-    right:8px; left:8px; width:auto; bottom:72px;
+  
+  /* Сообщения */
+  .message {
+    max-width: 80%;
+    font-size: 15px;
+    padding: 9px 11px;
+  }
+  
+  .msg-row .avatar {
+    width: 32px;
+    height: 32px;
+    font-size: 13px;
+  }
+  
+  /* Composer всегда внизу */
+  .composer {
+    padding: 10px 12px;
+    gap: 8px;
+    border-top: 1px solid rgba(255,255,255,.05);
+  }
+  
+  .text-input {
+    font-size: 16px;
+    padding: 10px 12px;
+    min-height: 42px;
+    max-height: 120px;
+  }
+  
+  #sendBtn {
+    padding: 10px 12px;
+  }
+  
+  /* Эмодзи панель */
+  .emoji-panel {
+    right: 12px;
+    left: 12px;
+    width: auto;
+    bottom: 70px;
+  }
+  
+  /* Экран входа */
+  .join-screen .card {
+    padding: 20px 16px;
+  }
+  
+  .join-screen h3 {
+    font-size: 22px;
+  }
+}
+
+/* Дополнительная оптимизация для очень маленьких экранов */
+@media (max-width:480px){
+  .chat-header {
+    padding: 10px 12px;
+  }
+  
+  .chat-header .title {
+    font-size: 16px;
+  }
+  
+  .chat-actions {
+    font-size: 13px;
+    gap: 8px;
+  }
+  
+  .finish-btn {
+    padding: 6px 10px;
+    font-size: 13px;
+  }
+  
+  .messages {
+    padding: 10px;
+    gap: 8px;
+  }
+  
+  .message {
+    max-width: 85%;
+    font-size: 14px;
+  }
+  
+  .msg-row .avatar {
+    width: 30px;
+    height: 30px;
+    font-size: 12px;
+  }
+  
+  .composer {
+    padding: 8px 10px;
+    gap: 6px;
+  }
+  
+  .text-input {
+    font-size: 16px;
+    padding: 9px 11px;
+    min-height: 40px;
+  }
+  
+  .tool-btn {
+    padding: 7px;
+  }
+  
+  #sendBtn {
+    padding: 9px 11px;
   }
 }
