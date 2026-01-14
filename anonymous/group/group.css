@@ -1,11 +1,12 @@
 /* ======== GROUP CHAT PAGE BACKGROUND ======== */
 body.group-page .site-wrapper {
-    background: #121316; /* тёмно-серый, не чёрный */
+    background: #121316;
 }
 
 html, body {
   height: 100%;
   margin: 0;
+  overflow: hidden;
 }
 
 body {
@@ -13,9 +14,10 @@ body {
 }
 
 .site-wrapper {
-  min-height: 100vh;
+  height: 100vh;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 /* ========== КОНТЕЙНЕР ========== */
@@ -28,6 +30,7 @@ body {
   padding: 0 18px;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 /* ========== ШАПКА ========== */
@@ -76,6 +79,7 @@ body {
   justify-content:center;
   align-items:center;
   min-height: 0;
+  overflow: auto;
 }
 .chat-shell .card {
   background: transparent;
@@ -123,6 +127,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 0;
+  overflow: hidden; /* убираем скролл */
 }
 .chat-window {
   flex: 1 1 auto;
@@ -257,8 +262,8 @@ body {
 }
 
 .footer {
-  flex: 0 0 46px;
-  height: 46px;
+  flex: 0 0 auto; /* изменено с 46px на auto */
+  height: auto; /* изменено на auto */
 }
 
 /* ========== АДАПТИВ ========== */
