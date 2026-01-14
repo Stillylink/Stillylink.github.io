@@ -295,8 +295,9 @@ body.group-page .footer {
     overflow: hidden;
   }
   
+  /* Убираем фиксированную ширину и делаем 100% */
   .chat-box{
-    width: 100%;
+    width: 100% !important;
     margin: 0;
     gap: 0;
     height: 100%;
@@ -313,11 +314,14 @@ body.group-page .footer {
   }
   
   .chat-header{
-    padding:10px 12px;
-    font-size:16px;
+    padding: 10px 12px;
+    font-size: 16px;
     flex: 0 0 auto;
+    position: sticky;
+    top: 0;
+    z-index: 10;
   }
-  .chat-header .title{ font-size:16px; }
+  .chat-header .title{ font-size: 16px; }
   
   /* Экран входа на весь экран */
   .join-screen {
@@ -344,22 +348,49 @@ body.group-page .footer {
     overflow-y: auto !important;
     overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
+    height: calc(100vh - 60px - 60px - 60px); /* navbar + header + composer */
   }
   
   .composer{ 
     padding: 8px; 
     gap: 6px;
     flex: 0 0 auto;
+    position: sticky;
+    bottom: 0;
+    background: linear-gradient(180deg,#0d0d0d,#0b0b0b);
+    border-top: 1px solid rgba(255,255,255,.03);
   }
   
-  .message{ max-width:85%; font-size:15px; }
-  .text-input{ font-size:16px; padding:8px 10px; }
+  .message{ max-width: 85%; font-size: 15px; }
+  .text-input{ font-size: 16px; padding: 8px 10px; }
   .emoji-panel{
-    right:8px; left:8px; width:auto; bottom:72px;
+    right: 8px; 
+    left: 8px; 
+    width: auto; 
+    bottom: 72px;
   }
   
   /* Скрываем футер на мобильных */
   body.group-page .footer {
     display: none;
+  }
+}
+
+/* Дополнительные фиксы для лучшей работы */
+@media (max-width: 480px) {
+  /* Убираем возможность горизонтального скролла */
+  body.group-page {
+    max-width: 100vw;
+    overflow-x: hidden;
+  }
+  
+  /* Фикс для Safari и других браузеров */
+  .chat-window {
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Убедимся, что composer не съезжает */
+  .composer {
+    box-sizing: border-box;
   }
 }
