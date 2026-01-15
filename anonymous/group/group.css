@@ -17,7 +17,6 @@ body.group-page .site-wrapper {
   min-height: auto;
   display: flex;
   flex-direction: column;
-  /* ВАЖНО: НЕ overflow: hidden! */
 }
 
 /* ========== КОНТЕЙНЕР ========== */
@@ -30,7 +29,6 @@ body.group-page .site-wrapper {
   padding: 0 18px;
   display: flex;
   flex-direction: column;
-  /* ВАЖНО: НЕ overflow: hidden! */
 }
 
 /* ========== ШАПКА ========== */
@@ -117,7 +115,6 @@ body.group-page .site-wrapper {
   border: 1px solid var(--border);
   border-radius: 12px;
   background: var(--bg-card);
-  /* ВАЖНО: НЕ overflow: hidden! */
   display: flex;
   flex-direction: column;
 }
@@ -135,7 +132,6 @@ body.group-page .site-wrapper {
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  /* ВАЖНО: НЕ overflow: hidden! */
 }
 .chat-window {
   flex: 1;
@@ -144,7 +140,6 @@ body.group-page .site-wrapper {
   flex-direction: column;
   border: none;
   border-radius: 0;
-  /* ВАЖНО: НЕ overflow: hidden! */
   background: linear-gradient(180deg, #0f1112, #0b0b0b);
 }
 .messages{
@@ -283,23 +278,24 @@ body.group-page .footer {
     display: none;
   }
   
-  /* КРИТИЧНО: body БЕЗ padding-top */
+  /* ИСПРАВЛЕНО: убираем padding-top с body */
   body.group-page {
     padding-top: 0;
     height: 100vh;
     height: 100dvh;
   }
   
-  /* site-wrapper с учетом navbar */
+  /* ИСПРАВЛЕНО: site-wrapper занимает всю высоту */
   body.group-page .site-wrapper {
-    padding-top: 60px;
+    padding-top: 0;
     height: 100vh;
     height: 100dvh;
   }
   
-  /* Контейнер без padding */
+  /* ИСПРАВЛЕНО: group-container учитывает navbar */
   body.group-page .group-container {
     padding: 0;
+    padding-top: 60px;
   }
   
   /* chat-box на всю ширину */
@@ -314,11 +310,8 @@ body.group-page .footer {
     border-radius: 0;
   }
   
-  /* КРИТИЧНО: chat-header STICKY */
+  /* chat-header обычный (не sticky) */
   body.group-page .chat-header {
-    position: sticky;
-    top: 0;
-    z-index: 10;
     padding: 10px 12px;
   }
   
