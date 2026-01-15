@@ -103,8 +103,12 @@ body.group-page .site-wrapper {
   margin-top: 6px;
   margin-bottom: 10px;
   font-size: 14px;
-  min-height: 18px;
+  min-height: 40px;
+  height: 40px;
   text-align: left;
+  display: flex;
+  align-items: flex-start;
+  line-height: 1.4;
 }
 
 /* ======== ОБЩИЙ БЛОК: ШАПКА + ВХОД ======== */
