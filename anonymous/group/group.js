@@ -188,12 +188,7 @@ function markOnline() {
 }
 
 /*  ===============  Send  =============== */
-let isSending = false; // Флаг для предотвращения двойной отправки
-
-sendBtn.addEventListener('click', () => {
-  send(textInput.value.trim(), 'text');
-});
-
+sendBtn.addEventListener('click', () => send(textInput.value.trim(), 'text'));
 textInput.addEventListener('keydown', e => {
   if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault();
@@ -202,10 +197,8 @@ textInput.addEventListener('keydown', e => {
 });
 
 function send(text, type) {
-  if (!text || isSending) return;
-  
-  isSending = true; // Блокируем повторную отправку
-  
+  if (!text) return;
+  textInput.value = '';
   push(messagesRef, {
     sender: uid,
     nick: nickname,
@@ -213,16 +206,6 @@ function send(text, type) {
     type,
     createdAt: Date.now()
   });
-  
-  // Очищаем поле
-  textInput.value = '';
-  textInput.style.height = 'auto';
-  
-  // Возвращаем фокус
-  setTimeout(() => {
-    textInput.focus();
-    isSending = false; // Разблокируем отправку через небольшую задержку
-  }, 100);
 }
 
 /*  ===============  Images  =============== */
