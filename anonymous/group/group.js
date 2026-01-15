@@ -192,11 +192,13 @@ sendBtn.addEventListener('click', () => send(textInput.value.trim(), 'text'));
 textInput.addEventListener('keydown', e => {
   if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault();
-    sendBtn.click();
+    send(textInput.value.trim(), 'text');
   }
 });
 
 function send(text, type) {
+  if (!text) return;
+  textInput.value = '';
   push(messagesRef, {
     sender: uid,
     nick: nickname,
