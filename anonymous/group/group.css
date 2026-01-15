@@ -278,41 +278,54 @@ body.group-page .footer {
     display: none;
   }
   
-  /* ИСПРАВЛЕНО: убираем padding-top с body */
+  /* ОСНОВА: body без лишних высот */
   body.group-page {
     padding-top: 0;
-    height: 100vh;
-    height: 100dvh;
+    height: auto;
+    min-height: 100vh;
+    min-height: 100dvh;
+    overflow: hidden;
+    position: fixed;
+    width: 100%;
+    top: 0;
+    left: 0;
   }
   
-  /* ИСПРАВЛЕНО: site-wrapper занимает всю высоту */
+  /* site-wrapper - главный контейнер на всю высоту экрана */
   body.group-page .site-wrapper {
     padding-top: 0;
     height: 100vh;
     height: 100dvh;
+    position: relative;
+    overflow: hidden;
   }
   
-  /* ИСПРАВЛЕНО: group-container учитывает navbar */
+  /* group-container - отступ только сверху для navbar */
   body.group-page .group-container {
     padding: 0;
+    height: 100%;
     padding-top: 60px;
+    box-sizing: border-box;
   }
   
-  /* chat-box на всю ширину */
-  body.group-page .chat-box {
-    width: 100%;
-    margin: 0;
-  }
-  
-  /* chat-shell без границ */
+  /* chat-shell - заполняет доступную высоту */
   body.group-page .chat-shell {
     border: none;
     border-radius: 0;
+    height: 100%;
   }
   
-  /* chat-header обычный (не sticky) */
+  /* chat-box на всю ширину и высоту */
+  body.group-page .chat-box {
+    width: 100%;
+    margin: 0;
+    height: 100%;
+  }
+  
+  /* chat-header БЕЗ position: sticky */
   body.group-page .chat-header {
     padding: 10px 12px;
+    position: relative;
   }
   
   body.group-page .chat-header .title {
@@ -329,10 +342,27 @@ body.group-page .footer {
     font-size: 12px;
   }
   
-  /* Messages со скроллом */
+  /* Экран входа БЕЗ overflow: auto */
+  body.group-page .join-screen {
+    padding: 0 16px;
+    overflow: visible;
+  }
+  
+  body.group-page .chat-shell .card {
+    padding: 16px;
+  }
+  
+  /* chat-window на всю доступную высоту */
+  body.group-page .chat-window {
+    height: 100%;
+  }
+  
+  /* Messages - ЕДИНСТВЕННЫЙ элемент со скроллом */
   body.group-page .messages {
     padding: 10px;
     gap: 8px;
+    overflow-y: auto;
+    overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
   }
   
@@ -368,14 +398,5 @@ body.group-page .footer {
     right: 10px;
     width: auto;
     bottom: 62px;
-  }
-  
-  /* Экран входа */
-  body.group-page .join-screen {
-    padding: 0 16px;
-  }
-  
-  body.group-page .chat-shell .card {
-    padding: 16px;
   }
 }
