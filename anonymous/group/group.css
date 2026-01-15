@@ -245,6 +245,14 @@ body.group-page .site-wrapper {
   font-size:16px;
   outline:none;
 }
+
+.text-input::placeholder {
+  white-space: nowrap;
+  min-width: 90px;
+  overflow: visible;
+  text-overflow: clip;
+}
+
 .tool-btn{
   padding:8px;
   border-radius:8px;
