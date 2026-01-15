@@ -212,6 +212,13 @@ body.group-page .site-wrapper {
   margin-top:6px;
 }
 
+.msg-row.own .msg-meta {
+  text-align: right;
+}
+.msg-row.other .msg-meta {
+  text-align: left;
+}
+
 /* ========== ПОЛЕ ВВОДА ========== */
 #sendBtn {
   padding: 10px 14px;
