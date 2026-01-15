@@ -192,13 +192,11 @@ sendBtn.addEventListener('click', () => send(textInput.value.trim(), 'text'));
 textInput.addEventListener('keydown', e => {
   if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault();
-    send(textInput.value.trim(), 'text');
+    sendBtn.click();
   }
 });
 
 function send(text, type) {
-  if (!text) return;
-
   push(messagesRef, {
     sender: uid,
     nick: nickname,
@@ -206,14 +204,7 @@ function send(text, type) {
     type,
     createdAt: Date.now()
   });
-
-  // КРИТИЧНО для мобильных
-  textInput.value = '';
-  textInput.style.height = '';
-  textInput.blur();
-  requestAnimationFrame(() => textInput.focus());
 }
-
 
 /*  ===============  Images  =============== */
 photoBtn.addEventListener('click', () => photoInput.click());
