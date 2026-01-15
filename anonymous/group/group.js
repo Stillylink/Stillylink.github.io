@@ -198,7 +198,7 @@ textInput.addEventListener('keydown', e => {
 
 function send(text, type) {
   if (!text) return;
-  textInput.value = '';
+
   push(messagesRef, {
     sender: uid,
     nick: nickname,
@@ -206,7 +206,14 @@ function send(text, type) {
     type,
     createdAt: Date.now()
   });
+
+  // КРИТИЧНО для мобильных
+  textInput.value = '';
+  textInput.style.height = '';
+  textInput.blur();
+  requestAnimationFrame(() => textInput.focus());
 }
+
 
 /*  ===============  Images  =============== */
 photoBtn.addEventListener('click', () => photoInput.click());
