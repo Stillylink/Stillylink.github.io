@@ -98,6 +98,10 @@ body.group-page .site-wrapper {
   font-size: 17px;
   padding: 14px;
 }
+.join-screen .card {
+  width: 100%;
+  max-width: 360px;
+}
 .error-text {
   color: #ff5555;
   font-size: 13px;
@@ -108,6 +112,9 @@ body.group-page .site-wrapper {
 
   opacity: 0;
   visibility: hidden;
+
+  white-space: normal;
+  word-break: break-word;
 
   transition: opacity 0.2s ease;
 }
