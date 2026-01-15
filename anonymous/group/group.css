@@ -120,6 +120,9 @@ body.group-page .site-wrapper {
   word-break: break-word;
 
   transition: opacity 0.2s ease;
+  text-align: center;
+  width: 100%;
+  box-sizing: border-box; 
 }
 .error-text.visible {
   opacity: 1;
