@@ -196,9 +196,18 @@ textInput.addEventListener('keydown', e => {
   }
 });
 
+function resetTextareaHeight() {
+  textInput.style.height = 'auto';
+  textInput.style.height = textInput.scrollHeight + 'px';
+}
+
 function send(text, type) {
   if (!text) return;
+
   textInput.value = '';
+
+  resetTextareaHeight();
+
   push(messagesRef, {
     sender: uid,
     nick: nickname,
