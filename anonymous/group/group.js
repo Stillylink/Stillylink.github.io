@@ -199,15 +199,12 @@ textInput.addEventListener('keydown', e => {
 function send(text, type) {
   if (!text) return;
   
-  // ИСПРАВЛЕНО: Сохраняем оригинальный placeholder
-  const originalPlaceholder = textInput.placeholder;
-  
+  // ИСПРАВЛЕНО: Принудительный сброс composition state для мобильных
+  textInput.blur();
   textInput.value = '';
+  textInput.focus();
   
-  // ИСПРАВЛЕНО: Явно восстанавливаем placeholder
-  textInput.placeholder = originalPlaceholder;
-  
-  // Принудительно обновляем высоту textarea для мобильных
+  // Сброс высоты textarea
   textInput.style.height = 'auto';
   
   push(messagesRef, {
