@@ -211,7 +211,6 @@ body.group-page .site-wrapper {
   color:var(--text-secondary);
   margin-top:6px;
 }
-
 .msg-row.own .msg-meta {
   text-align: right;
 }
@@ -380,23 +379,29 @@ body.group-page .footer {
   
   /* Composer */
   body.group-page .composer {
-    padding: 8px 10px;
-    gap: 6px;
+    padding: 10px;
+    gap: 8px;
   }
   
   body.group-page .text-input {
-    font-size: 15px;
-    padding: 8px 10px;
-    min-height: 40px;
+    font-size: 16px;
+    padding: 12px 14px;
+    min-height: 48px;
   }
   
   body.group-page #sendBtn {
-    padding: 8px 12px;
-    font-size: 14px;
+    padding: 12px 16px;
+    font-size: 16px;
+    min-height: 48px;
   }
   
   body.group-page .tool-btn {
-    padding: 6px;
+    padding: 10px;
+    min-width: 44px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
   
   /* Эмодзи панель */
