@@ -112,9 +112,17 @@ onAuthStateChanged(auth, user => {
 });
 
 /*  ===============  Join  =============== */
-function showNickError(msg) { nickError.textContent = msg; }
+function showNickError(msg) {
+  nickError.textContent = msg;
+  nickError.classList.add('visible');
+}
 
-nickInput.addEventListener('input', () => nickError.textContent = '');
+function hideNickError() {
+  nickError.textContent = '';
+  nickError.classList.remove('visible');
+}
+
+nickInput.addEventListener('input', hideNickError);
 
 joinBtn.addEventListener('click', () => {
   const raw = nickInput.value.trim();
