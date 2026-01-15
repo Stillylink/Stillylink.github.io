@@ -206,12 +206,17 @@ function send(text, type) {
     type,
     createdAt: Date.now()
   });
-
+  
   textInput.value = '';
   textInput.style.height = 'auto';
-  textInput.style.width  = '0';
-  textInput.style.width  = '100%';
+  
+  const rect = textInput.getBoundingClientRect();
+  textInput.style.width = `${rect.width}px`;
+  textInput.offsetWidth;
+  textInput.style.width = '';
+  
   textInput.focus();
+  textInput.scrollTop = 0;
 }
 
 /*  ===============  Images  =============== */
