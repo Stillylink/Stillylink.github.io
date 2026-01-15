@@ -198,7 +198,18 @@ textInput.addEventListener('keydown', e => {
 
 function send(text, type) {
   if (!text) return;
+  
+  // ИСПРАВЛЕНО: Сохраняем оригинальный placeholder
+  const originalPlaceholder = textInput.placeholder;
+  
   textInput.value = '';
+  
+  // ИСПРАВЛЕНО: Явно восстанавливаем placeholder
+  textInput.placeholder = originalPlaceholder;
+  
+  // Принудительно обновляем высоту textarea для мобильных
+  textInput.style.height = 'auto';
+  
   push(messagesRef, {
     sender: uid,
     nick: nickname,
