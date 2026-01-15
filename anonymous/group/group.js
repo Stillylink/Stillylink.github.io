@@ -198,9 +198,7 @@ textInput.addEventListener('keydown', e => {
 
 function send(text, type) {
   if (!text) return;
-  textInput.value = '';
-  textInput.style.height = 'auto';
-  textInput.style.height = '44px';
+
   push(messagesRef, {
     sender: uid,
     nick: nickname,
@@ -208,7 +206,12 @@ function send(text, type) {
     type,
     createdAt: Date.now()
   });
-  
+
+  textInput.value = '';
+  textInput.style.height = 'auto';
+  textInput.style.width  = '0';
+  textInput.style.width  = '100%';
+  textInput.focus();
 }
 
 /*  ===============  Images  =============== */
