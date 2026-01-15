@@ -198,15 +198,7 @@ textInput.addEventListener('keydown', e => {
 
 function send(text, type) {
   if (!text) return;
-  
-  // ИСПРАВЛЕНО: Принудительный сброс composition state для мобильных
-  textInput.blur();
   textInput.value = '';
-  textInput.focus();
-  
-  // Сброс высоты textarea
-  textInput.style.height = 'auto';
-  
   push(messagesRef, {
     sender: uid,
     nick: nickname,
