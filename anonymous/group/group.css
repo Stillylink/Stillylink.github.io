@@ -232,18 +232,20 @@ body.group-page .site-wrapper {
   border-top:1px solid rgba(255,255,255,.03);
   background:linear-gradient(180deg,#0d0d0d,#0b0b0b);
 }
-.text-input{
-  flex:1 1 auto;
-  min-height:44px;
-  max-height:140px;
-  padding:10px 12px;
-  border-radius:10px;
-  resize:none;
-  border:1px solid var(--border);
-  background:#0f1112;
-  color:var(--text-main);
-  font-size:16px;
-  outline:none;
+.text-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: 100%;
+  min-height: 44px;
+  max-height: 140px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  resize: none;
+  border: 1px solid var(--border);
+  background: #0f1112;
+  color: var(--text-main);
+  font-size: 16px;
+  outline: none;
 }
 
 .tool-btn{
@@ -382,21 +384,30 @@ body.group-page .footer {
   body.group-page .composer {
     padding: 10px;
     gap: 8px;
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: flex-end;
   }
   
-  body.group-page .text-input {
+ body.group-page .text-input {
+    flex: 1 1 0%;
+    min-width: 0;
+    width: auto;
     font-size: 16px;
     padding: 12px 14px;
     min-height: 48px;
   }
   
   body.group-page #sendBtn {
+    flex: 0 0 auto;
     padding: 12px 16px;
     font-size: 16px;
     min-height: 48px;
+    white-space: nowrap;
   }
   
   body.group-page .tool-btn {
+    flex: 0 0 auto;
     padding: 10px;
     min-width: 44px;
     min-height: 44px;
