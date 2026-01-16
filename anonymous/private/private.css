@@ -296,6 +296,25 @@ body.private-page .site-wrapper {
   flex: 1;
   max-width: 160px;
 }
+#modalCancel {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+}
+
+#modalCancel:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+#modalFinish {
+  background: var(--accent);
+  color: #000;
+}
+
+#modalFinish:hover {
+  filter: brightness(1.1);
+}
 
 /* ========== ЭКРАН ЗАВЕРШЕНИЯ ========== */
 .end-screen{
