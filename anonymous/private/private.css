@@ -98,7 +98,7 @@ body.private-page .site-wrapper {
   flex: 1;
   min-height: 0;
   width: 100%;
-  max-width: 100%;
+  /* УДАЛЕНО: max-width: 100%; */
   border: 1px solid var(--border);
   border-radius: 12px;
   background: var(--bg-card);
