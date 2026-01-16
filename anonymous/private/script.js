@@ -58,7 +58,6 @@ const emojiPanel = document.getElementById('emojiPanel');
 const photoBtn = document.getElementById('photoBtn');
 const photoInput = document.getElementById('photoInput');
 const cancelSearch = document.getElementById('cancelSearch');
-const statusText = document.getElementById('statusText');
 const exitBtn = document.getElementById('exitBtn');
 
 const regBtn = document.querySelector(".register-btn");
@@ -372,7 +371,6 @@ async function startSearch() {
     show(searchScreen);
     hide(chatWindow);
     hide(endScreen);
-    statusText.textContent = 'Ищем собеседника...';
 
     const myWaitingRef = ref(rtdb, `waiting/${uid}`);
     myWaitingRefPath = `waiting/${uid}`;
@@ -531,7 +529,6 @@ async function connectToRoom(rId) {
         hide(searchScreen);
         show(chatWindow);
         hide(endScreen);
-        statusText.textContent = 'Соединено';
 
         const roomSnap = await get(roomRef);
         if (roomSnap.exists()) {
@@ -666,7 +663,6 @@ async function finishChat() {
 
 function endChatUI() {
     connectedStopUI();
-    statusText.textContent = 'Чат завершен';
 }
 
 function connectedStopUI() {
@@ -699,7 +695,6 @@ async function cancelSearchHandler() {
     
     hide(searchScreen);
     show(endScreen);
-    statusText.textContent = 'Поиск отменён';
 }
 
 async function clearAllListenersAndState() {
