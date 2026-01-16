@@ -97,7 +97,6 @@ body.private-page .site-wrapper {
   flex: 1;
   min-height: 0;
   width: 100%;
-  /* УДАЛЕНО: max-width: 100%; */
   border: 1px solid var(--border);
   border-radius: 12px;
   background: var(--bg-card);
@@ -111,11 +110,12 @@ body.private-page .site-wrapper {
 }
 
 /* ========== ОКНО ЧАТА ========== */
+/* ИСПРАВЛЕНО: убрали ограничение width: 520px для соответствия групповому чату */
 .chat-box {
   flex: 1;
   min-height: 0;
-  width: 520px;
-  margin: 0 auto;
+  width: 100%;
+  margin: 0;
   display: flex;
   flex-direction: column;
 }
