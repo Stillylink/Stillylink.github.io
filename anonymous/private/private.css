@@ -276,6 +276,7 @@ body.private-page .site-wrapper {
   border-radius:10px;
   border:1px solid var(--border);
   width:340px;
+  text-align: center;
 }
 .modal h3{
   color:var(--accent);
