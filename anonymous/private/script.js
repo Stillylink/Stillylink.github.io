@@ -66,38 +66,12 @@ const avatarLetter = document.querySelector(".user-avatar span");
 const userMenu = document.querySelector(".user-menu");
 const logoutBtn = document.getElementById("logoutBtn");
 
-window.addEventListener("DOMContentLoaded", () => {
-    if (isRealUser) {
-        const saved = localStorage.getItem("userAvatarLetter");
-        if (saved) {
-            regBtn?.classList.add("hidden");
-            avatar?.classList.remove("hidden");
-            avatarLetter.textContent = saved;
-        }
-    } else {
-        regBtn?.classList.remove("hidden");
-        avatar?.classList.add("hidden");
-    }
-
-    logoutBtn?.addEventListener("click", async e => {
-        e.preventDefault();
-
-        if (roomId && !chatClosed) {
-            chatClosed = true;
-            try {
-                await update(ref(rtdb, `rooms/${roomId}`), { closed: true });
-            } catch (err) { }
-        }
-
-        await clearAllListenersAndState();
-        clearRoomStorage();
-
-        await auth.signOut();
-        localStorage.removeItem("userAvatarLetter");
-
-        window.location.reload();
-    });
-});
+const savedAvatar = localStorage.getItem('userAvatarLetter');
+if (savedAvatar) {
+  regBtn?.classList.add('hidden');
+  avatar?.classList.remove('hidden');
+  avatarLetter.textContent = savedAvatar;
+}
 
 function toggleMenu() {
     const menu = document.querySelector(".nav-links");
@@ -171,6 +145,27 @@ function clearRoomStorage() {
     localStorage.removeItem('roomId');
     localStorage.removeItem('partnerId');
 }
+
+window.addEventListener("DOMContentLoaded", () => {
+    logoutBtn?.addEventListener("click", async e => {
+        e.preventDefault();
+
+        if (roomId && !chatClosed) {
+            chatClosed = true;
+            try {
+                await update(ref(rtdb, `rooms/${roomId}`), { closed: true });
+            } catch (err) { }
+        }
+
+        await clearAllListenersAndState();
+        clearRoomStorage();
+
+        await auth.signOut();
+        localStorage.removeItem("userAvatarLetter");
+
+        window.location.reload();
+    });
+});
 
 onAuthStateChanged(auth, user => {
     if (!user) {
