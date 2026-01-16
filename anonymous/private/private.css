@@ -110,12 +110,11 @@ body.private-page .site-wrapper {
 }
 
 /* ========== ОКНО ЧАТА ========== */
-/* ИСПРАВЛЕНО: убрали ограничение width: 520px для соответствия групповому чату */
 .chat-box {
   flex: 1;
   min-height: 0;
-  width: 100%;
-  margin: 0;
+  width: 520px;
+  margin: 0 auto;
   display: flex;
   flex-direction: column;
 }
