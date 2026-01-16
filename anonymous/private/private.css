@@ -317,13 +317,21 @@ body.private-page .site-wrapper {
 }
 
 /* ========== ЭКРАН ЗАВЕРШЕНИЯ ========== */
-.end-screen{
-  padding:28px;
-  display:flex;
-  flex-direction:column;
+.end-screen {
+  flex: 1;
+  min-height: 0;
+
+  display: flex;
+  flex-direction: column;
   gap:12px;
-  align-items:center;
+  justify-content: center;
+  align-items: center;
+
+  padding: 28px;
+  background: transparent;
+  border: none;
 }
+
 
 /* ========== ФУТЕР ДЛЯ СТРАНИЦЫ ЧАТА ========== */
 body.private-page .footer {
