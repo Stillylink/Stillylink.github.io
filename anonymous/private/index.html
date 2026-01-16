@@ -6,110 +6,110 @@
   <title>Анонимный чат — Private</title>
 
   <link rel="stylesheet" href="/style.css">
-
   <link rel="stylesheet" href="private.css">
 </head>
 
-<body>
+<body class="private-page">
   <div class="site-wrapper">
-<header class="navbar">
-    <div class="logo">StillyLink</div>
+    <header class="navbar">
+      <div class="logo">StillyLink</div>
 
-    <nav class="nav-links">
+      <nav class="nav-links">
         <a href="/">Главная</a>
         <a href="/chats/">Чаты</a>
         <a href="/#create-chat">Создать чат</a>
         <a href="/anonymous/">Анонимное общение</a>
         <a href="/login/" class="register-btn">Регистрация</a>
-    </nav>
+      </nav>
 
-    <div class="user-avatar hidden" onclick="toggleUserMenu()">
+      <div class="user-avatar hidden" onclick="toggleUserMenu()">
         <span>U</span>
-    </div>
+      </div>
 
-    <div class="user-menu">
+      <div class="user-menu">
         <a href="/profile/">Профиль</a>
         <a href="/mychats/">Мои чаты</a>
         <a href="#" id="logoutBtn">Выйти</a>
-    </div>
-    
-    <div class="nav-toggle" onclick="toggleMenu()">☰</div>
-</header>
+      </div>
+      
+      <div class="nav-toggle" onclick="toggleMenu()">☰</div>
+    </header>
 
-<main class="private-container">
-<div class="chat-box">
+    <main class="private-container">
+      <div class="chat-shell">
+        <div class="chat-header">
+          <div class="title">Анонимный чат — 1 на 1</div>
+          <div class="chat-actions">
+            <div id="statusText" style="color:var(--text-secondary)">—</div>
+            <button class="finish-btn" id="finishBtn">Завершить чат</button>
+          </div>
+        </div>
 
-  <div class="chat-header">
-    <div class="title">Анонимный чат — 1 на 1</div>
-    <div class="chat-actions">
-      <div id="statusText" style="color:var(--text-secondary)">—</div>
-      <button class="finish-btn" id="finishBtn">Завершить чат</button>
-    </div>
-  </div>
+        <div id="searchScreen" class="searching hidden">
+          <div class="spinner"></div>
+          <div style="text-align:center">
+            <div style="font-weight:600; color:var(--accent)">Поиск собеседника...</div>
+            <div style="color:var(--text-secondary); margin-top:6px">Подбираем активного пользователя. Ожидайте</div>
+          </div>
+          <div style="display:flex;gap:10px">
+            <button class="btn" id="cancelSearch">Отменить</button>
+          </div>
+        </div>
 
-  <div id="searchScreen" class="searching hidden">
-    <div class="spinner"></div>
-    <div style="text-align:center">
-      <div style="font-weight:600; color:var(--accent)">Поиск собеседника...</div>
-      <div style="color:var(--text-secondary); margin-top:6px">Подбираем активного пользователя. Ожидайте</div>
-    </div>
-    <div style="display:flex;gap:10px">
-      <button class="btn" id="cancelSearch">Отменить</button>
-    </div>
-  </div>
+        <div class="chat-box">
+          <div id="chatWindow" class="chat-window hidden" aria-live="polite">
+            <div class="messages" id="messages" role="log" aria-live="polite"></div>
 
-  <div id="chatWindow" class="chat-window hidden" aria-live="polite">
-    <div class="messages" id="messages" role="log" aria-live="polite"></div>
+            <div class="composer">
+              <input type="file" id="photoInput" accept="image/*" class="hidden">
+              <button title="Добавить фото" class="tool-btn" id="photoBtn">📷</button>
+              <button title="Emoji" class="tool-btn" id="emojiBtn">😊</button>
+              <textarea id="textInput" class="text-input" placeholder="Сообщение"></textarea>
+              <button id="sendBtn" class="btn" style="width:auto;padding:10px 14px">Отправить</button>
+            </div>
+          </div>
 
-    <div class="composer">
-      <input type="file" id="photoInput" accept="image/*" class="hidden">
-      <button title="Добавить фото" class="tool-btn" id="photoBtn">📷</button>
-      <button title="Emoji" class="tool-btn" id="emojiBtn">😊</button>
-      <textarea id="textInput" class="text-input" placeholder="Сообщение"></textarea>
-      <button id="sendBtn" class="btn" style="width:auto;padding:10px 14px">Отправить</button>
-    </div>
-  </div>
-
-  <div id="endScreen" class="card hidden end-screen">
-    <div style="font-size:18px;color:var(--accent);font-weight:700">Чат завершен</div>
-    <div style="color:var(--text-secondary)">Вы можете начать новый чат или выйти обратно на страницу анонимных.</div>
-    <div style="display:flex;gap:10px;margin-top:8px">
-      <button class="btn" id="newChatBtn">Начать новый чат</button>
-      <a class="btn" href="/anonymous/" id="exitBtn" style="background:transparent;color:var(--text-secondary);border:1px solid var(--border)">Выйти</a>
-    </div>
-  </div>
-
-  <div id="modal" class="hidden">
-    <div class="modal-backdrop">
-      <div class="modal" role="dialog" aria-modal="true">
-        <h3>Завершить чат?</h3>
-        <p>После завершения беседа будет закрыта. Вы сможете начать новую или выйти.</p>
-        <div class="row" style="justify-content:flex-end">
-          <button class="tool-btn" id="modalCancel">Отмена</button>
-          <button class="btn" id="modalFinish">Завершить</button>
+          <div id="endScreen" class="card hidden end-screen">
+            <div style="font-size:18px;color:var(--accent);font-weight:700">Чат завершен</div>
+            <div style="color:var(--text-secondary)">Вы можете начать новый чат или выйти обратно на страницу анонимных.</div>
+            <div style="display:flex;gap:10px;margin-top:8px">
+              <button class="btn" id="newChatBtn">Начать новый чат</button>
+              <a class="btn" href="/anonymous/" id="exitBtn" style="background:transparent;color:var(--text-secondary);border:1px solid var(--border)">Выйти</a>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
+
+      <div id="modal" class="hidden">
+        <div class="modal-backdrop">
+          <div class="modal" role="dialog" aria-modal="true">
+            <h3>Завершить чат?</h3>
+            <p>После завершения беседа будет закрыта. Вы сможете начать новую или выйти.</p>
+            <div class="row" style="justify-content:flex-end">
+              <button class="tool-btn" id="modalCancel">Отмена</button>
+              <button class="btn" id="modalFinish">Завершить</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="emojiPanel" class="emoji-panel hidden" aria-hidden="true">
+        <button class="tool-btn emoji">😀</button>
+        <button class="tool-btn emoji">😂</button>
+        <button class="tool-btn emoji">😍</button>
+        <button class="tool-btn emoji">😢</button>
+        <button class="tool-btn emoji">😮</button>
+        <button class="tool-btn emoji">👍</button>
+        <button class="tool-btn emoji">🙏</button>
+        <button class="tool-btn emoji">🔥</button>
+        <button class="tool-btn emoji">🤝</button>
+        <button class="tool-btn emoji">🎉</button>
+      </div>
+    </main>
+
+    <footer class="footer">© 2026 StillyLink.</footer>
   </div>
 
-  <div id="emojiPanel" class="emoji-panel hidden" aria-hidden="true">
-    <button class="tool-btn emoji">😀</button>
-    <button class="tool-btn emoji">😂</button>
-    <button class="tool-btn emoji">😍</button>
-    <button class="tool-btn emoji">😢</button>
-    <button class="tool-btn emoji">😮</button>
-    <button class="tool-btn emoji">👍</button>
-    <button class="tool-btn emoji">🙏</button>
-    <button class="tool-btn emoji">🔥</button>
-    <button class="tool-btn emoji">🤝</button>
-    <button class="tool-btn emoji">🎉</button>
-  </div>
-
-  </div>
-</main>
-  </div>
-<footer class="footer">© 2026 StillyLink.</footer>
-
-<script type="module" src="script.js"></script>
+  <script type="module" src="script.js"></script>
 </body>
 </html>
