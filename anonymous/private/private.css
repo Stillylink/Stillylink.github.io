@@ -343,6 +343,10 @@ body.private-page .site-wrapper {
   justify-content: center;
   margin-top: 8px;
 }
+.finish-style:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
 #exitBtn {
   background: transparent;
   color: #000; /* чёрный текст, как ты хочешь */
