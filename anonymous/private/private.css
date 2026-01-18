@@ -343,7 +343,7 @@ body.private-page .site-wrapper {
   justify-content: center;
   margin-top: 8px;
 }
-.finish-style:hover {
+#newChatBtn:hover {
   color: var(--accent);
   border-color: var(--accent);
 }
