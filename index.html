@@ -70,7 +70,9 @@ import {
     getFirestore,
     collection,
     addDoc,
-    serverTimestamp
+    serverTimestamp,
+    doc,
+    getDoc
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
 
 // --- CONFIG ---
@@ -94,34 +96,50 @@ const avatarLetter = document.querySelector(".user-avatar span");
 const userMenu = document.querySelector(".user-menu");
 const logoutBtn = document.getElementById("logoutBtn");
 
-    // === Локальное восстановление состояния ===
-const savedLogin = localStorage.getItem("isLoggedIn");
-const savedLetter = localStorage.getItem("avatarLetter");
-
-if (savedLogin === "true" && savedLetter) {
+// === ИСПРАВЛЕНИЕ: Загружаем букву из localStorage сразу ===
+const savedLetter = localStorage.getItem("userAvatarLetter");
+if (savedLetter) {
     regBtn.classList.add("hidden");
     avatar.classList.remove("hidden");
     avatarLetter.textContent = savedLetter;
 }
 
 // --- Авторизация ---
-onAuthStateChanged(auth, user => {
-    if (user && user.email) {          // ← рисуем только реального пользователя
-        const letter = user.email.charAt(0).toUpperCase();
+onAuthStateChanged(auth, async user => {
+    if (user && user.email) {
+        // ИСПРАВЛЕНИЕ: Загружаем данные пользователя из Firestore
+        try {
+            const userDocRef = doc(db, "users", user.uid);
+            const userDoc = await getDoc(userDocRef);
+            
+            let letter;
+            if (userDoc.exists() && userDoc.data().name) {
+                // Используем первую букву имени из Firestore
+                letter = userDoc.data().name.charAt(0).toUpperCase();
+            } else {
+                // Если имени нет, используем email
+                letter = user.email.charAt(0).toUpperCase();
+            }
 
-        regBtn.classList.add("hidden");
-        avatar.classList.remove("hidden");
-        avatarLetter.textContent = letter;
+            regBtn.classList.add("hidden");
+            avatar.classList.remove("hidden");
+            avatarLetter.textContent = letter;
 
-        localStorage.setItem("isLoggedIn", "true");
-        localStorage.setItem("avatarLetter", letter);
+            // ИСПРАВЛЕНИЕ: Используем единое имя ключа - userAvatarLetter
+            localStorage.setItem("userAvatarLetter", letter);
+        } catch (error) {
+            console.error("Ошибка загрузки данных пользователя:", error);
+            // Fallback на email если что-то пошло не так
+            const letter = user.email.charAt(0).toUpperCase();
+            avatarLetter.textContent = letter;
+            localStorage.setItem("userAvatarLetter", letter);
+        }
     } else {
         regBtn.classList.remove("hidden");
         avatar.classList.add("hidden");
         userMenu.classList.remove("open");
 
-        localStorage.removeItem("isLoggedIn");
-        localStorage.removeItem("avatarLetter");
+        localStorage.removeItem("userAvatarLetter");
     }
 });
 
@@ -129,8 +147,7 @@ onAuthStateChanged(auth, user => {
 logoutBtn.onclick = (e) => {
     e.preventDefault();
 
-    localStorage.removeItem("isLoggedIn");
-    localStorage.removeItem("avatarLetter");
+    localStorage.removeItem("userAvatarLetter");
 
     signOut(auth).then(() => window.location.reload());
 };
