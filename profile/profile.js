@@ -131,10 +131,22 @@ onAuthStateChanged(auth, async (user) => {
 
     currentUser = user;
 
+    // ИСПРАВЛЕНИЕ: Загружаем данные пользователя, чтобы получить актуальное имя
+    const userDocRef = doc(db, "users", currentUser.uid);
+    const userDoc = await getDoc(userDocRef);
+    
+    let letter;
+    if (userDoc.exists() && userDoc.data().name) {
+        // Используем первую букву имени из Firestore
+        letter = userDoc.data().name.charAt(0).toUpperCase();
+    } else {
+        // Если имени нет, используем email
+        letter = user.email.charAt(0).toUpperCase();
+    }
+
     // Обновляем навигацию
     regBtn?.classList.add("hidden");
     avatar?.classList.remove("hidden");
-    const letter = user.email.charAt(0).toUpperCase();
     avatarLetter.textContent = letter;
     localStorage.setItem("userAvatarLetter", letter);
 
@@ -182,7 +194,8 @@ async function loadUserProfile() {
                 profileAvatar.innerHTML = "";
                 profileAvatar.appendChild(img);
             } else {
-                const letter = currentUser.email.charAt(0).toUpperCase();
+                // ИСПРАВЛЕНИЕ: Используем имя, а не email
+                const letter = userData.name ? userData.name.charAt(0).toUpperCase() : currentUser.email.charAt(0).toUpperCase();
                 avatarLetterProfile.textContent = letter;
             }
 
@@ -200,18 +213,23 @@ async function loadUserProfile() {
 
         } else {
             // Создаем профиль если его нет
+            const defaultName = currentUser.email.split('@')[0];
             await setDoc(userDocRef, {
-                name: currentUser.email.split('@')[0],
+                name: defaultName,
                 email: currentUser.email,
                 bio: "Расскажите о себе...",
                 avatarUrl: null,
                 createdAt: serverTimestamp()
             });
             
-            profileName.textContent = currentUser.email.split('@')[0];
+            profileName.textContent = defaultName;
             profileEmail.textContent = currentUser.email;
-            const letter = currentUser.email.charAt(0).toUpperCase();
+            const letter = defaultName.charAt(0).toUpperCase();
             avatarLetterProfile.textContent = letter;
+            
+            // ИСПРАВЛЕНИЕ: Обновляем localStorage и навигацию
+            avatarLetter.textContent = letter;
+            localStorage.setItem("userAvatarLetter", letter);
         }
     } catch (error) {
         console.error("Ошибка загрузки профиля:", error);
