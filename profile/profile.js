@@ -81,6 +81,14 @@ const memberSince = document.getElementById("memberSince");
 let currentUser = null;
 let currentPhotoFile = null;
 
+// ЗАГРУЗКА АВАТАРКИ ИЗ localStorage СРАЗУ (как в анонимном чате)
+const savedAvatar = localStorage.getItem('userAvatarLetter');
+if (savedAvatar) {
+    regBtn?.classList.add('hidden');
+    avatar?.classList.remove('hidden');
+    avatarLetter.textContent = savedAvatar;
+}
+
 // Навигация
 function toggleMenu() {
     const menu = document.querySelector(".nav-links");
