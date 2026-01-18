@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Профиль — StillyLink</title>
+
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="profile.css">
+</head>
+
+<body class="profile-page">
+  <div class="site-wrapper">
+    <header class="navbar">
+      <div class="logo">StillyLink</div>
+
+      <nav class="nav-links">
+        <a href="/">Главная</a>
+        <a href="/chats/">Чаты</a>
+        <a href="/#create-chat">Создать чат</a>
+        <a href="/anonymous/">Анонимное общение</a>
+        <a href="/login/" class="register-btn">Регистрация</a>
+      </nav>
+
+      <div class="user-avatar hidden" onclick="toggleUserMenu()">
+        <span>U</span>
+      </div>
+
+      <div class="user-menu">
+        <a href="/profile/">Профиль</a>
+        <a href="/mychats/">Мои чаты</a>
+        <a href="#" id="logoutBtn">Выйти</a>
+      </div>
+      
+      <div class="nav-toggle" onclick="toggleMenu()">☰</div>
+    </header>
+
+    <main class="profile-container">
+      <!-- Левая боковая панель -->
+      <aside class="profile-sidebar left">
+        <div class="sidebar-card">
+          <div class="sidebar-title">Статистика</div>
+          <div class="stat-item">
+            <span class="stat-label">Чатов создано:</span>
+            <span class="stat-value" id="chatsCount">0</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Записей:</span>
+            <span class="stat-value" id="postsCount">0</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">На сайте с:</span>
+            <span class="stat-value" id="memberSince">—</span>
+          </div>
+        </div>
+
+        <div class="sidebar-card">
+          <div class="sidebar-title">Быстрые действия</div>
+          <a href="/chats/" class="quick-action">📂 Мои чаты</a>
+          <a href="/#create-chat" class="quick-action">➕ Создать чат</a>
+          <a href="/anonymous/" class="quick-action">💬 Анонимный чат</a>
+        </div>
+      </aside>
+
+      <!-- Центральная часть -->
+      <div class="profile-main">
+        <!-- Карточка профиля -->
+        <div class="profile-card">
+          <div class="profile-header">
+            <div class="avatar-section">
+              <div class="profile-avatar" id="profileAvatar">
+                <span id="avatarLetter">U</span>
+              </div>
+              <label for="avatarUpload" class="avatar-upload-btn" title="Изменить аватар">
+                <input type="file" id="avatarUpload" accept="image/*" class="hidden">
+                📷
+              </label>
+            </div>
+            
+            <div class="profile-info">
+              <div class="profile-name-section">
+                <h1 class="profile-name" id="profileName">Пользователь</h1>
+                <button class="edit-profile-btn" id="editProfileBtn">
+                  <span>✏️</span> Редактировать
+                </button>
+              </div>
+              <div class="profile-email" id="profileEmail">email@example.com</div>
+              <div class="profile-bio" id="profileBio">
+                Расскажите о себе...
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Стена с записями -->
+        <div class="wall-section">
+          <div class="wall-header">
+            <h2>Моя стена</h2>
+          </div>
+
+          <!-- Форма добавления записи -->
+          <div class="post-composer" id="postComposer">
+            <textarea 
+              id="postInput" 
+              class="post-input" 
+              placeholder="Что у вас нового?"
+              rows="3"
+            ></textarea>
+            <div class="post-actions">
+              <button class="post-btn secondary" id="attachPhotoBtn">📷 Фото</button>
+              <input type="file" id="postPhotoInput" accept="image/*" class="hidden">
+              <button class="post-btn primary" id="publishPostBtn">Опубликовать</button>
+            </div>
+          </div>
+
+          <!-- Список записей -->
+          <div class="posts-list" id="postsList">
+            <!-- Записи будут добавляться динамически -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Правая боковая панель -->
+      <aside class="profile-sidebar right">
+        <div class="sidebar-card">
+          <div class="sidebar-title">Последняя активность</div>
+          <div class="activity-item">
+            <div class="activity-icon">💬</div>
+            <div class="activity-text">
+              <div class="activity-desc">Новое сообщение в чате</div>
+              <div class="activity-time">2 часа назад</div>
+            </div>
+          </div>
+          <div class="activity-item">
+            <div class="activity-icon">✨</div>
+            <div class="activity-text">
+              <div class="activity-desc">Создан новый чат</div>
+              <div class="activity-time">Вчера</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="sidebar-card">
+          <div class="sidebar-title">Настройки</div>
+          <a href="#" class="settings-link">🔔 Уведомления</a>
+          <a href="#" class="settings-link">🔒 Приватность</a>
+          <a href="#" class="settings-link">🎨 Оформление</a>
+        </div>
+      </aside>
+    </main>
+
+    <!-- Модальное окно редактирования профиля -->
+    <div id="editModal" class="modal-overlay hidden">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>Редактировать профиль</h3>
+          <button class="modal-close" id="closeEditModal">×</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="editName">Имя</label>
+            <input type="text" id="editName" class="form-input" placeholder="Ваше имя">
+          </div>
+          <div class="form-group">
+            <label for="editBio">О себе</label>
+            <textarea id="editBio" class="form-textarea" rows="4" placeholder="Расскажите о себе..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="modal-btn cancel" id="cancelEditBtn">Отмена</button>
+          <button class="modal-btn save" id="saveProfileBtn">Сохранить</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Модальное окно просмотра фото -->
+    <div id="photoModal" class="modal-overlay hidden">
+      <div class="photo-modal-content">
+        <button class="modal-close" id="closePhotoModal">×</button>
+        <img id="modalPhoto" src="" alt="Фото">
+      </div>
+    </div>
+
+    <footer class="footer">© 2026 StillyLink.</footer>
+  </div>
+
+  <script type="module" src="profile.js"></script>
+</body>
+</html>
