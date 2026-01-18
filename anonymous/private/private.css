@@ -326,10 +326,22 @@ body.private-page .site-wrapper {
   gap:12px;
   justify-content: center;
   align-items: center;
+  text-align: center;
 
   padding: 28px;
   background: transparent;
   border: none;
+}
+.end-screen .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.end-screen .actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 8px;
 }
 
 
