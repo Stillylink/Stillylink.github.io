@@ -1,7 +1,7 @@
 /*  group.js – групповой анонимный чат (RTDB) --------------------------------------------- */
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js';
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js';
-import { getFirestore } from 'https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js';
+import { getFirestore, doc, getDoc } from 'https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js';
 import {
   getDatabase,
   ref, set, push, onChildAdded, onDisconnect, remove, get
@@ -19,7 +19,7 @@ const firebaseConfig = {
 };
 const app   = initializeApp(firebaseConfig);
 const auth  = getAuth(app);
-getFirestore(app);                      // оставляем для профиля/аватара
+const db    = getFirestore(app);  // ИСПРАВЛЕНИЕ: сохраняем ссылку на Firestore
 const rtdb  = getDatabase(app);
 
 /*  ===============  DOM  =============== */
@@ -85,7 +85,7 @@ document.addEventListener('click', e => {
     menu.classList.remove('open');
 });
 
-/* ===== локальная аватарка сразу ===== */
+/* ===== ИСПРАВЛЕНИЕ: локальная аватарка сразу ===== */
 const savedAvatar = localStorage.getItem('userAvatarLetter');
 if (savedAvatar) {
   regBtn?.classList.add('hidden');
@@ -94,15 +94,36 @@ if (savedAvatar) {
 }
 
 /*  ===============  Auth  =============== */
-onAuthStateChanged(auth, user => {
+onAuthStateChanged(auth, async user => {
   if (!user) { signInAnonymously(auth); return; }
   uid = user.uid;
+  
   if (user.email) {
-    regBtn?.classList.add('hidden');
-    avatar?.classList.remove('hidden');
-    const letter = user.email.charAt(0).toUpperCase();
-    avatarLetter.textContent = letter;
-    localStorage.setItem('userAvatarLetter', letter);
+    // ИСПРАВЛЕНИЕ: Загружаем данные пользователя из Firestore
+    try {
+      const userDocRef = doc(db, "users", user.uid);
+      const userDoc = await getDoc(userDocRef);
+      
+      let letter;
+      if (userDoc.exists() && userDoc.data().name) {
+        // Используем первую букву имени из Firestore
+        letter = userDoc.data().name.charAt(0).toUpperCase();
+      } else {
+        // Если имени нет, используем email
+        letter = user.email.charAt(0).toUpperCase();
+      }
+
+      regBtn?.classList.add('hidden');
+      avatar?.classList.remove('hidden');
+      avatarLetter.textContent = letter;
+      localStorage.setItem('userAvatarLetter', letter);
+    } catch (error) {
+      console.error("Ошибка загрузки данных пользователя:", error);
+      // Fallback на email если что-то пошло не так
+      const letter = user.email.charAt(0).toUpperCase();
+      avatarLetter.textContent = letter;
+      localStorage.setItem('userAvatarLetter', letter);
+    }
   } else {
     regBtn?.classList.remove('hidden');
     avatar?.classList.add('hidden');
