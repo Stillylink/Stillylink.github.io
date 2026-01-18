@@ -344,8 +344,7 @@ body.private-page .site-wrapper {
   margin-top: 8px;
 }
 #newChatBtn:hover {
-  color: var(--accent);
-  border-color: var(--accent);
+  filter: brightness(1.1);
 }
 #exitBtn {
   background: transparent;
