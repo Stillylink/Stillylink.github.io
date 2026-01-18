@@ -6,7 +6,9 @@ import {
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
 
 import {
-    getFirestore
+    getFirestore,
+    doc,
+    getDoc
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
 
 import {
@@ -167,7 +169,7 @@ window.addEventListener("DOMContentLoaded", () => {
     });
 });
 
-onAuthStateChanged(auth, user => {
+onAuthStateChanged(auth, async user => {
     if (!user) {
         signInAnonymously(auth);
         return;
@@ -177,11 +179,27 @@ onAuthStateChanged(auth, user => {
     isRealUser = !!user.email;
 
     if (isRealUser) {
-        regBtn?.classList.add("hidden");
-        avatar?.classList.remove("hidden");
-        const letter = user.email.charAt(0).toUpperCase();
-        avatarLetter.textContent = letter;
-        localStorage.setItem("userAvatarLetter", letter);
+        try {
+            const userDocRef = doc(db, "users", user.uid);
+            const userDoc = await getDoc(userDocRef);
+            
+            let letter;
+            if (userDoc.exists() && userDoc.data().name) {
+                letter = userDoc.data().name.charAt(0).toUpperCase();
+            } else {
+                letter = user.email.charAt(0).toUpperCase();
+            }
+
+            regBtn?.classList.add("hidden");
+            avatar?.classList.remove("hidden");
+            avatarLetter.textContent = letter;
+            localStorage.setItem("userAvatarLetter", letter);
+        } catch (error) {
+            console.error("Ошибка загрузки данных пользователя:", error);
+            const letter = user.email.charAt(0).toUpperCase();
+            avatarLetter.textContent = letter;
+            localStorage.setItem("userAvatarLetter", letter);
+        }
     } else {
         regBtn?.classList.remove("hidden");
         avatar?.classList.add("hidden");
@@ -415,7 +433,6 @@ async function startSearch() {
         snap.forEach(child => {
             const data = child.val();
             
-            // КРИТИЧНО: Пропускаем самого себя
             if (child.key === uid || data.uid === uid) return;
             if (data.claimed) return;
             
@@ -429,9 +446,9 @@ async function startSearch() {
 
         if (!otherUid) return;
 
-if (uid > otherUid) {
-    return;
-}
+        if (uid > otherUid) {
+            return;
+        }
 
         matchmakingInProgress = true;
 
@@ -444,7 +461,6 @@ if (uid > otherUid) {
                 get(myRef)
             ]);
 
-            // Проверки валидности
             if (!otherSnap.exists() || !mySnap.exists()) {
                 matchmakingInProgress = false;
                 return;
@@ -458,7 +474,6 @@ if (uid > otherUid) {
                 return;
             }
             
-            // КРИТИЧНО: ещё раз проверяем что это не мы сами
             if (otherData.uid === uid || otherUid === uid) {
                 console.warn('Попытка создать комнату с самим собой!');
                 matchmakingInProgress = false;
@@ -476,17 +491,17 @@ if (uid > otherUid) {
                 closed: false
             });
 
-await Promise.all([
-    update(otherRef, { claimed: true, roomId: newRoomId }),
-    update(myRef, { claimed: true, roomId: newRoomId })
-]);
+            await Promise.all([
+                update(otherRef, { claimed: true, roomId: newRoomId }),
+                update(myRef, { claimed: true, roomId: newRoomId })
+            ]);
 
-await Promise.all([
-    remove(otherRef),
-    remove(myRef)
-]);
+            await Promise.all([
+                remove(otherRef),
+                remove(myRef)
+            ]);
 
-console.log('✅ Комната создана:', newRoomId);
+            console.log('✅ Комната создана:', newRoomId);
             
         } catch (err) {
             console.log('Matchmaking race condition:', err);
@@ -538,7 +553,6 @@ async function connectToRoom(rId) {
             saveRoomToStorage(roomId, partnerId);
         }
 
-        // Слушаем мета-данные комнаты (для закрытия)
         onValue(roomRef, (snap) => {
             if (!snap.exists()) {
                 console.log('Комната удалена');
@@ -556,7 +570,6 @@ async function connectToRoom(rId) {
                 return;
             }
             
-            // Обновляем partnerId
             const participants = data.participants || [];
             partnerId = participants.find(p => p !== uid) || null;
             saveRoomToStorage(roomId, partnerId);
@@ -567,10 +580,10 @@ async function connectToRoom(rId) {
         
         clearMessages();
 
-    onChildAdded(messagesRef, (snap) => {
-    if (chatClosed) return;
-    addMessageToUI(snap.val());
-});
+        onChildAdded(messagesRef, (snap) => {
+            if (chatClosed) return;
+            addMessageToUI(snap.val());
+        });
 
         await setMyPresence();
         
@@ -631,7 +644,6 @@ async function finishChat() {
     
     const currentRoomId = roomId;
     
-    // Помечаем комнату как закрытую
     if (currentRoomId) {
         try {
             await update(ref(rtdb, `rooms/${currentRoomId}`), { closed: true });
@@ -641,14 +653,11 @@ async function finishChat() {
         }
     }
     
-    // Показываем экран завершения
     endChatUI();
     
-    // Очищаем слушатели
     await clearAllListenersAndState();
     clearRoomStorage();
     
-    // Удаляем комнату через 2 секунды
     if (currentRoomId) {
         setTimeout(async () => {
             await deleteRoomFully(currentRoomId);
@@ -876,17 +885,13 @@ async function cleanupRoomsByInactivity() {
             const room = roomSnap.val();
             const rId = roomSnap.key;
 
-            // Удаляем закрытые комнаты сразу
             if (room.closed === true) {
                 console.log('🧹 Удаляем закрытую комнату:', rId);
                 jobs.push(deleteRoomFully(rId));
                 return;
             }
 
-            const last =
-                room.lastActivity ||
-                room.createdAt ||
-                0;
+            const last = room.lastActivity || room.createdAt || 0;
 
             if (now - last > ROOM_TTL) {
                 console.log(
@@ -905,7 +910,6 @@ async function cleanupRoomsByInactivity() {
         console.warn('cleanupRoomsByInactivity error', e);
     }
 }
-
 
 async function cleanupStaleWaitingUsers() {
     try {
@@ -942,7 +946,7 @@ async function cleanupStaleWaitingUsers() {
 setInterval(() => {
     cleanupRoomsByInactivity();
     cleanupStaleWaitingUsers();
-}, 2 * 60 * 1000); // Каждые 2 минуты
+}, 2 * 60 * 1000);
 
 setTimeout(() => {
     cleanupRoomsByInactivity();
