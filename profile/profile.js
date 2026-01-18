@@ -305,6 +305,12 @@ saveProfileBtn.addEventListener("click", async () => {
         profileName.textContent = name;
         profileBio.textContent = bio || "Расскажите о себе...";
         
+        // Обновляем аватарку на первую букву нового имени
+        const newLetter = name.charAt(0).toUpperCase();
+        avatarLetterProfile.textContent = newLetter;
+        avatarLetter.textContent = newLetter;
+        localStorage.setItem("userAvatarLetter", newLetter);
+        
         editModal.classList.add("hidden");
         console.log("Профиль обновлен!");
     } catch (error) {
