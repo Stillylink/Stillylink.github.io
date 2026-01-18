@@ -343,9 +343,14 @@ body.private-page .site-wrapper {
   justify-content: center;
   margin-top: 8px;
 }
-a.btn {
-  color: inherit;
-  text-decoration: none;
+#exitBtn {
+  background: transparent;
+  color: #000; /* чёрный текст, как ты хочешь */
+  border: 1px solid var(--border);
+}
+#exitBtn:hover {
+  color: var(--accent);
+  border-color: var(--accent);
 }
 
 /* ========== ФУТЕР ДЛЯ СТРАНИЦЫ ЧАТА ========== */
