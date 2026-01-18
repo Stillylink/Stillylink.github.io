@@ -140,6 +140,7 @@ body.group-page .site-wrapper {
   background: var(--bg-card);
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 /* разделитель под шапкой */
