@@ -349,7 +349,7 @@ body.private-page .site-wrapper {
 }
 #exitBtn {
   background: transparent;
-  color: #000; /* чёрный текст, как ты хочешь */
+  color: var(--text-secondary);
   border: 1px solid var(--border);
 }
 #exitBtn:hover {
