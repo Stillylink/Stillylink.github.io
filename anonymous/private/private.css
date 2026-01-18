@@ -343,7 +343,10 @@ body.private-page .site-wrapper {
   justify-content: center;
   margin-top: 8px;
 }
-
+a.btn {
+  color: inherit;
+  text-decoration: none;
+}
 
 /* ========== ФУТЕР ДЛЯ СТРАНИЦЫ ЧАТА ========== */
 body.private-page .footer {
