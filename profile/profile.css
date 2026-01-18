@@ -86,45 +86,6 @@ body.profile-page .site-wrapper {
   color: var(--accent);
 }
 
-/* Активность */
-.activity-item {
-  display: flex;
-  gap: 12px;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--border);
-}
-
-.activity-item:last-child {
-  border-bottom: none;
-}
-
-.activity-icon {
-  font-size: 20px;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 8px;
-  flex-shrink: 0;
-}
-
-.activity-text {
-  flex: 1;
-}
-
-.activity-desc {
-  font-size: 13px;
-  color: var(--text-main);
-  margin-bottom: 2px;
-}
-
-.activity-time {
-  font-size: 12px;
-  color: var(--text-secondary);
-}
-
 /* Настройки */
 .settings-link {
   display: block;
@@ -307,7 +268,7 @@ body.profile-page .site-wrapper {
   background: #0b0b0b;
   color: var(--text-main);
   font-size: 15px;
-  resize: vertical;
+  resize: none;
   outline: none;
   font-family: inherit;
   margin-bottom: 12px;
@@ -583,7 +544,7 @@ body.profile-page .site-wrapper {
 }
 
 .form-textarea {
-  resize: vertical;
+  resize: none;
   min-height: 100px;
 }
 
