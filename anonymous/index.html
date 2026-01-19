@@ -197,8 +197,9 @@ if (savedLetter) {
 }
 
 // --- Авторизация ---
-onAuthStateChanged(auth, async user => {
+onAuthStateChanged(auth, user => {
     if (!user || !user.email) {
+        // Незарегистрированный → ничего не читаем из Firestore
         regBtn.classList.remove("hidden");
         avatar.classList.add("hidden");
         userMenu.classList.remove("open");
@@ -206,31 +207,17 @@ onAuthStateChanged(auth, async user => {
         return;
     }
 
-    regBtn.classList.add("hidden");
-    avatar.classList.remove("hidden");
-
-    // ОПТИМИЗАЦИЯ: Проверяем кэш перед запросом в Firestore
+    // Зарегистрированный → берём кэш или первую букву email
     const cachedLetter = localStorage.getItem("userAvatarLetter");
     if (cachedLetter) {
         avatarLetter.textContent = cachedLetter;
-        return; // Не делаем запрос в Firestore!
+    } else {
+        avatarLetter.textContent = user.email[0].toUpperCase();
+        localStorage.setItem("userAvatarLetter", avatarLetter.textContent);
     }
 
-    // Запрос только если кэша нет
-    try {
-        const snap = await getDoc(doc(db, "users", user.uid));
-        const letter = snap.exists() && snap.data().name
-            ? snap.data().name[0].toUpperCase()
-            : user.email[0].toUpperCase();
-
-        avatarLetter.textContent = letter;
-        localStorage.setItem("userAvatarLetter", letter);
-    } catch (error) {
-        console.error("Ошибка загрузки данных пользователя:", error);
-        const letter = user.email[0].toUpperCase();
-        avatarLetter.textContent = letter;
-        localStorage.setItem("userAvatarLetter", letter);
-    }
+    regBtn.classList.add("hidden");
+    avatar.classList.remove("hidden");
 });
 
 // --- Выход ---
