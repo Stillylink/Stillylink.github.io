@@ -96,8 +96,13 @@ const avatarLetter = document.querySelector(".user-avatar span");
 const userMenu = document.querySelector(".user-menu");
 const logoutBtn = document.getElementById("logoutBtn");
 
-// ИСПРАВЛЕНИЕ: НЕ показываем аватарку из кэша до проверки авторизации
-// Пусть onAuthStateChanged решает, что показывать
+// === ОПТИМИЗАЦИЯ: Загружаем букву из localStorage сразу ===
+const savedLetter = localStorage.getItem("userAvatarLetter");
+if (savedLetter) {
+    regBtn.classList.add("hidden");
+    avatar.classList.remove("hidden");
+    avatarLetter.textContent = savedLetter;
+}
 
 // --- Авторизация ---
 onAuthStateChanged(auth, async user => {
@@ -115,7 +120,7 @@ onAuthStateChanged(auth, async user => {
     const cachedLetter = localStorage.getItem("userAvatarLetter");
     if (cachedLetter) {
         avatarLetter.textContent = cachedLetter;
-        return;
+        return; // Не делаем запрос в Firestore!
     }
 
     // Запрос только если кэша нет
