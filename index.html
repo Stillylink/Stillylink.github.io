@@ -96,13 +96,8 @@ const avatarLetter = document.querySelector(".user-avatar span");
 const userMenu = document.querySelector(".user-menu");
 const logoutBtn = document.getElementById("logoutBtn");
 
-// === ИСПРАВЛЕНИЕ: Загружаем букву из localStorage сразу ===
-const savedLetter = localStorage.getItem("userAvatarLetter");
-if (savedLetter) {
-    regBtn.classList.add("hidden");
-    avatar.classList.remove("hidden");
-    avatarLetter.textContent = savedLetter;
-}
+// ИСПРАВЛЕНИЕ: НЕ показываем аватарку из кэша до проверки авторизации
+// Пусть onAuthStateChanged решает, что показывать
 
 // --- Авторизация ---
 onAuthStateChanged(auth, async user => {
@@ -116,27 +111,34 @@ onAuthStateChanged(auth, async user => {
     regBtn.classList.add("hidden");
     avatar.classList.remove("hidden");
 
+    // ОПТИМИЗАЦИЯ: Проверяем кэш перед запросом в Firestore
     const cachedLetter = localStorage.getItem("userAvatarLetter");
     if (cachedLetter) {
         avatarLetter.textContent = cachedLetter;
         return;
     }
 
-    const snap = await getDoc(doc(db, "users", user.uid));
-    const letter = snap.exists() && snap.data().name
-        ? snap.data().name[0].toUpperCase()
-        : user.email[0].toUpperCase();
+    // Запрос только если кэша нет
+    try {
+        const snap = await getDoc(doc(db, "users", user.uid));
+        const letter = snap.exists() && snap.data().name
+            ? snap.data().name[0].toUpperCase()
+            : user.email[0].toUpperCase();
 
-    avatarLetter.textContent = letter;
-    localStorage.setItem("userAvatarLetter", letter);
+        avatarLetter.textContent = letter;
+        localStorage.setItem("userAvatarLetter", letter);
+    } catch (error) {
+        console.error("Ошибка загрузки данных пользователя:", error);
+        const letter = user.email[0].toUpperCase();
+        avatarLetter.textContent = letter;
+        localStorage.setItem("userAvatarLetter", letter);
+    }
 });
 
 // --- Выход ---
 logoutBtn.onclick = (e) => {
     e.preventDefault();
-
     localStorage.removeItem("userAvatarLetter");
-
     signOut(auth).then(() => window.location.reload());
 };
 
