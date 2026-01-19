@@ -79,6 +79,7 @@ const postsCount = document.getElementById("postsCount");
 const memberSince = document.getElementById("memberSince");
 
 let currentUser = null;
+let currentUserData = null; 
 let currentPhotoFile = null;
 
 // ЗАГРУЗКА АВАТАРКИ ИЗ localStorage СРАЗУ (как в анонимном чате)
@@ -117,43 +118,46 @@ document.addEventListener("click", e => {
 
 // Проверка авторизации
 onAuthStateChanged(auth, async (user) => {
-    if (!user) {
-        window.location.href = "/login/";
-        return;
-    }
-
-    // Анонимные пользователи не могут использовать профиль
-    if (!user.email) {
-        alert("Профиль доступен только зарегистрированным пользователям");
+    if (!user || !user.email) {
         window.location.href = "/login/";
         return;
     }
 
     currentUser = user;
 
-    // ИСПРАВЛЕНИЕ: Загружаем данные пользователя, чтобы получить актуальное имя
-    const userDocRef = doc(db, "users", currentUser.uid);
-    const userDoc = await getDoc(userDocRef);
-    
-    let letter;
-    if (userDoc.exists() && userDoc.data().name) {
-        // Используем первую букву имени из Firestore
-        letter = userDoc.data().name.charAt(0).toUpperCase();
+    const userDocRef = doc(db, "users", user.uid);
+    const userSnap = await getDoc(userDocRef); // ✅ ЕДИНСТВЕННЫЙ READ
+
+    if (!userSnap.exists()) {
+        const defaultName = user.email.split('@')[0];
+
+        await setDoc(userDocRef, {
+            name: defaultName,
+            email: user.email,
+            bio: "Расскажите о себе...",
+            avatarUrl: null,
+            createdAt: serverTimestamp()
+        });
+
+        currentUserData = {
+            name: defaultName,
+            email: user.email,
+            bio: "Расскажите о себе...",
+            avatarUrl: null
+        };
     } else {
-        // Если имени нет, используем email
-        letter = user.email.charAt(0).toUpperCase();
+        currentUserData = userSnap.data();
     }
 
-    // Обновляем навигацию
-    regBtn?.classList.add("hidden");
-    avatar?.classList.remove("hidden");
+    // 🔹 навигация
+    const letter = currentUserData.name.charAt(0).toUpperCase();
     avatarLetter.textContent = letter;
     localStorage.setItem("userAvatarLetter", letter);
 
-    // Загружаем профиль
-    await loadUserProfile();
-    
-    // Загружаем записи
+    // 🔹 профиль
+    renderProfile(currentUserData);
+
+    // 🔹 посты
     loadUserPosts();
 });
 
@@ -166,73 +170,28 @@ logoutBtn?.addEventListener("click", async (e) => {
 });
 
 // Загрузка профиля пользователя
-async function loadUserProfile() {
-    if (!currentUser) return;
+function renderProfile(userData) {
+    profileName.textContent = userData.name;
+    profileEmail.textContent = currentUser.email;
+    profileBio.textContent = userData.bio || "Расскажите о себе...";
 
-    try {
-        const userDocRef = doc(db, "users", currentUser.uid);
-        const userDoc = await getDoc(userDocRef);
+    if (userData.avatarUrl) {
+        avatarLetterProfile.style.display = "none";
+        const img = document.createElement("img");
+        img.src = userData.avatarUrl;
+        profileAvatar.innerHTML = "";
+        profileAvatar.appendChild(img);
+    } else {
+        avatarLetterProfile.textContent =
+            userData.name.charAt(0).toUpperCase();
+    }
 
-        if (userDoc.exists()) {
-            const userData = userDoc.data();
-            
-            // Имя
-            profileName.textContent = userData.name || "Пользователь";
-            
-            // Email
-            profileEmail.textContent = currentUser.email;
-            
-            // О себе
-            profileBio.textContent = userData.bio || "Расскажите о себе...";
-            
-            // Аватар
-            if (userData.avatarUrl) {
-                avatarLetterProfile.style.display = "none";
-                const img = document.createElement("img");
-                img.src = userData.avatarUrl;
-                img.alt = "Avatar";
-                profileAvatar.innerHTML = "";
-                profileAvatar.appendChild(img);
-            } else {
-                // ИСПРАВЛЕНИЕ: Используем имя, а не email
-                const letter = userData.name ? userData.name.charAt(0).toUpperCase() : currentUser.email.charAt(0).toUpperCase();
-                avatarLetterProfile.textContent = letter;
-            }
-
-            // Статистика
-            if (userData.createdAt) {
-                const date = userData.createdAt.toDate();
-                memberSince.textContent = date.toLocaleDateString("ru-RU", { 
-                    year: 'numeric', 
-                    month: 'long' 
-                });
-            }
-
-            // Подсчитываем записи
-            updatePostsCount();
-
-        } else {
-            // Создаем профиль если его нет
-            const defaultName = currentUser.email.split('@')[0];
-            await setDoc(userDocRef, {
-                name: defaultName,
-                email: currentUser.email,
-                bio: "Расскажите о себе...",
-                avatarUrl: null,
-                createdAt: serverTimestamp()
+    if (userData.createdAt) {
+        memberSince.textContent =
+            userData.createdAt.toDate().toLocaleDateString("ru-RU", {
+                year: "numeric",
+                month: "long"
             });
-            
-            profileName.textContent = defaultName;
-            profileEmail.textContent = currentUser.email;
-            const letter = defaultName.charAt(0).toUpperCase();
-            avatarLetterProfile.textContent = letter;
-            
-            // ИСПРАВЛЕНИЕ: Обновляем localStorage и навигацию
-            avatarLetter.textContent = letter;
-            localStorage.setItem("userAvatarLetter", letter);
-        }
-    } catch (error) {
-        console.error("Ошибка загрузки профиля:", error);
     }
 }
 
@@ -275,23 +234,13 @@ avatarUpload.addEventListener("change", async (e) => {
 });
 
 // Редактирование профиля
-editProfileBtn.addEventListener("click", async () => {
-    if (!currentUser) return;
+editProfileBtn.addEventListener("click", () => {
+    if (!currentUserData) return;
 
-    try {
-        const userDocRef = doc(db, "users", currentUser.uid);
-        const userDoc = await getDoc(userDocRef);
-        
-        if (userDoc.exists()) {
-            const userData = userDoc.data();
-            editName.value = userData.name || "";
-            editBio.value = userData.bio || "";
-        }
+    editName.value = currentUserData.name || "";
+    editBio.value = currentUserData.bio || "";
 
-        editModal.classList.remove("hidden");
-    } catch (error) {
-        console.error("Ошибка открытия редактирования:", error);
-    }
+    editModal.classList.remove("hidden");
 });
 
 closeEditModal.addEventListener("click", () => {
@@ -316,9 +265,14 @@ saveProfileBtn.addEventListener("click", async () => {
     try {
         const userDocRef = doc(db, "users", currentUser.uid);
         await updateDoc(userDocRef, {
-            name,
-            bio: bio || "Расскажите о себе..."
-        });
+        name,
+        bio: bio || "Расскажите о себе..."
+    });
+
+        // 🔥 ОБНОВЛЯЕМ ЛОКАЛЬНЫЙ КЭШ
+        currentUserData.name = name;
+        currentUserData.bio = bio || "Расскажите о себе...";
+
 
         profileName.textContent = name;
         profileBio.textContent = bio || "Расскажите о себе...";
@@ -534,20 +488,9 @@ photoModal.addEventListener("click", (e) => {
 });
 
 // Обновление счетчика записей
-async function updatePostsCount() {
-    if (!currentUser) return;
-
-    try {
-        const postsCollection = collection(db, "posts");
-        const q = query(postsCollection, where("userId", "==", currentUser.uid));
-        const snapshot = await getDoc(q);
-        
-        // Простой подсчет через DOM (так как уже загружены)
-        const count = postsList.querySelectorAll(".post-item").length;
-        postsCount.textContent = count;
-    } catch (error) {
-        console.error("Ошибка подсчета записей:", error);
-    }
+function updatePostsCount() {
+    const count = postsList.querySelectorAll(".post-item").length;
+    postsCount.textContent = count;
 }
 
 // Утилиты
