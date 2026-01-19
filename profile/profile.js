@@ -15,7 +15,7 @@ import {
     query,
     where,
     orderBy,
-    onSnapshot,
+    getDocs,
     deleteDoc,
     serverTimestamp,
     updateDoc
@@ -371,33 +371,31 @@ publishPostBtn.addEventListener("click", async () => {
 });
 
 // Загрузка записей пользователя
-function loadUserPosts() {
+async function loadUserPosts() {
     if (!currentUser) return;
 
-    const postsCollection = collection(db, "posts");
     const q = query(
-        postsCollection, 
+        collection(db, "posts"),
         where("userId", "==", currentUser.uid),
         orderBy("createdAt", "desc")
     );
 
-    onSnapshot(q, (snapshot) => {
-        postsList.innerHTML = "";
+    const snapshot = await getDocs(q);
 
-        if (snapshot.empty) {
-            postsList.innerHTML = `
-                <div class="posts-empty">
-                    <div class="posts-empty-icon">📝</div>
-                    <div class="posts-empty-text">Здесь пока нет записей. Создайте первую!</div>
-                </div>
-            `;
-            return;
-        }
+    postsList.innerHTML = "";
 
-        snapshot.forEach((doc) => {
-            const post = doc.data();
-            addPostToUI(doc.id, post);
-        });
+    if (snapshot.empty) {
+        postsList.innerHTML = `
+            <div class="posts-empty">
+                <div class="posts-empty-icon">📝</div>
+                <div class="posts-empty-text">Здесь пока нет записей. Создайте первую!</div>
+            </div>
+        `;
+        return;
+    }
+
+    snapshot.forEach(doc => {
+        addPostToUI(doc.id, doc.data());
     });
 }
 
