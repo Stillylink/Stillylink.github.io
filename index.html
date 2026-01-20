@@ -94,13 +94,20 @@ const avatarLetter = document.querySelector(".user-avatar span");
 const userMenu = document.querySelector(".user-menu");
 const logoutBtn = document.getElementById("logoutBtn");
 
-// === ИСПРАВЛЕНИЕ: Функция для обновления аватара ===
+// === Показываем кэшированную букву сразу (если есть) ===
+const savedLetter = localStorage.getItem("userAvatarLetter");
+if (savedLetter) {
+    regBtn.classList.add("hidden");
+    avatar.classList.remove("hidden");
+    avatarLetter.textContent = savedLetter;
+}
+
+// === Функция обновления аватара ===
 async function updateUserAvatar(user) {
     if (!user || !user.email) {
         regBtn.classList.remove("hidden");
         avatar.classList.add("hidden");
         localStorage.removeItem("userAvatarLetter");
-        localStorage.removeItem("userAvatarSource"); // Добавлено
         return;
     }
 
@@ -109,56 +116,31 @@ async function updateUserAvatar(user) {
 
     // Проверяем кэш
     const cachedLetter = localStorage.getItem("userAvatarLetter");
-    const cachedSource = localStorage.getItem("userAvatarSource");
-    
-    if (cachedLetter && cachedSource === "name") {
-        // Используем кэшированную букву только если она из имени
+    if (cachedLetter) {
         avatarLetter.textContent = cachedLetter;
-        return;
+        return; // Если есть кэш - не делаем запрос
     }
 
     // Загружаем данные из Firestore
     try {
         const snap = await getDoc(doc(db, "users", user.uid));
-        let letter;
-        let source;
         
         if (snap.exists() && snap.data().name) {
-            // Приоритет: имя из Firestore
-            letter = snap.data().name[0].toUpperCase();
-            source = "name";
+            // ТОЛЬКО если есть имя - сохраняем в localStorage
+            const letter = snap.data().name[0].toUpperCase();
+            avatarLetter.textContent = letter;
+            localStorage.setItem("userAvatarLetter", letter);
         } else {
-            // Fallback: первая буква email
-            letter = user.email[0].toUpperCase();
-            source = "email";
+            // Если нет имени - показываем букву email, НО НЕ СОХРАНЯЕМ
+            avatarLetter.textContent = user.email[0].toUpperCase();
+            // localStorage НЕ обновляем!
         }
-        
-        avatarLetter.textContent = letter;
-        localStorage.setItem("userAvatarLetter", letter);
-        localStorage.setItem("userAvatarSource", source);
         
     } catch (error) {
         console.error("Ошибка загрузки данных пользователя:", error);
-        const letter = user.email[0].toUpperCase();
-        avatarLetter.textContent = letter;
-        localStorage.setItem("userAvatarLetter", letter);
-        localStorage.setItem("userAvatarSource", "email");
+        // При ошибке показываем букву email, но НЕ сохраняем
+        avatarLetter.textContent = user.email[0].toUpperCase();
     }
-}
-
-// === ИСПРАВЛЕНИЕ: Предзагрузка из localStorage ===
-const savedLetter = localStorage.getItem("userAvatarLetter");
-const savedSource = localStorage.getItem("userAvatarSource");
-
-if (savedLetter && savedSource === "name") {
-    // Показываем кэш только если это имя (не email)
-    regBtn.classList.add("hidden");
-    avatar.classList.remove("hidden");
-    avatarLetter.textContent = savedLetter;
-} else {
-    // Если кэша нет или это email - скрываем аватар до загрузки
-    regBtn.classList.remove("hidden");
-    avatar.classList.add("hidden");
 }
 
 // --- Авторизация ---
@@ -168,7 +150,6 @@ onAuthStateChanged(auth, updateUserAvatar);
 logoutBtn.onclick = (e) => {
     e.preventDefault();
     localStorage.removeItem("userAvatarLetter");
-    localStorage.removeItem("userAvatarSource");
     signOut(auth).then(() => window.location.reload());
 };
 
