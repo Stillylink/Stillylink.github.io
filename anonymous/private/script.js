@@ -6,9 +6,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
 
 import {
-    getFirestore,
-    doc,
-    getDoc
+    getFirestore
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
 
 import {
@@ -169,7 +167,7 @@ window.addEventListener("DOMContentLoaded", () => {
     });
 });
 
-onAuthStateChanged(auth, async user => {
+onAuthStateChanged(auth, user => {
     if (!user) {
         signInAnonymously(auth);
         return;
@@ -179,27 +177,18 @@ onAuthStateChanged(auth, async user => {
     isRealUser = !!user.email;
 
     if (isRealUser) {
-        try {
-            const userDocRef = doc(db, "users", user.uid);
-            const userDoc = await getDoc(userDocRef);
-            
-            let letter;
-            if (userDoc.exists() && userDoc.data().name) {
-                letter = userDoc.data().name.charAt(0).toUpperCase();
-            } else {
-                letter = user.email.charAt(0).toUpperCase();
-            }
-
-            regBtn?.classList.add("hidden");
-            avatar?.classList.remove("hidden");
+        // ОПТИМИЗАЦИЯ: Используем кэш или первую букву email, БЕЗ запроса в Firestore
+        const cachedLetter = localStorage.getItem('userAvatarLetter');
+        if (cachedLetter) {
+            avatarLetter.textContent = cachedLetter;
+        } else {
+            const letter = user.email[0].toUpperCase();
             avatarLetter.textContent = letter;
-            localStorage.setItem("userAvatarLetter", letter);
-        } catch (error) {
-            console.error("Ошибка загрузки данных пользователя:", error);
-            const letter = user.email.charAt(0).toUpperCase();
-            avatarLetter.textContent = letter;
-            localStorage.setItem("userAvatarLetter", letter);
+            localStorage.setItem('userAvatarLetter', letter);
         }
+
+        regBtn?.classList.add("hidden");
+        avatar?.classList.remove("hidden");
     } else {
         regBtn?.classList.remove("hidden");
         avatar?.classList.add("hidden");
