@@ -94,47 +94,32 @@ const avatarLetter = document.querySelector(".user-avatar span");
 const userMenu = document.querySelector(".user-menu");
 const logoutBtn = document.getElementById("logoutBtn");
 
-// Флаг загрузки
-let isLoadingUserData = false;
-
 // === ИСПРАВЛЕНИЕ: Функция для обновления аватара ===
 async function updateUserAvatar(user) {
     if (!user || !user.email) {
         regBtn.classList.remove("hidden");
         avatar.classList.add("hidden");
-        avatarLetter.textContent = "";
         localStorage.removeItem("userAvatarLetter");
-        localStorage.removeItem("userAvatarSource");
-        isLoadingUserData = false;
+        localStorage.removeItem("userAvatarSource"); // Добавлено
         return;
     }
 
-    // Проверяем кэш ПЕРЕД показом UI
+    regBtn.classList.add("hidden");
+    avatar.classList.remove("hidden");
+
+    // Проверяем кэш
     const cachedLetter = localStorage.getItem("userAvatarLetter");
     const cachedSource = localStorage.getItem("userAvatarSource");
     
     if (cachedLetter && cachedSource === "name") {
-        // Есть кэш с именем - показываем сразу
-        regBtn.classList.add("hidden");
-        avatar.classList.remove("hidden");
+        // Используем кэшированную букву только если она из имени
         avatarLetter.textContent = cachedLetter;
         return;
     }
 
-    // НЕТ кэша или это email - начинаем загрузку
-    isLoadingUserData = true;
-    
-    // ВАЖНО: Скрываем аватар пока загружаем данные
-    avatar.classList.add("hidden");
-    regBtn.classList.add("hidden");
-
     // Загружаем данные из Firestore
     try {
         const snap = await getDoc(doc(db, "users", user.uid));
-        
-        // Проверяем, не вышел ли пользователь за время загрузки
-        if (!isLoadingUserData) return;
-        
         let letter;
         let source;
         
@@ -148,30 +133,16 @@ async function updateUserAvatar(user) {
             source = "email";
         }
         
-        // Сохраняем в кэш
+        avatarLetter.textContent = letter;
         localStorage.setItem("userAvatarLetter", letter);
         localStorage.setItem("userAvatarSource", source);
         
-        // Показываем аватар только ПОСЛЕ получения данных
-        avatarLetter.textContent = letter;
-        regBtn.classList.add("hidden");
-        avatar.classList.remove("hidden");
-        
     } catch (error) {
         console.error("Ошибка загрузки данных пользователя:", error);
-        
-        // При ошибке используем email
-        if (!isLoadingUserData) return;
-        
         const letter = user.email[0].toUpperCase();
+        avatarLetter.textContent = letter;
         localStorage.setItem("userAvatarLetter", letter);
         localStorage.setItem("userAvatarSource", "email");
-        
-        avatarLetter.textContent = letter;
-        regBtn.classList.add("hidden");
-        avatar.classList.remove("hidden");
-    } finally {
-        isLoadingUserData = false;
     }
 }
 
@@ -185,11 +156,9 @@ if (savedLetter && savedSource === "name") {
     avatar.classList.remove("hidden");
     avatarLetter.textContent = savedLetter;
 } else {
-    // Если кэша нет или это email - показываем кнопку регистрации
-    // Аватар будет показан только после загрузки данных
+    // Если кэша нет или это email - скрываем аватар до загрузки
     regBtn.classList.remove("hidden");
     avatar.classList.add("hidden");
-    avatarLetter.textContent = "";
 }
 
 // --- Авторизация ---
@@ -198,7 +167,6 @@ onAuthStateChanged(auth, updateUserAvatar);
 // --- Выход ---
 logoutBtn.onclick = (e) => {
     e.preventDefault();
-    isLoadingUserData = false;
     localStorage.removeItem("userAvatarLetter");
     localStorage.removeItem("userAvatarSource");
     signOut(auth).then(() => window.location.reload());
