@@ -5,6 +5,46 @@
     <title>StillyLink</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="style.css">
+    <style>
+        /* Skeleton UI стили */
+        .skeleton-loading {
+            position: relative;
+            pointer-events: none;
+            opacity: 0.6;
+        }
+        
+        .skeleton-loading::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(
+                90deg,
+                rgba(255, 255, 255, 0) 0%,
+                rgba(255, 255, 255, 0.3) 50%,
+                rgba(255, 255, 255, 0) 100%
+            );
+            animation: skeleton-shimmer 1.5s infinite;
+            border-radius: 50%;
+        }
+        
+        @keyframes skeleton-shimmer {
+            0% {
+                transform: translateX(-100%);
+            }
+            100% {
+                transform: translateX(100%);
+            }
+        }
+        
+        /* Блокировка навигации */
+        .nav-disabled {
+            pointer-events: none;
+            opacity: 0.5;
+        }
+    </style>
 </head>
 <body>
       <div class="overscroll-top"></div>
@@ -55,7 +95,7 @@
 </footer>
       <div class="overscroll-bottom"></div>
 
-<!-- ============== FIREBASE (ОДНОКРАТНАЯ ИНИЦИАЛИЗАЦИЯ) ============== -->
+<!-- ============== FIREBASE ============== -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
 import { 
@@ -93,58 +133,68 @@ const avatar = document.querySelector(".user-avatar");
 const avatarLetter = document.querySelector(".user-avatar span");
 const userMenu = document.querySelector(".user-menu");
 const logoutBtn = document.getElementById("logoutBtn");
+const navLinks = document.querySelector(".nav-links");
 
-// === Показываем кэшированную букву сразу (если есть) ===
+// === Проверяем кэш ===
 const savedLetter = localStorage.getItem("userAvatarLetter");
 if (savedLetter) {
+    // Есть кэш - показываем сразу без skeleton
     regBtn.classList.add("hidden");
     avatar.classList.remove("hidden");
     avatarLetter.textContent = savedLetter;
+} else {
+    // Нет кэша - показываем skeleton и блокируем навигацию
+    avatar.classList.add("skeleton-loading");
+    navLinks.classList.add("nav-disabled");
 }
 
-// === Функция обновления аватара ===
-async function updateUserAvatar(user) {
+// --- Авторизация ---
+onAuthStateChanged(auth, async user => {
     if (!user || !user.email) {
         regBtn.classList.remove("hidden");
-        avatar.classList.add("hidden");
+        avatar.classList.add("hidden", "skeleton-loading");
+        navLinks.classList.remove("nav-disabled");
         localStorage.removeItem("userAvatarLetter");
         return;
     }
 
-    regBtn.classList.add("hidden");
-    avatar.classList.remove("hidden");
-
-    // Проверяем кэш
     const cachedLetter = localStorage.getItem("userAvatarLetter");
     if (cachedLetter) {
+        // Кэш есть - просто показываем
+        regBtn.classList.add("hidden");
+        avatar.classList.remove("hidden", "skeleton-loading");
+        navLinks.classList.remove("nav-disabled");
         avatarLetter.textContent = cachedLetter;
-        return; // Если есть кэш - не делаем запрос
+        return;
     }
 
-    // Загружаем данные из Firestore
+    // Кэша нет - загружаем с skeleton
     try {
         const snap = await getDoc(doc(db, "users", user.uid));
+        const letter = snap.exists() && snap.data().name
+            ? snap.data().name[0].toUpperCase()
+            : user.email[0].toUpperCase();
         
-        if (snap.exists() && snap.data().name) {
-            // ТОЛЬКО если есть имя - сохраняем в localStorage
-            const letter = snap.data().name[0].toUpperCase();
-            avatarLetter.textContent = letter;
-            localStorage.setItem("userAvatarLetter", letter);
-        } else {
-            // Если нет имени - показываем букву email, НО НЕ СОХРАНЯЕМ
-            avatarLetter.textContent = user.email[0].toUpperCase();
-            // localStorage НЕ обновляем!
-        }
+        avatarLetter.textContent = letter;
+        localStorage.setItem("userAvatarLetter", letter);
+        
+        // Убираем skeleton
+        regBtn.classList.add("hidden");
+        avatar.classList.remove("hidden", "skeleton-loading");
+        navLinks.classList.remove("nav-disabled");
         
     } catch (error) {
         console.error("Ошибка загрузки данных пользователя:", error);
-        // При ошибке показываем букву email, но НЕ сохраняем
-        avatarLetter.textContent = user.email[0].toUpperCase();
+        const letter = user.email[0].toUpperCase();
+        avatarLetter.textContent = letter;
+        localStorage.setItem("userAvatarLetter", letter);
+        
+        // Убираем skeleton
+        regBtn.classList.add("hidden");
+        avatar.classList.remove("hidden", "skeleton-loading");
+        navLinks.classList.remove("nav-disabled");
     }
-}
-
-// --- Авторизация ---
-onAuthStateChanged(auth, updateUserAvatar);
+});
 
 // --- Выход ---
 logoutBtn.onclick = (e) => {
