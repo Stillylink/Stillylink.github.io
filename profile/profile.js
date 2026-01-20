@@ -81,6 +81,7 @@ const memberSince = document.getElementById("memberSince");
 let currentUser = null;
 let currentUserData = null; 
 let currentPhotoFile = null;
+const PROFILE_CACHE_KEY = "userProfileCache_v1";
 
 // ЗАГРУЗКА АВАТАРКИ ИЗ localStorage СРАЗУ (как в анонимном чате)
 const savedAvatar = localStorage.getItem('userAvatarLetter');
@@ -126,28 +127,46 @@ onAuthStateChanged(auth, async (user) => {
     currentUser = user;
 
     const userDocRef = doc(db, "users", user.uid);
-    const userSnap = await getDoc(userDocRef); // ✅ ЕДИНСТВЕННЫЙ READ
+
+// 🔹 1. Пытаемся взять профиль из localStorage
+const cachedProfile = localStorage.getItem(PROFILE_CACHE_KEY);
+
+if (cachedProfile) {
+    currentUserData = JSON.parse(cachedProfile);
+    console.log("Профиль загружен из кэша");
+} else {
+    // 🔹 2. Если кэша нет — читаем Firestore (1 read)
+    const userSnap = await getDoc(userDocRef);
 
     if (!userSnap.exists()) {
         const defaultName = user.email.split('@')[0];
 
-        await setDoc(userDocRef, {
+        const newProfile = {
             name: defaultName,
             email: user.email,
             bio: "Расскажите о себе...",
             avatarUrl: null,
             createdAt: serverTimestamp()
-        });
+        };
+
+        await setDoc(userDocRef, newProfile);
 
         currentUserData = {
-            name: defaultName,
-            email: user.email,
-            bio: "Расскажите о себе...",
-            avatarUrl: null
+            ...newProfile,
+            createdAt: null // serverTimestamp появится позже
         };
     } else {
         currentUserData = userSnap.data();
     }
+
+    // 🔹 сохраняем в кэш
+    localStorage.setItem(
+        PROFILE_CACHE_KEY,
+        JSON.stringify(currentUserData)
+    );
+
+    console.log("Профиль загружен из Firestore и закэширован");
+}
 
     // 🔹 навигация
     const letter = currentUserData.name.charAt(0).toUpperCase();
@@ -166,6 +185,7 @@ logoutBtn?.addEventListener("click", async (e) => {
     e.preventDefault();
     await signOut(auth);
     localStorage.removeItem("userAvatarLetter");
+    localStorage.removeItem(PROFILE_CACHE_KEY);
     window.location.href = "/login/";
 });
 
@@ -186,13 +206,13 @@ function renderProfile(userData) {
             userData.name.charAt(0).toUpperCase();
     }
 
-    if (userData.createdAt) {
-        memberSince.textContent =
-            userData.createdAt.toDate().toLocaleDateString("ru-RU", {
-                year: "numeric",
-                month: "long"
-            });
-    }
+if (userData.createdAt?.toDate) {
+    memberSince.textContent =
+        userData.createdAt.toDate().toLocaleDateString("ru-RU", {
+            year: "numeric",
+            month: "long"
+        });
+}
 }
 
 // Загрузка аватарки
@@ -272,7 +292,8 @@ saveProfileBtn.addEventListener("click", async () => {
         // 🔥 ОБНОВЛЯЕМ ЛОКАЛЬНЫЙ КЭШ
         currentUserData.name = name;
         currentUserData.bio = bio || "Расскажите о себе...";
-
+        
+        localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(currentUserData));
 
         profileName.textContent = name;
         profileBio.textContent = bio || "Расскажите о себе...";
