@@ -7,36 +7,33 @@
     <link rel="stylesheet" href="style.css">
     <style>
         /* Skeleton UI стили */
-        .skeleton-loading {
-            position: relative;
-            pointer-events: none;
-            opacity: 0.6;
-        }
-        
-        .skeleton-loading::after {
-            content: "";
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
+        .skeleton-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
             background: linear-gradient(
                 90deg,
-                rgba(255, 255, 255, 0) 0%,
-                rgba(255, 255, 255, 0.3) 50%,
-                rgba(255, 255, 255, 0) 100%
+                #2a2a2a 0%,
+                #3a3a3a 50%,
+                #2a2a2a 100%
             );
-            animation: skeleton-shimmer 1.5s infinite;
-            border-radius: 50%;
+            background-size: 200% 100%;
+            animation: skeleton-loading 1.5s ease-in-out infinite;
+            cursor: default;
+            pointer-events: none;
         }
         
-        @keyframes skeleton-shimmer {
+        @keyframes skeleton-loading {
             0% {
-                transform: translateX(-100%);
+                background-position: 200% 0;
             }
             100% {
-                transform: translateX(100%);
+                background-position: -200% 0;
             }
+        }
+        
+        .skeleton-avatar span {
+            opacity: 0;
         }
         
         /* Блокировка навигации */
@@ -59,7 +56,7 @@
         <a href="/login/" class="register-btn">Регистрация</a>
     </nav>
 
-    <div class="user-avatar hidden" onclick="toggleUserMenu()">
+    <div class="user-avatar hidden">
         <span></span>
     </div>
 
@@ -142,9 +139,12 @@ if (savedLetter) {
     regBtn.classList.add("hidden");
     avatar.classList.remove("hidden");
     avatarLetter.textContent = savedLetter;
+    avatar.onclick = toggleUserMenu;
 } else {
-    // Нет кэша - показываем skeleton и блокируем навигацию
-    avatar.classList.add("skeleton-loading");
+    // Нет кэша - показываем skeleton
+    regBtn.classList.add("hidden");
+    avatar.classList.remove("hidden");
+    avatar.classList.add("skeleton-avatar");
     navLinks.classList.add("nav-disabled");
 }
 
@@ -152,7 +152,8 @@ if (savedLetter) {
 onAuthStateChanged(auth, async user => {
     if (!user || !user.email) {
         regBtn.classList.remove("hidden");
-        avatar.classList.add("hidden", "skeleton-loading");
+        avatar.classList.add("hidden");
+        avatar.classList.remove("skeleton-avatar");
         navLinks.classList.remove("nav-disabled");
         localStorage.removeItem("userAvatarLetter");
         return;
@@ -162,9 +163,10 @@ onAuthStateChanged(auth, async user => {
     if (cachedLetter) {
         // Кэш есть - просто показываем
         regBtn.classList.add("hidden");
-        avatar.classList.remove("hidden", "skeleton-loading");
+        avatar.classList.remove("hidden", "skeleton-avatar");
         navLinks.classList.remove("nav-disabled");
         avatarLetter.textContent = cachedLetter;
+        avatar.onclick = toggleUserMenu;
         return;
     }
 
@@ -180,8 +182,9 @@ onAuthStateChanged(auth, async user => {
         
         // Убираем skeleton
         regBtn.classList.add("hidden");
-        avatar.classList.remove("hidden", "skeleton-loading");
+        avatar.classList.remove("hidden", "skeleton-avatar");
         navLinks.classList.remove("nav-disabled");
+        avatar.onclick = toggleUserMenu;
         
     } catch (error) {
         console.error("Ошибка загрузки данных пользователя:", error);
@@ -191,8 +194,9 @@ onAuthStateChanged(auth, async user => {
         
         // Убираем skeleton
         regBtn.classList.add("hidden");
-        avatar.classList.remove("hidden", "skeleton-loading");
+        avatar.classList.remove("hidden", "skeleton-avatar");
         navLinks.classList.remove("nav-disabled");
+        avatar.onclick = toggleUserMenu;
     }
 });
 
