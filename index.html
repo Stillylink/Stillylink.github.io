@@ -104,30 +104,25 @@ if (savedLetter) {
 
 // --- Авторизация ---
 onAuthStateChanged(auth, async user => {
-    if (!user) {
+    if (!user || !user.email) {
         regBtn.classList.remove("hidden");
         avatar.classList.add("hidden");
         localStorage.removeItem("userAvatarLetter");
         return;
     }
-
     regBtn.classList.add("hidden");
     avatar.classList.remove("hidden");
 
-    // ОПТИМИЗАЦИЯ: Проверяем кэш перед запросом в Firestore
     const cachedLetter = localStorage.getItem("userAvatarLetter");
     if (cachedLetter) {
         avatarLetter.textContent = cachedLetter;
         return; // Не делаем запрос в Firestore!
     }
-
-    // Запрос только если кэша нет
     try {
         const snap = await getDoc(doc(db, "users", user.uid));
         const letter = snap.exists() && snap.data().name
             ? snap.data().name[0].toUpperCase()
             : user.email[0].toUpperCase();
-
         avatarLetter.textContent = letter;
         localStorage.setItem("userAvatarLetter", letter);
     } catch (error) {
