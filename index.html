@@ -20,7 +20,7 @@
     </nav>
 
     <div class="user-avatar hidden" onclick="toggleUserMenu()">
-        <span>U</span>
+        <span></span>
     </div>
 
     <div class="user-menu">
@@ -94,49 +94,81 @@ const avatarLetter = document.querySelector(".user-avatar span");
 const userMenu = document.querySelector(".user-menu");
 const logoutBtn = document.getElementById("logoutBtn");
 
-// === ОПТИМИЗАЦИЯ: Загружаем букву из localStorage сразу ===
-const savedLetter = localStorage.getItem("userAvatarLetter");
-if (savedLetter) {
-    regBtn.classList.add("hidden");
-    avatar.classList.remove("hidden");
-    avatarLetter.textContent = savedLetter;
-}
-
-// --- Авторизация ---
-onAuthStateChanged(auth, async user => {
+// === ИСПРАВЛЕНИЕ: Функция для обновления аватара ===
+async function updateUserAvatar(user) {
     if (!user || !user.email) {
         regBtn.classList.remove("hidden");
         avatar.classList.add("hidden");
         localStorage.removeItem("userAvatarLetter");
+        localStorage.removeItem("userAvatarSource"); // Добавлено
         return;
     }
+
     regBtn.classList.add("hidden");
     avatar.classList.remove("hidden");
 
+    // Проверяем кэш
     const cachedLetter = localStorage.getItem("userAvatarLetter");
-    if (cachedLetter) {
+    const cachedSource = localStorage.getItem("userAvatarSource");
+    
+    if (cachedLetter && cachedSource === "name") {
+        // Используем кэшированную букву только если она из имени
         avatarLetter.textContent = cachedLetter;
-        return; // Не делаем запрос в Firestore!
+        return;
     }
+
+    // Загружаем данные из Firestore
     try {
         const snap = await getDoc(doc(db, "users", user.uid));
-        const letter = snap.exists() && snap.data().name
-            ? snap.data().name[0].toUpperCase()
-            : user.email[0].toUpperCase();
+        let letter;
+        let source;
+        
+        if (snap.exists() && snap.data().name) {
+            // Приоритет: имя из Firestore
+            letter = snap.data().name[0].toUpperCase();
+            source = "name";
+        } else {
+            // Fallback: первая буква email
+            letter = user.email[0].toUpperCase();
+            source = "email";
+        }
+        
         avatarLetter.textContent = letter;
         localStorage.setItem("userAvatarLetter", letter);
+        localStorage.setItem("userAvatarSource", source);
+        
     } catch (error) {
         console.error("Ошибка загрузки данных пользователя:", error);
         const letter = user.email[0].toUpperCase();
         avatarLetter.textContent = letter;
         localStorage.setItem("userAvatarLetter", letter);
+        localStorage.setItem("userAvatarSource", "email");
     }
-});
+}
+
+// === ИСПРАВЛЕНИЕ: Предзагрузка из localStorage ===
+const savedLetter = localStorage.getItem("userAvatarLetter");
+const savedSource = localStorage.getItem("userAvatarSource");
+
+if (savedLetter && savedSource === "name") {
+    // Показываем кэш только если это имя (не email)
+    regBtn.classList.add("hidden");
+    avatar.classList.remove("hidden");
+    avatarLetter.textContent = savedLetter;
+} else {
+    // Если кэша нет или это email - скрываем аватар до загрузки
+    regBtn.classList.remove("hidden");
+    avatar.classList.add("hidden");
+}
+
+// --- Авторизация ---
+onAuthStateChanged(auth, updateUserAvatar);
 
 // --- Выход ---
 logoutBtn.onclick = (e) => {
     e.preventDefault();
     localStorage.removeItem("userAvatarLetter");
+    localStorage.removeItem("userAvatarSource");
     signOut(auth).then(() => window.location.reload());
 };
 
