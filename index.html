@@ -132,72 +132,54 @@ const userMenu = document.querySelector(".user-menu");
 const logoutBtn = document.getElementById("logoutBtn");
 const navLinks = document.querySelector(".nav-links");
 
-// === Проверяем кэш ===
-const savedLetter = localStorage.getItem("userAvatarLetter");
-if (savedLetter) {
-    // Есть кэш - показываем сразу без skeleton
-    regBtn.classList.add("hidden");
-    avatar.classList.remove("hidden");
-    avatarLetter.textContent = savedLetter;
-    avatar.onclick = toggleUserMenu;
-} else {
-    // Нет кэша - показываем skeleton
-    regBtn.classList.add("hidden");
-    avatar.classList.remove("hidden");
-    avatar.classList.add("skeleton-avatar");
-    navLinks.classList.add("nav-disabled");
-}
-
 // --- Авторизация ---
 onAuthStateChanged(auth, async user => {
+
+    // === ГОСТЬ ===
     if (!user || !user.email) {
         regBtn.classList.remove("hidden");
         avatar.classList.add("hidden");
         avatar.classList.remove("skeleton-avatar");
+        avatarLetter.textContent = "";
         navLinks.classList.remove("nav-disabled");
         localStorage.removeItem("userAvatarLetter");
         return;
     }
 
-    const cachedLetter = localStorage.getItem("userAvatarLetter");
-    if (cachedLetter) {
-        // Кэш есть - просто показываем
-        regBtn.classList.add("hidden");
-        avatar.classList.remove("hidden", "skeleton-avatar");
-        navLinks.classList.remove("nav-disabled");
-        avatarLetter.textContent = cachedLetter;
-        avatar.onclick = toggleUserMenu;
-        return;
-    }
+    // === АВТОРИЗОВАН ===
+regBtn.classList.add("hidden");
+avatar.classList.remove("hidden");
 
-    // Кэша нет - загружаем с skeleton
+const cachedLetter = localStorage.getItem("userAvatarLetter");
+
+if (cachedLetter) {
+    avatarLetter.textContent = cachedLetter;
+    avatar.onclick = toggleUserMenu;
+    return;
+}
+
+// только если реально грузим данные
+navLinks.classList.add("nav-disabled");
+avatar.classList.add("skeleton-avatar");
+
     try {
         const snap = await getDoc(doc(db, "users", user.uid));
         const letter = snap.exists() && snap.data().name
             ? snap.data().name[0].toUpperCase()
             : user.email[0].toUpperCase();
-        
+
         avatarLetter.textContent = letter;
         localStorage.setItem("userAvatarLetter", letter);
-        
-        // Убираем skeleton
-        regBtn.classList.add("hidden");
-        avatar.classList.remove("hidden", "skeleton-avatar");
-        navLinks.classList.remove("nav-disabled");
-        avatar.onclick = toggleUserMenu;
-        
-    } catch (error) {
-        console.error("Ошибка загрузки данных пользователя:", error);
+
+    } catch (e) {
         const letter = user.email[0].toUpperCase();
         avatarLetter.textContent = letter;
         localStorage.setItem("userAvatarLetter", letter);
-        
-        // Убираем skeleton
-        regBtn.classList.add("hidden");
-        avatar.classList.remove("hidden", "skeleton-avatar");
-        navLinks.classList.remove("nav-disabled");
-        avatar.onclick = toggleUserMenu;
     }
+
+    avatar.classList.remove("skeleton-avatar");
+    navLinks.classList.remove("nav-disabled");
+    avatar.onclick = toggleUserMenu;
 });
 
 // --- Выход ---
