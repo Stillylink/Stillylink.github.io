@@ -54,6 +54,9 @@
         <a href="/index.html#create-chat">Создать чат</a>
         <a href="/anonymous/">Анонимное общение</a>
         <a href="/login/" class="register-btn hidden">Регистрация</a>
+<div class="user-avatar skeleton-avatar">
+    <span></span>
+</div>
     </nav>
 
     <div class="user-avatar hidden">
@@ -132,18 +135,17 @@ const userMenu = document.querySelector(".user-menu");
 const logoutBtn = document.getElementById("logoutBtn");
 const navLinks = document.querySelector(".nav-links");
 
-// ⚡ СИНХРОННАЯ проверка кэша ДО Firebase
 const cachedLetter = localStorage.getItem("userAvatarLetter");
 
 if (cachedLetter) {
-    // ЕСТЬ КЭШ → сразу показываем аватар с буквой (БЕЗ skeleton!)
-    regBtn.classList.add("hidden");
     avatar.classList.remove("hidden");
+    avatar.classList.remove("skeleton-avatar"); // сразу показываем букву
     avatarLetter.textContent = cachedLetter;
+    regBtn.classList.add("hidden");
 } else {
-    // НЕТ КЭША → показываем кнопку регистрации (пока не знаем авторизован ли)
-    regBtn.classList.remove("hidden");
-    avatar.classList.add("hidden");
+    avatar.classList.remove("hidden"); // skeleton сразу виден
+    avatarLetter.textContent = "";
+    regBtn.classList.add("hidden"); // скрываем регистрацию сразу
 }
 
 // --- Авторизация ---
