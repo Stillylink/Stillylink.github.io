@@ -150,20 +150,16 @@ onAuthStateChanged(auth, async (user) => {
         if (!userSnap.exists()) {
             const defaultName = user.email.split('@')[0];
 
-            const newProfile = {
-                name: defaultName,
-                email: user.email,
-                bio: "Расскажите о себе...",
-                avatarUrl: null,
-                createdAt: serverTimestamp()
-            };
+const newProfile = {
+    name: defaultName,
+    email: user.email,
+    bio: "Расскажите о себе...",
+    avatarUrl: null
+};
 
-            await setDoc(userDocRef, newProfile);
+await setDoc(userDocRef, newProfile);
 
-            currentUserData = {
-                ...newProfile,
-                createdAt: null // serverTimestamp появится позже
-            };
+currentUserData = newProfile;
         } else {
             currentUserData = userSnap.data();
         }
@@ -222,13 +218,13 @@ function renderProfile(userData) {
             userData.name.charAt(0).toUpperCase();
     }
 
-    if (userData.createdAt?.toDate) {
-        memberSince.textContent =
-            userData.createdAt.toDate().toLocaleDateString("ru-RU", {
-                year: "numeric",
-                month: "long"
-            });
-    }
+if (currentUser?.metadata?.creationTime) {
+    const date = new Date(currentUser.metadata.creationTime);
+    memberSince.textContent = date.toLocaleDateString("ru-RU", {
+        year: "numeric",
+        month: "long"
+    });
+}
 }
 
 // Загрузка аватарки
