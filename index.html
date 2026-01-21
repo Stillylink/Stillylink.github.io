@@ -53,8 +53,8 @@
         <a href="/">Главная</a>
         <a href="/index.html#create-chat">Создать чат</a>
         <a href="/anonymous/">Анонимное общение</a>
-        <a href="/login/" class="register-btn hidden">Регистрация</a>
-<div class="user-avatar skeleton-avatar">
+  <a href="/login/" class="register-btn">Регистрация</a>
+<div class="user-avatar hidden">
     <span></span>
 </div>
     </nav>
@@ -137,22 +137,17 @@ const navLinks = document.querySelector(".nav-links");
 
 const cachedLetter = localStorage.getItem("userAvatarLetter");
 
+// Оптимистичный UI
 if (cachedLetter) {
     avatar.classList.remove("hidden");
-    avatar.classList.remove("skeleton-avatar"); // сразу показываем букву
     avatarLetter.textContent = cachedLetter;
     regBtn.classList.add("hidden");
-} else {
-    avatar.classList.remove("hidden"); // skeleton сразу виден
-    avatarLetter.textContent = "";
-    regBtn.classList.add("hidden"); // скрываем регистрацию сразу
 }
 
-// --- Авторизация ---
+// onAuthStateChanged
 onAuthStateChanged(auth, async user => {
-
-    // ❌ НЕ авторизован
     if (!user || !user.email) {
+        // ❌ гость
         regBtn.classList.remove("hidden");
         avatar.classList.add("hidden");
         avatar.classList.remove("skeleton-avatar");
@@ -161,20 +156,19 @@ onAuthStateChanged(auth, async user => {
         return;
     }
 
-    // ✔ Авторизован
+    // ✔ авторизован
     regBtn.classList.add("hidden");
     avatar.classList.remove("hidden");
 
     const cachedLetter = localStorage.getItem("userAvatarLetter");
     if (cachedLetter) {
-        // ЕСТЬ КЭШ → уже показан аватар, только добавляем onclick
         avatarLetter.textContent = cachedLetter;
         avatar.classList.remove("skeleton-avatar");
         avatar.onclick = toggleUserMenu;
         return;
     }
 
-    // НЕТ КЭША, но авторизован → показываем skeleton и загружаем
+    // skeleton только для авторизованных без кэша
     avatar.classList.add("skeleton-avatar");
 
     const snap = await getDoc(doc(db, "users", user.uid));
