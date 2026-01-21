@@ -137,10 +137,11 @@ const navLinks = document.querySelector(".nav-links");
 const cachedLetter = localStorage.getItem("userAvatarLetter");
 
 if (cachedLetter) {
-    // Если есть кэш - показываем skeleton сразу (без кнопки регистрации)
     avatar.classList.remove("hidden");
-    avatar.classList.add("skeleton-avatar");
+    avatarLetter.textContent = cachedLetter; // показываем букву сразу
     regBtn.classList.add("hidden");
+    avatar.classList.remove("skeleton-avatar"); // убираем skeleton
+    avatar.onclick = toggleUserMenu;
 } else {
     // Если кэша нет - показываем кнопку регистрации
     regBtn.classList.remove("hidden");
@@ -150,14 +151,14 @@ if (cachedLetter) {
 // --- Авторизация ---
 onAuthStateChanged(auth, async user => {
     // ❌ Пользователь НЕ авторизован
-    if (!user || !user.email) {
-        regBtn.classList.remove("hidden");
-        avatar.classList.add("hidden");
-        avatar.classList.remove("skeleton-avatar");
-        avatarLetter.textContent = "";
-        localStorage.removeItem("userAvatarLetter");
-        return;
-    }
+if (!user || !user.email) {
+    regBtn.classList.remove("hidden");
+    avatar.classList.add("hidden");
+    avatar.classList.remove("skeleton-avatar");
+    avatarLetter.textContent = ""; // ⚡ добавь, чтобы не оставалась старая буква
+    localStorage.removeItem("userAvatarLetter");
+    return;
+}
 
     // ✔ Пользователь авторизован
     regBtn.classList.add("hidden");
