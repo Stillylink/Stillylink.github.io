@@ -10,16 +10,22 @@ import {
     doc,
     setDoc,
     getDoc,
-    collection,
-    addDoc,
-    query,
-    where,
-    orderBy,
-    getDocs,
-    deleteDoc,
     serverTimestamp,
     updateDoc
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
+
+import {
+    getDatabase,
+    ref as dbRef,
+    push,
+    set,
+    onValue,
+    remove,
+    query,
+    orderByChild,
+    equalTo,
+    get
+} from "https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js";
 
 import {
     getStorage,
@@ -34,12 +40,14 @@ const firebaseConfig = {
     projectId: "stillylink-f1d0f",
     storageBucket: "stillylink-f1d0f.appspot.com",
     messagingSenderId: "772070114710",
-    appId: "1:772070114710:web:939bce83e4d3be14bdc9b7"
+    appId: "1:772070114710:web:939bce83e4d3be14bdc9b7",
+    databaseURL: "https://stillylink-f1d0f-default-rtdb.europe-west1.firebasedatabase.app"
 };
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+const rtdb = getDatabase(app); // Realtime Database
 const storage = getStorage(app);
 
 // DOM элементы
@@ -81,6 +89,7 @@ const memberSince = document.getElementById("memberSince");
 let currentUser = null;
 let currentUserData = null; 
 let currentPhotoFile = null;
+let postsListener = null; // Для отписки от слушателя
 const PROFILE_CACHE_KEY = "userProfileCache_v1";
 
 // ЗАГРУЗКА АВАТАРКИ ИЗ localStorage СРАЗУ (как в анонимном чате)
@@ -128,45 +137,45 @@ onAuthStateChanged(auth, async (user) => {
 
     const userDocRef = doc(db, "users", user.uid);
 
-// 🔹 1. Пытаемся взять профиль из localStorage
-const cachedProfile = localStorage.getItem(PROFILE_CACHE_KEY);
+    // 🔹 1. Пытаемся взять профиль из localStorage
+    const cachedProfile = localStorage.getItem(PROFILE_CACHE_KEY);
 
-if (cachedProfile) {
-    currentUserData = JSON.parse(cachedProfile);
-    console.log("Профиль загружен из кэша");
-} else {
-    // 🔹 2. Если кэша нет — читаем Firestore (1 read)
-    const userSnap = await getDoc(userDocRef);
-
-    if (!userSnap.exists()) {
-        const defaultName = user.email.split('@')[0];
-
-        const newProfile = {
-            name: defaultName,
-            email: user.email,
-            bio: "Расскажите о себе...",
-            avatarUrl: null,
-            createdAt: serverTimestamp()
-        };
-
-        await setDoc(userDocRef, newProfile);
-
-        currentUserData = {
-            ...newProfile,
-            createdAt: null // serverTimestamp появится позже
-        };
+    if (cachedProfile) {
+        currentUserData = JSON.parse(cachedProfile);
+        console.log("Профиль загружен из кэша");
     } else {
-        currentUserData = userSnap.data();
+        // 🔹 2. Если кэша нет — читаем Firestore (1 read)
+        const userSnap = await getDoc(userDocRef);
+
+        if (!userSnap.exists()) {
+            const defaultName = user.email.split('@')[0];
+
+            const newProfile = {
+                name: defaultName,
+                email: user.email,
+                bio: "Расскажите о себе...",
+                avatarUrl: null,
+                createdAt: serverTimestamp()
+            };
+
+            await setDoc(userDocRef, newProfile);
+
+            currentUserData = {
+                ...newProfile,
+                createdAt: null // serverTimestamp появится позже
+            };
+        } else {
+            currentUserData = userSnap.data();
+        }
+
+        // 🔹 сохраняем в кэш
+        localStorage.setItem(
+            PROFILE_CACHE_KEY,
+            JSON.stringify(currentUserData)
+        );
+
+        console.log("Профиль загружен из Firestore и закэширован");
     }
-
-    // 🔹 сохраняем в кэш
-    localStorage.setItem(
-        PROFILE_CACHE_KEY,
-        JSON.stringify(currentUserData)
-    );
-
-    console.log("Профиль загружен из Firestore и закэширован");
-}
 
     // 🔹 навигация
     const letter = currentUserData.name.charAt(0).toUpperCase();
@@ -176,13 +185,20 @@ if (cachedProfile) {
     // 🔹 профиль
     renderProfile(currentUserData);
 
-    // 🔹 посты
+    // 🔹 посты (REALTIME DATABASE)
     loadUserPosts();
 });
 
 // Выход
 logoutBtn?.addEventListener("click", async (e) => {
     e.preventDefault();
+    
+    // Отписываемся от слушателя постов
+    if (postsListener) {
+        postsListener();
+        postsListener = null;
+    }
+    
     await signOut(auth);
     localStorage.removeItem("userAvatarLetter");
     localStorage.removeItem(PROFILE_CACHE_KEY);
@@ -206,13 +222,13 @@ function renderProfile(userData) {
             userData.name.charAt(0).toUpperCase();
     }
 
-if (userData.createdAt?.toDate) {
-    memberSince.textContent =
-        userData.createdAt.toDate().toLocaleDateString("ru-RU", {
-            year: "numeric",
-            month: "long"
-        });
-}
+    if (userData.createdAt?.toDate) {
+        memberSince.textContent =
+            userData.createdAt.toDate().toLocaleDateString("ru-RU", {
+                year: "numeric",
+                month: "long"
+            });
+    }
 }
 
 // Загрузка аватарки
@@ -235,6 +251,10 @@ avatarUpload.addEventListener("change", async (e) => {
         // Обновляем в Firestore
         const userDocRef = doc(db, "users", currentUser.uid);
         await updateDoc(userDocRef, { avatarUrl });
+
+        // Обновляем кэш
+        currentUserData.avatarUrl = avatarUrl;
+        localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(currentUserData));
 
         // Обновляем UI
         avatarLetterProfile.style.display = "none";
@@ -285,9 +305,9 @@ saveProfileBtn.addEventListener("click", async () => {
     try {
         const userDocRef = doc(db, "users", currentUser.uid);
         await updateDoc(userDocRef, {
-        name,
-        bio: bio || "Расскажите о себе..."
-    });
+            name,
+            bio: bio || "Расскажите о себе..."
+        });
 
         // 🔥 ОБНОВЛЯЕМ ЛОКАЛЬНЫЙ КЭШ
         currentUserData.name = name;
@@ -341,7 +361,7 @@ postPhotoInput.addEventListener("change", (e) => {
 });
 
 publishPostBtn.addEventListener("click", async () => {
-    if (!currentUser) return;
+    if (!currentUser || !currentUserData) return;
 
     const text = postInput.value.trim();
 
@@ -363,14 +383,19 @@ publishPostBtn.addEventListener("click", async () => {
             photoUrl = await getDownloadURL(photoRef);
         }
 
-        // Создаем запись
-        const postsCollection = collection(db, "posts");
-        await addDoc(postsCollection, {
+        // 🔥 REALTIME DATABASE: Создаем запись с денормализованными данными
+        const postsRef = dbRef(rtdb, 'posts');
+        const newPostRef = push(postsRef);
+        
+        await set(newPostRef, {
             userId: currentUser.uid,
+            // 📌 Денормализация: сохраняем данные пользователя на момент публикации
+            userName: currentUserData.name,
+            userAvatar: currentUserData.avatarUrl || null,
             userEmail: currentUser.email,
             text: text || "",
             photoUrl: photoUrl,
-            createdAt: serverTimestamp()
+            createdAt: Date.now() // timestamp в миллисекундах
         });
 
         // Очищаем форму
@@ -380,8 +405,7 @@ publishPostBtn.addEventListener("click", async () => {
         attachPhotoBtn.textContent = "📷 Фото";
         attachPhotoBtn.style.color = "";
 
-        console.log("Запись опубликована!");
-        updatePostsCount();
+        console.log("Запись опубликована в Realtime Database!");
     } catch (error) {
         console.error("Ошибка публикации записи:", error);
         alert("Не удалось опубликовать запись");
@@ -391,32 +415,59 @@ publishPostBtn.addEventListener("click", async () => {
     }
 });
 
-// Загрузка записей пользователя
-async function loadUserPosts() {
+// 🔥 REALTIME DATABASE: Загрузка записей пользователя с realtime обновлениями
+function loadUserPosts() {
     if (!currentUser) return;
 
-    const q = query(
-        collection(db, "posts"),
-        where("userId", "==", currentUser.uid),
-        orderBy("createdAt", "desc")
-    );
-
-    const snapshot = await getDocs(q);
-
-    postsList.innerHTML = "";
-
-    if (snapshot.empty) {
-        postsList.innerHTML = `
-            <div class="posts-empty">
-                <div class="posts-empty-icon">📝</div>
-                <div class="posts-empty-text">Здесь пока нет записей. Создайте первую!</div>
-            </div>
-        `;
-        return;
+    // Отписываемся от предыдущего слушателя если есть
+    if (postsListener) {
+        postsListener();
     }
 
-    snapshot.forEach(doc => {
-        addPostToUI(doc.id, doc.data());
+    // Запрос: посты текущего пользователя, отсортированные по дате
+    const postsRef = dbRef(rtdb, 'posts');
+    const userPostsQuery = query(
+        postsRef,
+        orderByChild('userId'),
+        equalTo(currentUser.uid)
+    );
+
+    // 🔥 onValue - realtime слушатель, автоматически обновляет UI
+    postsListener = onValue(userPostsQuery, (snapshot) => {
+        postsList.innerHTML = "";
+
+        if (!snapshot.exists()) {
+            postsList.innerHTML = `
+                <div class="posts-empty">
+                    <div class="posts-empty-icon">📝</div>
+                    <div class="posts-empty-text">Здесь пока нет записей. Создайте первую!</div>
+                </div>
+            `;
+            postsCount.textContent = "0";
+            return;
+        }
+
+        // Собираем посты в массив для сортировки по дате (новые сверху)
+        const posts = [];
+        snapshot.forEach(childSnapshot => {
+            posts.push({
+                id: childSnapshot.key,
+                data: childSnapshot.val()
+            });
+        });
+
+        // Сортируем по дате (новые первые)
+        posts.sort((a, b) => b.data.createdAt - a.data.createdAt);
+
+        // Отображаем посты
+        posts.forEach(post => {
+            addPostToUI(post.id, post.data);
+        });
+
+        // Обновляем счетчик
+        postsCount.textContent = posts.length.toString();
+    }, (error) => {
+        console.error("Ошибка загрузки постов:", error);
     });
 }
 
@@ -426,12 +477,14 @@ function addPostToUI(postId, post) {
     postItem.className = "post-item";
     postItem.dataset.postId = postId;
 
-    const letter = post.userEmail.charAt(0).toUpperCase();
-    const userName = post.userEmail.split('@')[0];
+    // 📌 Используем денормализованные данные из поста
+    const userName = post.userName || post.userEmail.split('@')[0];
+    const userAvatar = post.userAvatar; // URL аватарки или null
+    const letter = userName.charAt(0).toUpperCase();
     
     let timeStr = "Только что";
     if (post.createdAt) {
-        const date = post.createdAt.toDate();
+        const date = new Date(post.createdAt);
         const now = new Date();
         const diffMs = now - date;
         const diffMins = Math.floor(diffMs / 60000);
@@ -455,11 +508,16 @@ function addPostToUI(postId, post) {
         }
     }
 
+    // 📌 Аватарка: если есть URL - показываем фото, иначе - букву
+    const avatarHtml = userAvatar 
+        ? `<img src="${userAvatar}" alt="${userName}" class="post-avatar-img">`
+        : letter;
+
     postItem.innerHTML = `
         <div class="post-header">
-            <div class="post-avatar">${letter}</div>
+            <div class="post-avatar">${avatarHtml}</div>
             <div class="post-info">
-                <div class="post-author">${userName}</div>
+                <div class="post-author">${escapeHtml(userName)}</div>
                 <div class="post-time">${timeStr}</div>
             </div>
             <button class="post-delete" data-post-id="${postId}">Удалить</button>
@@ -475,9 +533,10 @@ function addPostToUI(postId, post) {
     deleteBtn.addEventListener("click", async () => {
         if (confirm("Удалить эту запись?")) {
             try {
-                await deleteDoc(doc(db, "posts", postId));
-                console.log("Запись удалена");
-                updatePostsCount();
+                // 🔥 REALTIME DATABASE: удаление поста
+                const postRef = dbRef(rtdb, `posts/${postId}`);
+                await remove(postRef);
+                console.log("Запись удалена из Realtime Database");
             } catch (error) {
                 console.error("Ошибка удаления записи:", error);
                 alert("Не удалось удалить запись");
@@ -505,12 +564,6 @@ photoModal.addEventListener("click", (e) => {
         photoModal.classList.add("hidden");
     }
 });
-
-// Обновление счетчика записей
-function updatePostsCount() {
-    const count = postsList.querySelectorAll(".post-item").length;
-    postsCount.textContent = count;
-}
 
 // Утилиты
 function pluralize(num, one, few, many) {
