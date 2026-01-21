@@ -53,11 +53,7 @@
         <a href="/">Главная</a>
         <a href="/index.html#create-chat">Создать чат</a>
         <a href="/anonymous/">Анонимное общение</a>
-        <a href="/login/" class="register-btn hidden">Регистрация</a>
-
-<div class="user-avatar skeleton-avatar">
-    <span></span>
-</div>
+        <a href="/login/" class="register-btn">Регистрация</a>
     </nav>
 
     <div class="user-avatar hidden">
@@ -136,37 +132,40 @@ const userMenu = document.querySelector(".user-menu");
 const logoutBtn = document.getElementById("logoutBtn");
 const navLinks = document.querySelector(".nav-links");
 
-// Проверяем кэш
 const cachedLetter = localStorage.getItem("userAvatarLetter");
+
 if (cachedLetter) {
+    // ⚡ мгновенный optimistic UI
+    regBtn.classList.add("hidden");
+    avatar.classList.remove("hidden");
     avatarLetter.textContent = cachedLetter;
-    avatar.classList.remove("skeleton-avatar");
 }
 
-// Проверка Firebase
+
+// --- Авторизация ---
 onAuthStateChanged(auth, async user => {
+
+    // ❌ кэш был, но пользователь ГОСТЬ
     if (!user || !user.email) {
-        // ❌ гость → скрываем аватар, показываем регистрацию
-        avatar.classList.add("hidden");
         regBtn.classList.remove("hidden");
-        avatar.classList.remove("skeleton-avatar");
+        avatar.classList.add("hidden");
         avatarLetter.textContent = "";
         localStorage.removeItem("userAvatarLetter");
         return;
     }
 
-    // ✔ авторизован
+    // ✔ пользователь подтверждён
     regBtn.classList.add("hidden");
     avatar.classList.remove("hidden");
 
+    const cachedLetter = localStorage.getItem("userAvatarLetter");
     if (cachedLetter) {
         avatarLetter.textContent = cachedLetter;
-        avatar.classList.remove("skeleton-avatar");
         avatar.onclick = toggleUserMenu;
         return;
     }
 
-    // skeleton для нового авторизованного
+    // === только тут skeleton ===
     avatar.classList.add("skeleton-avatar");
 
     const snap = await getDoc(doc(db, "users", user.uid));
