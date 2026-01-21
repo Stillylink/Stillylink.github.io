@@ -161,12 +161,6 @@ import {
     signOut
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
 
-import { 
-    getFirestore,
-    doc,
-    getDoc
-} from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
-
 // --- CONFIG ---
 const firebaseConfig = {
     apiKey: "AIzaSyBWlR4QWdnbqXLKKaftEAzhXneTmV9xXX0",
@@ -179,7 +173,6 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
-const db = getFirestore(app);
 
 // UI элементы
 const regBtn = document.querySelector(".register-btn");
