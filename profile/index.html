@@ -58,6 +58,30 @@
           <a href="/#create-chat" class="quick-action">➕ Создать чат</a>
           <a href="/anonymous/" class="quick-action">💬 Анонимный чат</a>
         </div>
+
+        <div class="sidebar-card">
+  <div class="sidebar-title">Любимое видео</div>
+
+  <!-- Контейнер видео -->
+  <div class="youtube-card hidden" id="youtubeCard">
+    <div class="video-wrapper">
+      <iframe
+        id="youtubeIframe"
+        loading="lazy"
+        referrerpolicy="strict-origin-when-cross-origin"
+        allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allowfullscreen>
+      </iframe>
+    </div>
+  </div>
+
+  <!-- Заглушка, если видео нет -->
+  <div class="youtube-empty" id="youtubeEmpty">
+    <p>Видео не добавлено</p>
+    <button class="add-video-btn" id="addVideoBtn">➕ Добавить видео</button>
+  </div>
+</div>
+
       </aside>
 
       <!-- Центральная часть -->
