@@ -53,8 +53,9 @@
         <a href="/">Главная</a>
         <a href="/index.html#create-chat">Создать чат</a>
         <a href="/anonymous/">Анонимное общение</a>
-  <a href="/login/" class="register-btn">Регистрация</a>
-<div class="user-avatar hidden">
+        <a href="/login/" class="register-btn hidden">Регистрация</a>
+
+<div class="user-avatar skeleton-avatar">
     <span></span>
 </div>
     </nav>
@@ -135,21 +136,19 @@ const userMenu = document.querySelector(".user-menu");
 const logoutBtn = document.getElementById("logoutBtn");
 const navLinks = document.querySelector(".nav-links");
 
+// Проверяем кэш
 const cachedLetter = localStorage.getItem("userAvatarLetter");
-
-// Оптимистичный UI
 if (cachedLetter) {
-    avatar.classList.remove("hidden");
     avatarLetter.textContent = cachedLetter;
-    regBtn.classList.add("hidden");
+    avatar.classList.remove("skeleton-avatar");
 }
 
-// onAuthStateChanged
+// Проверка Firebase
 onAuthStateChanged(auth, async user => {
     if (!user || !user.email) {
-        // ❌ гость
-        regBtn.classList.remove("hidden");
+        // ❌ гость → скрываем аватар, показываем регистрацию
         avatar.classList.add("hidden");
+        regBtn.classList.remove("hidden");
         avatar.classList.remove("skeleton-avatar");
         avatarLetter.textContent = "";
         localStorage.removeItem("userAvatarLetter");
@@ -160,7 +159,6 @@ onAuthStateChanged(auth, async user => {
     regBtn.classList.add("hidden");
     avatar.classList.remove("hidden");
 
-    const cachedLetter = localStorage.getItem("userAvatarLetter");
     if (cachedLetter) {
         avatarLetter.textContent = cachedLetter;
         avatar.classList.remove("skeleton-avatar");
@@ -168,7 +166,7 @@ onAuthStateChanged(auth, async user => {
         return;
     }
 
-    // skeleton только для авторизованных без кэша
+    // skeleton для нового авторизованного
     avatar.classList.add("skeleton-avatar");
 
     const snap = await getDoc(doc(db, "users", user.uid));
