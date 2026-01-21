@@ -56,7 +56,6 @@
         <a href="/login/" class="register-btn hidden">Регистрация</a>
     </nav>
 
-    <!-- Изначально показываем skeleton, если есть кэш авторизации -->
     <div class="user-avatar hidden">
         <span></span>
     </div>
@@ -133,63 +132,56 @@ const userMenu = document.querySelector(".user-menu");
 const logoutBtn = document.getElementById("logoutBtn");
 const navLinks = document.querySelector(".nav-links");
 
-// ⚡ КЛЮЧЕВОЕ ИЗМЕНЕНИЕ: проверяем кэш ДО загрузки Firebase
+// ⚡ СИНХРОННАЯ проверка кэша ДО Firebase
 const cachedLetter = localStorage.getItem("userAvatarLetter");
 
 if (cachedLetter) {
-    avatar.classList.remove("hidden");
-    avatarLetter.textContent = cachedLetter; // показываем букву сразу
+    // ЕСТЬ КЭШ → сразу показываем аватар с буквой (БЕЗ skeleton!)
     regBtn.classList.add("hidden");
-    avatar.classList.remove("skeleton-avatar"); // убираем skeleton
-    avatar.onclick = toggleUserMenu;
+    avatar.classList.remove("hidden");
+    avatarLetter.textContent = cachedLetter;
 } else {
-    // Если кэша нет - показываем кнопку регистрации
+    // НЕТ КЭША → показываем кнопку регистрации (пока не знаем авторизован ли)
     regBtn.classList.remove("hidden");
     avatar.classList.add("hidden");
 }
 
 // --- Авторизация ---
 onAuthStateChanged(auth, async user => {
-    // ❌ Пользователь НЕ авторизован
-if (!user || !user.email) {
-    regBtn.classList.remove("hidden");
-    avatar.classList.add("hidden");
-    avatar.classList.remove("skeleton-avatar");
-    avatarLetter.textContent = ""; // ⚡ добавь, чтобы не оставалась старая буква
-    localStorage.removeItem("userAvatarLetter");
-    return;
-}
 
-    // ✔ Пользователь авторизован
+    // ❌ НЕ авторизован
+    if (!user || !user.email) {
+        regBtn.classList.remove("hidden");
+        avatar.classList.add("hidden");
+        avatar.classList.remove("skeleton-avatar");
+        avatarLetter.textContent = "";
+        localStorage.removeItem("userAvatarLetter");
+        return;
+    }
+
+    // ✔ Авторизован
     regBtn.classList.add("hidden");
     avatar.classList.remove("hidden");
 
-    // Если есть кэш - используем его
-    const cached = localStorage.getItem("userAvatarLetter");
-    if (cached) {
-        avatarLetter.textContent = cached;
+    const cachedLetter = localStorage.getItem("userAvatarLetter");
+    if (cachedLetter) {
+        // ЕСТЬ КЭШ → уже показан аватар, только добавляем onclick
+        avatarLetter.textContent = cachedLetter;
         avatar.classList.remove("skeleton-avatar");
         avatar.onclick = toggleUserMenu;
         return;
     }
 
-    // Если кэша нет - показываем skeleton и загружаем данные
+    // НЕТ КЭША, но авторизован → показываем skeleton и загружаем
     avatar.classList.add("skeleton-avatar");
 
-    try {
-        const snap = await getDoc(doc(db, "users", user.uid));
-        const letter = snap.exists() && snap.data().name
-            ? snap.data().name[0].toUpperCase()
-            : user.email[0].toUpperCase();
+    const snap = await getDoc(doc(db, "users", user.uid));
+    const letter = snap.exists() && snap.data().name
+        ? snap.data().name[0].toUpperCase()
+        : user.email[0].toUpperCase();
 
-        avatarLetter.textContent = letter;
-        localStorage.setItem("userAvatarLetter", letter);
-    } catch (error) {
-        // Fallback на email если произошла ошибка
-        const letter = user.email[0].toUpperCase();
-        avatarLetter.textContent = letter;
-        localStorage.setItem("userAvatarLetter", letter);
-    }
+    avatarLetter.textContent = letter;
+    localStorage.setItem("userAvatarLetter", letter);
 
     avatar.classList.remove("skeleton-avatar");
     avatar.onclick = toggleUserMenu;
