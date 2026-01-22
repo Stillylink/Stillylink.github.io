@@ -12,11 +12,6 @@ body.profile-page .site-wrapper {
   padding: 24px 18px;
 }
 
-/* ======== СКРЫВАЕМ БОКОВЫЕ ПАНЕЛИ (статистика, быстрые действия, настройки) ======== */
-.profile-sidebar {
-  display: none !important;
-}
-
 /* ======== ЦЕНТРАЛЬНАЯ ЧАСТЬ ======== */
 .profile-main {
   display: flex;
@@ -147,6 +142,57 @@ body.profile-page .site-wrapper {
   grid-template-columns: 480px 1fr;
   gap: 24px;
   align-items: start;
+}
+
+/* ======== левый БЛОК (слева, увеличен) ======== */
+.left-column {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* ======== Цитата ======== */
+.profile-status {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.profile-status-text {
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--text-main);
+  opacity: 0.9;
+}
+
+.profile-status.empty {
+  opacity: 0.6;
+  font-style: italic;
+}
+
+/* ======== информация ======== */
+.profile-info-block {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px 20px;
+}
+
+.profile-info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 14px;
+}
+
+.profile-info-label {
+  color: var(--text-secondary);
+}
+
+.profile-info-value {
+  color: var(--text-main);
+  font-weight: 500;
 }
 
 /* ======== YOUTUBE БЛОК (слева, увеличен) ======== */
