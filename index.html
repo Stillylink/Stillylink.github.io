@@ -6,6 +6,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="style.css">
     <style>
+        .hidden {
+    display: none !important;
+}
         /* Skeleton UI стили */
         .skeleton-avatar {
             width: 40px;
@@ -53,12 +56,12 @@
         <a href="/">Главная</a>
         <a href="/index.html#create-chat">Создать чат</a>
         <a href="/anonymous/">Анонимное общение</a>
-        <a href="/login/" class="register-btn">Регистрация</a>
-    </nav>
-
-    <div class="user-avatar hidden">
-        <span></span>
-    </div>
+        <a href="/login/" class="register-btn hidden">Регистрация</a>
+     </nav>
+    
+<div class="user-avatar hidden">
+    <span></span>
+</div>
 
     <div class="user-menu">
         <a href="/profile/">Профиль</a>
@@ -132,46 +135,40 @@ const userMenu = document.querySelector(".user-menu");
 const logoutBtn = document.getElementById("logoutBtn");
 const navLinks = document.querySelector(".nav-links");
 
-const cachedLetter = localStorage.getItem("userAvatarLetter");
+// --- Авторизация ---
+onAuthStateChanged(auth, async (user) => {
 
-if (cachedLetter) {
-    // ⚡ мгновенный optimistic UI
-    regBtn.classList.add("hidden");
-    avatar.classList.remove("hidden");
-    avatarLetter.textContent = cachedLetter;
+    // === ГОСТЬ ===
+    if (!user) {
+    regBtn.classList.remove("hidden");
+    avatar.classList.add("hidden");
+    avatar.classList.remove("skeleton-avatar");
+    avatarLetter.textContent = "";
+    return;
 }
 
-
-// --- Авторизация ---
-onAuthStateChanged(auth, async user => {
-
-    // ❌ кэш был, но пользователь ГОСТЬ
-    if (!user || !user.email) {
-        regBtn.classList.remove("hidden");
-        avatar.classList.add("hidden");
-        avatarLetter.textContent = "";
-        localStorage.removeItem("userAvatarLetter");
-        return;
-    }
-
-    // ✔ пользователь подтверждён
+    // === АВТОРИЗОВАН (сразу скрываем кнопку) ===
     regBtn.classList.add("hidden");
     avatar.classList.remove("hidden");
 
     const cachedLetter = localStorage.getItem("userAvatarLetter");
+
+    // ⚡ Есть кэш — мгновенный рендер
     if (cachedLetter) {
         avatarLetter.textContent = cachedLetter;
         avatar.onclick = toggleUserMenu;
         return;
     }
 
-    // === только тут skeleton ===
+    // ⏳ Нет кэша — показываем skeleton
     avatar.classList.add("skeleton-avatar");
 
     const snap = await getDoc(doc(db, "users", user.uid));
-    const letter = snap.exists() && snap.data().name
-        ? snap.data().name[0].toUpperCase()
-        : user.email[0].toUpperCase();
+
+    const letter =
+        snap.exists() && snap.data().name
+            ? snap.data().name[0].toUpperCase()
+            : user.email[0].toUpperCase();
 
     avatarLetter.textContent = letter;
     localStorage.setItem("userAvatarLetter", letter);
