@@ -34,91 +34,64 @@
     </header>
 
     <main class="profile-container">
-      <!-- Левая боковая панель -->
-      <aside class="profile-sidebar left">
-        <div class="sidebar-card">
-          <div class="sidebar-title">Статистика</div>
-          <div class="stat-item">
-            <span class="stat-label">Чатов создано:</span>
-            <span class="stat-value" id="chatsCount">0</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-label">Записей:</span>
-            <span class="stat-value" id="postsCount">0</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-label">На сайте с:</span>
-            <span class="stat-value" id="memberSince">—</span>
-          </div>
-        </div>
-
-        <div class="sidebar-card">
-          <div class="sidebar-title">Быстрые действия</div>
-          <a href="/chats/" class="quick-action">📂 Мои чаты</a>
-          <a href="/#create-chat" class="quick-action">➕ Создать чат</a>
-          <a href="/anonymous/" class="quick-action">💬 Анонимный чат</a>
-        </div>
-
-        <div class="sidebar-card">
-  <div class="sidebar-title">Любимое видео</div>
-
-  <!-- Контейнер видео -->
-  <div class="youtube-card hidden" id="youtubeCard">
-    <div class="video-wrapper">
-<iframe
-  id="youtubeIframe"
-  loading="lazy"
-  referrerpolicy="strict-origin-when-cross-origin"
-  sandbox="allow-scripts allow-same-origin allow-presentation"
-  allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-  allowfullscreen>
-</iframe>
-    </div>
-  </div>
-
-  <!-- Заглушка, если видео нет -->
-  <div class="youtube-empty" id="youtubeEmpty">
-    <p>Видео не добавлено</p>
-    <button class="add-video-btn" id="addVideoBtn">➕ Добавить видео</button>
-  </div>
-</div>
-
-      </aside>
-
-      <!-- Центральная часть -->
-      <div class="profile-main">
-        <!-- Карточка профиля -->
-        <div class="profile-card">
-          <div class="profile-header">
-            <div class="avatar-section">
-              <div class="profile-avatar" id="profileAvatar">
-                <span id="avatarLetter">U</span>
-              </div>
-              <label for="avatarUpload" class="avatar-upload-btn" title="Изменить аватар">
-                <input type="file" id="avatarUpload" accept="image/*" class="hidden">
-                📷
-              </label>
+      <!-- Карточка профиля - ГЛАВНЫЙ БЛОК -->
+      <div class="profile-card">
+        <div class="profile-header">
+          <div class="avatar-section">
+            <div class="profile-avatar" id="profileAvatar">
+              <span id="avatarLetter">U</span>
             </div>
-            
-            <div class="profile-info">
-              <div class="profile-name-section">
-                <h1 class="profile-name" id="profileName">Пользователь</h1>
-                <button class="edit-profile-btn" id="editProfileBtn">
-                  <span>✏️</span> Редактировать
-                </button>
-              </div>
-              <div class="profile-email" id="profileEmail">email@example.com</div>
-              <div class="profile-bio" id="profileBio">
-                Расскажите о себе...
-              </div>
+            <label for="avatarUpload" class="avatar-upload-btn" title="Изменить аватар">
+              <input type="file" id="avatarUpload" accept="image/*" class="hidden">
+              📷
+            </label>
+          </div>
+          
+          <div class="profile-info">
+            <div class="profile-name-section">
+              <h1 class="profile-name" id="profileName">Пользователь</h1>
+              <button class="edit-profile-btn" id="editProfileBtn">
+                <span>✏️</span> Редактировать
+              </button>
+            </div>
+            <div class="profile-bio" id="profileBio">
+              Расскажите о себе...
             </div>
           </div>
         </div>
+      </div>
 
-        <!-- Стена с записями -->
+      <!-- Сетка контента: YouTube слева, Записи справа -->
+      <div class="profile-content-grid">
+        <!-- YouTube блок (слева) -->
+        <aside class="youtube-section">
+          <div class="section-title">🎬 Любимое видео</div>
+
+          <!-- Контейнер видео -->
+          <div class="youtube-card hidden" id="youtubeCard">
+            <div class="video-wrapper">
+              <iframe
+                id="youtubeIframe"
+                loading="lazy"
+                referrerpolicy="strict-origin-when-cross-origin"
+                sandbox="allow-scripts allow-same-origin allow-presentation"
+                allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowfullscreen>
+              </iframe>
+            </div>
+          </div>
+
+          <!-- Заглушка, если видео нет -->
+          <div class="youtube-empty" id="youtubeEmpty">
+            <p>Видео не добавлено</p>
+            <button class="add-video-btn" id="addVideoBtn">➕ Добавить видео</button>
+          </div>
+        </aside>
+
+        <!-- Стена с записями (справа) -->
         <div class="wall-section">
           <div class="wall-header">
-            <h2>Мои записи</h2>
+            <h2>📝 Мои записи</h2>
           </div>
 
           <!-- Форма добавления записи -->
@@ -142,16 +115,6 @@
           </div>
         </div>
       </div>
-
-      <!-- Правая боковая панель -->
-      <aside class="profile-sidebar right">
-        <div class="sidebar-card">
-          <div class="sidebar-title">Настройки</div>
-          <a href="#" class="settings-link">🔔 Уведомления</a>
-          <a href="#" class="settings-link">🔒 Приватность</a>
-          <a href="#" class="settings-link">🎨 Оформление</a>
-        </div>
-      </aside>
     </main>
 
     <!-- Модальное окно редактирования профиля -->
