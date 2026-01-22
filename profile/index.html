@@ -34,6 +34,32 @@
     </header>
 
     <main class="profile-container">
+      <!-- Левая боковая панель (СКРЫТА через CSS) -->
+      <aside class="profile-sidebar left">
+        <div class="sidebar-card">
+          <div class="sidebar-title">Статистика</div>
+          <div class="stat-item">
+            <span class="stat-label">Чатов создано:</span>
+            <span class="stat-value" id="chatsCount">0</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Записей:</span>
+            <span class="stat-value" id="postsCount">0</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">На сайте с:</span>
+            <span class="stat-value" id="memberSince">—</span>
+          </div>
+        </div>
+
+        <div class="sidebar-card">
+          <div class="sidebar-title">Быстрые действия</div>
+          <a href="/chats/" class="quick-action">📂 Мои чаты</a>
+          <a href="/#create-chat" class="quick-action">➕ Создать чат</a>
+          <a href="/anonymous/" class="quick-action">💬 Анонимный чат</a>
+        </div>
+      </aside>
+
       <!-- Центральная часть -->
       <div class="profile-main">
         <!-- Карточка профиля -->
@@ -56,6 +82,7 @@
                   <span>✏️</span> Редактировать
                 </button>
               </div>
+              <div class="profile-email" id="profileEmail">email@example.com</div>
               <div class="profile-bio" id="profileBio">
                 Расскажите о себе...
               </div>
@@ -118,6 +145,16 @@
           </div>
         </div>
       </div>
+
+      <!-- Правая боковая панель (СКРЫТА через CSS) -->
+      <aside class="profile-sidebar right">
+        <div class="sidebar-card">
+          <div class="sidebar-title">Настройки</div>
+          <a href="#" class="settings-link">🔔 Уведомления</a>
+          <a href="#" class="settings-link">🔒 Приватность</a>
+          <a href="#" class="settings-link">🎨 Оформление</a>
+        </div>
+      </aside>
     </main>
 
     <!-- Модальное окно редактирования профиля -->
