@@ -150,6 +150,7 @@ onAuthStateChanged(auth, async user => {
         regBtn.classList.remove("hidden");
         avatar.classList.add("hidden");
         avatarLetter.textContent = "";
+        navLinks.classList.remove("nav-disabled");
         localStorage.removeItem("userAvatarLetter");
         return;
     }
@@ -159,14 +160,16 @@ onAuthStateChanged(auth, async user => {
     avatar.classList.remove("hidden");
 
     const cachedLetter = localStorage.getItem("userAvatarLetter");
-    if (cachedLetter) {
-        avatarLetter.textContent = cachedLetter;
-        avatar.onclick = toggleUserMenu;
-        return;
-    }
+if (cachedLetter) {
+    avatarLetter.textContent = cachedLetter;
+    navLinks.classList.remove("nav-disabled");
+    avatar.onclick = toggleUserMenu;
+    return;
+}
 
     // === только тут skeleton ===
     avatar.classList.add("skeleton-avatar");
+    navLinks.classList.add("nav-disabled");
 
     const snap = await getDoc(doc(db, "users", user.uid));
     const letter = snap.exists() && snap.data().name
@@ -176,8 +179,9 @@ onAuthStateChanged(auth, async user => {
     avatarLetter.textContent = letter;
     localStorage.setItem("userAvatarLetter", letter);
 
-    avatar.classList.remove("skeleton-avatar");
-    avatar.onclick = toggleUserMenu;
+avatar.classList.remove("skeleton-avatar");
+navLinks.classList.remove("nav-disabled");
+avatar.onclick = toggleUserMenu;
 });
 
 // --- Выход ---
