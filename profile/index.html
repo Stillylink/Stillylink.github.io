@@ -34,31 +34,6 @@
     </header>
 
     <main class="profile-container">
-      <!-- Левая боковая панель (СКРЫТА через CSS) -->
-      <aside class="profile-sidebar left">
-        <div class="sidebar-card">
-          <div class="sidebar-title">Статистика</div>
-          <div class="stat-item">
-            <span class="stat-label">Чатов создано:</span>
-            <span class="stat-value" id="chatsCount">0</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-label">Записей:</span>
-            <span class="stat-value" id="postsCount">0</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-label">На сайте с:</span>
-            <span class="stat-value" id="memberSince">—</span>
-          </div>
-        </div>
-
-        <div class="sidebar-card">
-          <div class="sidebar-title">Быстрые действия</div>
-          <a href="/chats/" class="quick-action">📂 Мои чаты</a>
-          <a href="/#create-chat" class="quick-action">➕ Создать чат</a>
-          <a href="/anonymous/" class="quick-action">💬 Анонимный чат</a>
-        </div>
-      </aside>
 
       <!-- Центральная часть -->
       <div class="profile-main">
@@ -91,34 +66,53 @@
         </div>
 
         <!-- Сетка: YouTube слева, Записи справа -->
-        <div class="content-grid">
-          <!-- YouTube блок слева -->
-          <div class="sidebar-card youtube-block">
-            <div class="sidebar-title">Любимое видео</div>
+       <div class="content-grid">
+  <!-- ЛЕВАЯ КОЛОНКА -->
+  <div class="left-column">
+    
+    <!-- Статус / цитата -->
+    <div class="sidebar-card status-card">
+      <div class="sidebar-title">Статус</div>
+      <div class="status-text">
+        Здесь будет главный статус или цитата пользователя
+      </div>
+    </div>
 
-            <!-- Контейнер видео -->
-            <div class="youtube-card hidden" id="youtubeCard">
-              <div class="video-wrapper">
-                <iframe
-                  id="youtubeIframe"
-                  loading="lazy"
-                  referrerpolicy="strict-origin-when-cross-origin"
-                  sandbox="allow-scripts allow-same-origin allow-presentation"
-                  allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowfullscreen>
-                </iframe>
-              </div>
-            </div>
+    <!-- Информация -->
+    <div class="sidebar-card info-card">
+      <div class="sidebar-title">Информация</div>
+      <div class="info-row">
+        <span class="info-label">На сайте с:</span>
+        <span class="info-value" id="memberSince">—</span>
+      </div>
+    </div>
 
-            <!-- Заглушка, если видео нет -->
-            <div class="youtube-empty" id="youtubeEmpty">
-              <p>Видео не добавлено</p>
-              <button class="add-video-btn" id="addVideoBtn">➕ Добавить видео</button>
-            </div>
-          </div>
+    <!-- YouTube -->
+    <div class="sidebar-card youtube-block">
+      <div class="sidebar-title">Любимое видео</div>
 
-          <!-- Стена с записями справа -->
-          <div class="wall-section">
+      <div class="youtube-card hidden" id="youtubeCard">
+        <div class="video-wrapper">
+          <iframe
+            id="youtubeIframe"
+            loading="lazy"
+            referrerpolicy="strict-origin-when-cross-origin"
+            sandbox="allow-scripts allow-same-origin allow-presentation"
+            allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowfullscreen>
+          </iframe>
+        </div>
+      </div>
+
+      <div class="youtube-empty" id="youtubeEmpty">
+        <p>Видео не добавлено</p>
+        <button class="add-video-btn" id="addVideoBtn">➕ Добавить видео</button>
+      </div>
+    </div>
+  </div>
+
+            <!-- ПРАВАЯ КОЛОНКА -->
+           <div class="wall-section">
             <div class="wall-header">
               <h2>Мои записи</h2>
             </div>
@@ -145,16 +139,6 @@
           </div>
         </div>
       </div>
-
-      <!-- Правая боковая панель (СКРЫТА через CSS) -->
-      <aside class="profile-sidebar right">
-        <div class="sidebar-card">
-          <div class="sidebar-title">Настройки</div>
-          <a href="#" class="settings-link">🔔 Уведомления</a>
-          <a href="#" class="settings-link">🔒 Приватность</a>
-          <a href="#" class="settings-link">🎨 Оформление</a>
-        </div>
-      </aside>
     </main>
 
     <!-- Модальное окно редактирования профиля -->
