@@ -148,7 +148,7 @@ body.profile-page .site-wrapper {
 }
 
 /* ======== Цитата ======== */
-.sidebar-card status-card {
+.sidebar-card.status-card {
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: 12px;
@@ -163,7 +163,7 @@ body.profile-page .site-wrapper {
 }
 
 /* ======== информация ======== */
-.sidebar-card info-card {
+.sidebar-card.info-card {
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: 12px;
