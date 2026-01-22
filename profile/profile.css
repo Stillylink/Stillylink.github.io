@@ -148,45 +148,40 @@ body.profile-page .site-wrapper {
 }
 
 /* ======== Цитата ======== */
-.profile-status {
+.sidebar-card status-card {
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 20px;
 }
 
-.profile-status-text {
+.status-text {
   font-size: 16px;
   line-height: 1.6;
   color: var(--text-main);
   opacity: 0.9;
 }
 
-.profile-status.empty {
-  opacity: 0.6;
-  font-style: italic;
-}
-
 /* ======== информация ======== */
-.profile-info-block {
+.sidebar-card info-card {
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 18px 20px;
 }
 
-.profile-info-row {
+.info-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
   font-size: 14px;
 }
 
-.profile-info-label {
+.info-label {
   color: var(--text-secondary);
 }
 
-.profile-info-value {
+.memberSince {
   color: var(--text-main);
   font-weight: 500;
 }
