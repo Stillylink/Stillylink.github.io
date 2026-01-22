@@ -294,7 +294,6 @@ logoutBtn?.addEventListener("click", async (e) => {
 // Загрузка профиля пользователя
 function renderProfile(userData) {
     profileName.textContent = userData.name;
-    profileEmail.textContent = currentUser.email;
     profileBio.textContent = userData.bio || "Расскажите о себе...";
 
     if (userData.avatarUrl) {
