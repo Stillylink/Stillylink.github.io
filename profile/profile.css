@@ -125,10 +125,6 @@ body.profile-page .site-wrapper {
   border-color: var(--accent);
 }
 
-.profile-email {
-  display: none;
-}
-
 .profile-bio {
   font-size: 16px;
   color: var(--text-main);
