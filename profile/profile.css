@@ -6,93 +6,164 @@ body.profile-page .site-wrapper {
 
 /* ======== ОСНОВНОЙ КОНТЕЙНЕР ======== */
 .profile-container {
-  max-width: 1200px;
+  max-width: 1400px;
   width: 100%;
   margin: 0 auto;
   padding: 24px 18px;
+}
+
+/* ======== КАРТОЧКА ПРОФИЛЯ - ГЛАВНЫЙ БЛОК ======== */
+.profile-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 40px;
+  margin-bottom: 24px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+.profile-header {
+  display: flex;
+  gap: 32px;
+  align-items: center;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+/* Аватар */
+.avatar-section {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.profile-avatar {
+  width: 160px;
+  height: 160px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), #00cc6a);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 64px;
+  font-weight: 700;
+  color: #000;
+  border: 5px solid var(--bg-card);
+  box-shadow: 0 8px 24px rgba(0, 255, 136, 0.3);
+  overflow: hidden;
+}
+
+.profile-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar-upload-btn {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 3px solid var(--bg-card);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 20px;
+  transition: all 0.2s;
+}
+
+.avatar-upload-btn:hover {
+  transform: scale(1.1);
+  filter: brightness(1.2);
+}
+
+/* Информация профиля */
+.profile-info {
+  flex: 1;
+}
+
+.profile-name-section {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.profile-name {
+  font-size: 36px;
+  font-weight: 700;
+  color: var(--text-main);
+  margin: 0;
+}
+
+.edit-profile-btn {
+  padding: 10px 20px;
+  background: transparent;
+  border: 2px solid var(--border);
+  border-radius: 10px;
+  color: var(--text-secondary);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s;
+}
+
+.edit-profile-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.profile-email {
+  display: none;
+}
+
+.profile-bio {
+  font-size: 17px;
+  color: var(--text-main);
+  line-height: 1.6;
+  max-width: 700px;
+}
+
+/* ======== СЕТКА КОНТЕНТА: YouTube + Записи ======== */
+.profile-content-grid {
   display: grid;
-  grid-template-columns: 260px 1fr 260px;
-  gap: 20px;
+  grid-template-columns: 500px 1fr;
+  gap: 24px;
   align-items: start;
 }
 
-/* ======== БОКОВЫЕ ПАНЕЛИ ======== */
-.profile-sidebar {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.sidebar-card {
+/* ======== YOUTUBE СЕКЦИЯ (СЛЕВА) ======== */
+.youtube-section {
   background: var(--bg-card);
   border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 16px;
+  border-radius: 16px;
+  padding: 24px;
+  height: fit-content;
 }
 
-.sidebar-title {
-  font-size: 14px;
-  font-weight: 600;
+.section-title {
+  font-size: 18px;
+  font-weight: 700;
   color: var(--accent);
-  margin-bottom: 12px;
+  margin-bottom: 16px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
-/* Статистика */
-.stat-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 0;
-  border-bottom: 1px solid var(--border);
-}
-
-.stat-item:last-child {
-  border-bottom: none;
-}
-
-.stat-label {
-  font-size: 14px;
-  color: var(--text-secondary);
-}
-
-.stat-value {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-main);
-}
-
-/* Быстрые действия */
-.quick-action {
-  display: block;
-  padding: 10px 12px;
-  margin-bottom: 6px;
-  border-radius: 8px;
-  color: var(--text-main);
-  text-decoration: none;
-  font-size: 14px;
-  transition: all 0.2s;
-  border: 1px solid transparent;
-}
-
-.quick-action:last-child {
-  margin-bottom: 0;
-}
-
-.quick-action:hover {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: var(--border);
-  color: var(--accent);
-}
-
-/* проигрыватель */
 .video-wrapper {
   position: relative;
   padding-bottom: 56.25%;
   height: 0;
   overflow: hidden;
   border-radius: 12px;
+  background: #000;
 }
 
 .video-wrapper iframe {
@@ -105,183 +176,58 @@ body.profile-page .site-wrapper {
 
 .youtube-empty {
   text-align: center;
+  padding: 40px 20px;
   opacity: 0.7;
 }
 
-.add-video-btn {
-  margin-top: 10px;
-  width: 100%;
-}
-
-/* Настройки */
-.settings-link {
-  display: block;
-  padding: 10px 12px;
-  margin-bottom: 6px;
-  border-radius: 8px;
-  color: var(--text-main);
-  text-decoration: none;
-  font-size: 14px;
-  transition: all 0.2s;
-  border: 1px solid transparent;
-}
-
-.settings-link:last-child {
-  margin-bottom: 0;
-}
-
-.settings-link:hover {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: var(--border);
-  color: var(--accent);
-}
-
-/* ======== ЦЕНТРАЛЬНАЯ ЧАСТЬ ======== */
-.profile-main {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-/* ======== КАРТОЧКА ПРОФИЛЯ ======== */
-.profile-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 24px;
-}
-
-.profile-header {
-  display: flex;
-  gap: 24px;
-  align-items: flex-start;
-}
-
-/* Аватар */
-.avatar-section {
-  position: relative;
-  flex-shrink: 0;
-}
-
-.profile-avatar {
-  width: 120px;
-  height: 120px;
-  border-radius: 50%;
-  background: #000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 48px;
-  font-weight: 700;
-  color: #fff;
-  border: 4px solid var(--bg-card);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-  overflow: hidden;
-}
-
-.profile-avatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.avatar-upload-btn {
-  position: absolute;
-  bottom: 0;
-  right: 0;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: var(--accent);
-  border: 2px solid var(--bg-card);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  font-size: 16px;
-  transition: all 0.2s;
-}
-
-.avatar-upload-btn:hover {
-  transform: scale(1.1);
-  filter: brightness(1.1);
-}
-
-/* Информация профиля */
-.profile-info {
-  flex: 1;
-}
-
-.profile-name-section {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 8px;
-}
-
-.profile-name {
-  font-size: 28px;
-  font-weight: 700;
-  color: var(--text-main);
-  margin: 0;
-}
-
-.edit-profile-btn {
-  padding: 8px 16px;
-  background: transparent;
-  border: 1px solid var(--border);
-  border-radius: 8px;
+.youtube-empty p {
+  margin-bottom: 16px;
   color: var(--text-secondary);
-  font-size: 14px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  transition: all 0.2s;
-}
-
-.edit-profile-btn:hover {
-  background: rgba(255, 255, 255, 0.05);
-  color: var(--accent);
-  border-color: var(--accent);
-}
-
-.profile-email {
-  font-size: 14px;
-  color: var(--text-secondary);
-  margin-bottom: 12px;
-}
-
-.profile-bio {
   font-size: 15px;
-  color: var(--text-main);
-  line-height: 1.6;
-  max-width: 600px;
 }
 
-/* ======== СТЕНА С ЗАПИСЯМИ ======== */
+.add-video-btn {
+  padding: 10px 20px;
+  background: var(--accent);
+  color: #000;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.add-video-btn:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+}
+
+/* ======== СТЕНА С ЗАПИСЯМИ (СПРАВА) ======== */
 .wall-section {
   background: var(--bg-card);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: 16px;
   overflow: hidden;
 }
 
 .wall-header {
-  padding: 16px 20px;
+  padding: 20px 24px;
   border-bottom: 1px solid var(--border);
 }
 
 .wall-header h2 {
   font-size: 18px;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--accent);
   margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 /* Форма создания записи */
 .post-composer {
-  padding: 20px;
+  padding: 20px 24px;
   border-bottom: 1px solid var(--border);
   background: linear-gradient(180deg, #0f1112, #0d0d0d);
 }
@@ -370,7 +316,7 @@ body.profile-page .site-wrapper {
 }
 
 .post-item {
-  padding: 20px;
+  padding: 20px 24px;
   border-bottom: 1px solid var(--border);
   transition: background 0.2s;
 }
@@ -394,14 +340,21 @@ body.profile-page .site-wrapper {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: #000;
+  background: linear-gradient(135deg, var(--accent), #00cc6a);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 16px;
   font-weight: 700;
-  color: #fff;
+  color: #000;
   flex-shrink: 0;
+}
+
+.post-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
 }
 
 .post-info {
@@ -643,16 +596,31 @@ body.profile-page .site-wrapper {
   display: none !important;
 }
 
+/* ======== СТАРЫЕ КЛАССЫ (СКРЫТЫ) ======== */
+.profile-sidebar,
+.profile-main,
+.stat-item,
+.quick-action,
+.settings-link {
+  display: none !important;
+}
+
 /* ======== АДАПТИВНОСТЬ ======== */
+@media (max-width: 1200px) {
+  .profile-content-grid {
+    grid-template-columns: 450px 1fr;
+  }
+}
+
 @media (max-width: 1024px) {
-  .profile-container {
+  .profile-content-grid {
     grid-template-columns: 1fr;
-    gap: 16px;
+    gap: 20px;
   }
 
-  .profile-sidebar.left,
-  .profile-sidebar.right {
-    display: none;
+  .youtube-section {
+    max-width: 600px;
+    margin: 0 auto;
   }
 }
 
@@ -662,28 +630,39 @@ body.profile-page .site-wrapper {
   }
 
   .profile-card {
-    padding: 20px;
+    padding: 24px;
   }
 
   .profile-header {
     flex-direction: column;
     align-items: center;
     text-align: center;
+    gap: 20px;
   }
 
   .profile-avatar {
-    width: 100px;
-    height: 100px;
-    font-size: 40px;
+    width: 120px;
+    height: 120px;
+    font-size: 48px;
+  }
+
+  .avatar-upload-btn {
+    width: 40px;
+    height: 40px;
+    font-size: 18px;
   }
 
   .profile-name {
-    font-size: 24px;
+    font-size: 28px;
   }
 
   .profile-name-section {
     flex-direction: column;
     gap: 10px;
+  }
+
+  .profile-bio {
+    max-width: 100%;
   }
 
   .post-composer {
@@ -704,23 +683,29 @@ body.profile-page .site-wrapper {
 }
 
 @media (max-width: 480px) {
+  .profile-card {
+    padding: 20px;
+  }
+
   .profile-avatar {
-    width: 80px;
-    height: 80px;
-    font-size: 32px;
+    width: 100px;
+    height: 100px;
+    font-size: 40px;
+    border: 4px solid var(--bg-card);
   }
 
   .avatar-upload-btn {
-    width: 32px;
-    height: 32px;
-    font-size: 14px;
+    width: 36px;
+    height: 36px;
+    font-size: 16px;
   }
 
   .profile-name {
-    font-size: 20px;
+    font-size: 24px;
   }
 
-  .wall-header h2 {
+  .wall-header h2,
+  .section-title {
     font-size: 16px;
   }
 
