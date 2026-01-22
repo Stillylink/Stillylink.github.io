@@ -47,7 +47,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-const rtdb = getDatabase(app); // Realtime Database
+const rtdb = getDatabase(app);
 const storage = getStorage(app);
 
 // DOM элементы
@@ -86,13 +86,19 @@ const chatsCount = document.getElementById("chatsCount");
 const postsCount = document.getElementById("postsCount");
 const memberSince = document.getElementById("memberSince");
 
+// YouTube элементы
+const youtubeCard = document.getElementById("youtubeCard");
+const youtubeEmpty = document.getElementById("youtubeEmpty");
+const youtubeIframe = document.getElementById("youtubeIframe");
+const addVideoBtn = document.getElementById("addVideoBtn");
+
 let currentUser = null;
 let currentUserData = null; 
 let currentPhotoFile = null;
-let postsListener = null; // Для отписки от слушателя
+let postsListener = null;
 const PROFILE_CACHE_KEY = "userProfileCache_v1";
 
-// ЗАГРУЗКА АВАТАРКИ ИЗ localStorage СРАЗУ (как в анонимном чате)
+// ЗАГРУЗКА АВАТАРКИ ИЗ localStorage СРАЗУ
 const savedAvatar = localStorage.getItem('userAvatarLetter');
 if (savedAvatar) {
     regBtn?.classList.add('hidden');
@@ -126,6 +132,92 @@ document.addEventListener("click", e => {
     userMenu.classList.remove("open");
 });
 
+// 🎬 YOUTUBE ФУНКЦИИ
+function extractVideoId(url) {
+    if (!url) return null;
+    
+    url = url.trim();
+    
+    // Проверка на shorts (исключаем)
+    if (url.includes('/shorts/')) {
+        return null;
+    }
+    
+    // youtube.com/watch?v=VIDEO_ID
+    const watchMatch = url.match(/[?&]v=([a-zA-Z0-9_-]{11})/);
+    if (watchMatch) {
+        return watchMatch[1];
+    }
+    
+    // youtu.be/VIDEO_ID
+    const shortMatch = url.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/);
+    if (shortMatch) {
+        return shortMatch[1];
+    }
+    
+    // Если это просто VIDEO_ID (11 символов)
+    if (/^[a-zA-Z0-9_-]{11}$/.test(url)) {
+        return url;
+    }
+    
+    return null;
+}
+
+function loadYoutubeVideo(videoId) {
+    if (!videoId) {
+        youtubeIframe.src = "";
+        youtubeCard.classList.add('hidden');
+        youtubeEmpty.classList.remove('hidden');
+        return;
+    }
+
+    youtubeIframe.src = `https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1`;
+    youtubeCard.classList.remove('hidden');
+    youtubeEmpty.classList.add('hidden');
+}
+
+async function saveYoutubeVideo(videoId) {
+    if (!currentUser) return;
+    
+    try {
+        const userDocRef = doc(db, "users", currentUser.uid);
+await setDoc(userDocRef, {
+    youtubeVideoId: videoId || null
+}, { merge: true });
+        
+        // Обновляем кэш
+        currentUserData.youtubeVideoId = videoId || null;
+        localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(currentUserData));
+        
+        console.log("YouTube видео сохранено!");
+    } catch (error) {
+        console.error("Ошибка сохранения YouTube видео:", error);
+        throw error;
+    }
+}
+
+// Обработчик добавления видео
+addVideoBtn?.addEventListener("click", async () => {
+    const url = prompt("Вставьте ссылку на YouTube видео:\n\nПоддерживаемые форматы:\n• youtube.com/watch?v=...\n• youtu.be/...\n\n⚠️ Shorts не поддерживаются!");
+    
+    if (!url) return;
+    
+    const videoId = extractVideoId(url);
+    
+    if (!videoId) {
+        alert("❌ Неверная ссылка!\n\nПроверьте, что:\n• Это ссылка на обычное YouTube видео\n• Это НЕ Shorts\n• Формат: youtube.com/watch?v=... или youtu.be/...");
+        return;
+    }
+    
+    try {
+        await saveYoutubeVideo(videoId);
+        loadYoutubeVideo(videoId);
+        alert("✅ Видео успешно добавлено!");
+    } catch (error) {
+        alert("❌ Не удалось сохранить видео");
+    }
+});
+
 // Проверка авторизации
 onAuthStateChanged(auth, async (user) => {
     if (!user || !user.email) {
@@ -137,51 +229,50 @@ onAuthStateChanged(auth, async (user) => {
 
     const userDocRef = doc(db, "users", user.uid);
 
-    // 🔹 1. Пытаемся взять профиль из localStorage
+    // Пытаемся взять профиль из localStorage
     const cachedProfile = localStorage.getItem(PROFILE_CACHE_KEY);
 
     if (cachedProfile) {
         currentUserData = JSON.parse(cachedProfile);
         console.log("Профиль загружен из кэша");
     } else {
-        // 🔹 2. Если кэша нет — читаем Firestore (1 read)
+        // Если кэша нет — читаем Firestore
         const userSnap = await getDoc(userDocRef);
 
         if (!userSnap.exists()) {
             const defaultName = user.email.split('@')[0];
 
-const newProfile = {
-    name: defaultName,
-    email: user.email,
-    bio: "Расскажите о себе...",
-    avatarUrl: null
-};
+            const newProfile = {
+                name: defaultName,
+                email: user.email,
+                bio: "Расскажите о себе...",
+                avatarUrl: null,
+                youtubeVideoId: null
+            };
 
-await setDoc(userDocRef, newProfile);
-
-currentUserData = newProfile;
+            await setDoc(userDocRef, newProfile);
+            currentUserData = newProfile;
         } else {
             currentUserData = userSnap.data();
         }
 
-        // 🔹 сохраняем в кэш
-        localStorage.setItem(
-            PROFILE_CACHE_KEY,
-            JSON.stringify(currentUserData)
-        );
-
+        // Сохраняем в кэш
+        localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(currentUserData));
         console.log("Профиль загружен из Firestore и закэширован");
     }
 
-    // 🔹 навигация
+    // Навигация
     const letter = currentUserData.name.charAt(0).toUpperCase();
     avatarLetter.textContent = letter;
     localStorage.setItem("userAvatarLetter", letter);
 
-    // 🔹 профиль
+    // Профиль
     renderProfile(currentUserData);
+    
+    // 🎬 Загружаем YouTube видео
+    loadYoutubeVideo(currentUserData.youtubeVideoId);
 
-    // 🔹 посты (REALTIME DATABASE)
+    // Посты
     loadUserPosts();
 });
 
@@ -189,7 +280,6 @@ currentUserData = newProfile;
 logoutBtn?.addEventListener("click", async (e) => {
     e.preventDefault();
     
-    // Отписываемся от слушателя постов
     if (postsListener) {
         postsListener();
         postsListener = null;
@@ -214,17 +304,16 @@ function renderProfile(userData) {
         profileAvatar.innerHTML = "";
         profileAvatar.appendChild(img);
     } else {
-        avatarLetterProfile.textContent =
-            userData.name.charAt(0).toUpperCase();
+        avatarLetterProfile.textContent = userData.name.charAt(0).toUpperCase();
     }
 
-if (currentUser?.metadata?.creationTime) {
-    const date = new Date(currentUser.metadata.creationTime);
-    memberSince.textContent = date.toLocaleDateString("ru-RU", {
-        year: "numeric",
-        month: "long"
-    });
-}
+    if (currentUser?.metadata?.creationTime) {
+        const date = new Date(currentUser.metadata.creationTime);
+        memberSince.textContent = date.toLocaleDateString("ru-RU", {
+            year: "numeric",
+            month: "long"
+        });
+    }
 }
 
 // Загрузка аватарки
@@ -232,27 +321,22 @@ avatarUpload.addEventListener("change", async (e) => {
     const file = e.target.files?.[0];
     if (!file || !currentUser) return;
 
-    // Проверка размера (макс 5MB)
     if (file.size > 5 * 1024 * 1024) {
         alert("Файл слишком большой. Максимальный размер: 5MB");
         return;
     }
 
     try {
-        // Загружаем в Storage
         const avatarRef = storageRef(storage, `avatars/${currentUser.uid}/${Date.now()}_${file.name}`);
         await uploadBytes(avatarRef, file);
         const avatarUrl = await getDownloadURL(avatarRef);
 
-        // Обновляем в Firestore
         const userDocRef = doc(db, "users", currentUser.uid);
         await updateDoc(userDocRef, { avatarUrl });
 
-        // Обновляем кэш
         currentUserData.avatarUrl = avatarUrl;
         localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(currentUserData));
 
-        // Обновляем UI
         avatarLetterProfile.style.display = "none";
         const img = document.createElement("img");
         img.src = avatarUrl;
@@ -305,7 +389,6 @@ saveProfileBtn.addEventListener("click", async () => {
             bio: bio || "Расскажите о себе..."
         });
 
-        // 🔥 ОБНОВЛЯЕМ ЛОКАЛЬНЫЙ КЭШ
         currentUserData.name = name;
         currentUserData.bio = bio || "Расскажите о себе...";
         
@@ -314,7 +397,6 @@ saveProfileBtn.addEventListener("click", async () => {
         profileName.textContent = name;
         profileBio.textContent = bio || "Расскажите о себе...";
         
-        // Обновляем аватарку на первую букву нового имени
         const newLetter = name.charAt(0).toUpperCase();
         avatarLetterProfile.textContent = newLetter;
         avatarLetter.textContent = newLetter;
@@ -328,7 +410,6 @@ saveProfileBtn.addEventListener("click", async () => {
     }
 });
 
-// Закрытие модалки по клику вне её
 editModal.addEventListener("click", (e) => {
     if (e.target === editModal) {
         editModal.classList.add("hidden");
@@ -344,7 +425,6 @@ postPhotoInput.addEventListener("change", (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Проверка размера (макс 10MB)
     if (file.size > 10 * 1024 * 1024) {
         alert("Файл слишком большой. Максимальный размер: 10MB");
         postPhotoInput.value = "";
@@ -372,29 +452,25 @@ publishPostBtn.addEventListener("click", async () => {
     try {
         let photoUrl = null;
 
-        // Загружаем фото если есть
         if (currentPhotoFile) {
             const photoRef = storageRef(storage, `posts/${currentUser.uid}/${Date.now()}_${currentPhotoFile.name}`);
             await uploadBytes(photoRef, currentPhotoFile);
             photoUrl = await getDownloadURL(photoRef);
         }
 
-        // 🔥 REALTIME DATABASE: Создаем запись с денормализованными данными
         const postsRef = dbRef(rtdb, 'posts');
         const newPostRef = push(postsRef);
         
         await set(newPostRef, {
             userId: currentUser.uid,
-            // 📌 Денормализация: сохраняем данные пользователя на момент публикации
             userName: currentUserData.name,
             userAvatar: currentUserData.avatarUrl || null,
             userEmail: currentUser.email,
             text: text || "",
             photoUrl: photoUrl,
-            createdAt: Date.now() // timestamp в миллисекундах
+            createdAt: Date.now()
         });
 
-        // Очищаем форму
         postInput.value = "";
         currentPhotoFile = null;
         postPhotoInput.value = "";
@@ -411,16 +487,14 @@ publishPostBtn.addEventListener("click", async () => {
     }
 });
 
-// 🔥 REALTIME DATABASE: Загрузка записей пользователя с realtime обновлениями
+// Загрузка записей пользователя
 function loadUserPosts() {
     if (!currentUser) return;
 
-    // Отписываемся от предыдущего слушателя если есть
     if (postsListener) {
         postsListener();
     }
 
-    // Запрос: посты текущего пользователя, отсортированные по дате
     const postsRef = dbRef(rtdb, 'posts');
     const userPostsQuery = query(
         postsRef,
@@ -428,7 +502,6 @@ function loadUserPosts() {
         equalTo(currentUser.uid)
     );
 
-    // 🔥 onValue - realtime слушатель, автоматически обновляет UI
     postsListener = onValue(userPostsQuery, (snapshot) => {
         postsList.innerHTML = "";
 
@@ -443,7 +516,6 @@ function loadUserPosts() {
             return;
         }
 
-        // Собираем посты в массив для сортировки по дате (новые сверху)
         const posts = [];
         snapshot.forEach(childSnapshot => {
             posts.push({
@@ -452,15 +524,12 @@ function loadUserPosts() {
             });
         });
 
-        // Сортируем по дате (новые первые)
         posts.sort((a, b) => b.data.createdAt - a.data.createdAt);
 
-        // Отображаем посты
         posts.forEach(post => {
             addPostToUI(post.id, post.data);
         });
 
-        // Обновляем счетчик
         postsCount.textContent = posts.length.toString();
     }, (error) => {
         console.error("Ошибка загрузки постов:", error);
@@ -473,9 +542,8 @@ function addPostToUI(postId, post) {
     postItem.className = "post-item";
     postItem.dataset.postId = postId;
 
-    // 📌 Используем денормализованные данные из поста
     const userName = post.userName || post.userEmail.split('@')[0];
-    const userAvatar = post.userAvatar; // URL аватарки или null
+    const userAvatar = post.userAvatar;
     const letter = userName.charAt(0).toUpperCase();
     
     let timeStr = "Только что";
@@ -504,7 +572,6 @@ function addPostToUI(postId, post) {
         }
     }
 
-    // 📌 Аватарка: если есть URL - показываем фото, иначе - букву
     const avatarHtml = userAvatar 
         ? `<img src="${userAvatar}" alt="${userName}" class="post-avatar-img">`
         : letter;
@@ -524,12 +591,10 @@ function addPostToUI(postId, post) {
 
     postsList.appendChild(postItem);
 
-    // Обработчик удаления
     const deleteBtn = postItem.querySelector(".post-delete");
     deleteBtn.addEventListener("click", async () => {
         if (confirm("Удалить эту запись?")) {
             try {
-                // 🔥 REALTIME DATABASE: удаление поста
                 const postRef = dbRef(rtdb, `posts/${postId}`);
                 await remove(postRef);
                 console.log("Запись удалена из Realtime Database");
@@ -540,7 +605,6 @@ function addPostToUI(postId, post) {
         }
     });
 
-    // Обработчик просмотра фото
     const photoImg = postItem.querySelector(".post-image");
     if (photoImg) {
         photoImg.addEventListener("click", () => {
