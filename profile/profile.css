@@ -12,43 +12,53 @@ body.profile-page .site-wrapper {
   padding: 24px 18px;
 }
 
-/* ======== КАРТОЧКА ПРОФИЛЯ - ГЛАВНЫЙ БЛОК ======== */
+/* ======== СКРЫВАЕМ БОКОВЫЕ ПАНЕЛИ (статистика, быстрые действия, настройки) ======== */
+.profile-sidebar {
+  display: none !important;
+}
+
+/* ======== ЦЕНТРАЛЬНАЯ ЧАСТЬ ======== */
+.profile-main {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  width: 100%;
+}
+
+/* ======== КАРТОЧКА ПРОФИЛЯ - РАСТЯНУТА И УВЕЛИЧЕНА ======== */
 .profile-card {
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: 16px;
   padding: 40px;
-  margin-bottom: 24px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
 }
 
 .profile-header {
   display: flex;
   gap: 32px;
   align-items: center;
-  max-width: 1100px;
-  margin: 0 auto;
 }
 
-/* Аватар */
+/* Аватар - УВЕЛИЧЕН */
 .avatar-section {
   position: relative;
   flex-shrink: 0;
 }
 
 .profile-avatar {
-  width: 160px;
-  height: 160px;
+  width: 150px;
+  height: 150px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--accent), #00cc6a);
+  background: #000;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 64px;
+  font-size: 60px;
   font-weight: 700;
-  color: #000;
+  color: #fff;
   border: 5px solid var(--bg-card);
-  box-shadow: 0 8px 24px rgba(0, 255, 136, 0.3);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
   overflow: hidden;
 }
 
@@ -60,10 +70,10 @@ body.profile-page .site-wrapper {
 
 .avatar-upload-btn {
   position: absolute;
-  bottom: 8px;
-  right: 8px;
-  width: 44px;
-  height: 44px;
+  bottom: 4px;
+  right: 4px;
+  width: 42px;
+  height: 42px;
   border-radius: 50%;
   background: var(--accent);
   border: 3px solid var(--bg-card);
@@ -71,13 +81,13 @@ body.profile-page .site-wrapper {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  font-size: 20px;
+  font-size: 18px;
   transition: all 0.2s;
 }
 
 .avatar-upload-btn:hover {
   transform: scale(1.1);
-  filter: brightness(1.2);
+  filter: brightness(1.1);
 }
 
 /* Информация профиля */
@@ -89,18 +99,18 @@ body.profile-page .site-wrapper {
   display: flex;
   align-items: center;
   gap: 16px;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
 .profile-name {
-  font-size: 36px;
+  font-size: 32px;
   font-weight: 700;
   color: var(--text-main);
   margin: 0;
 }
 
 .edit-profile-btn {
-  padding: 10px 20px;
+  padding: 10px 18px;
   background: transparent;
   border: 2px solid var(--border);
   border-radius: 10px;
@@ -125,45 +135,44 @@ body.profile-page .site-wrapper {
 }
 
 .profile-bio {
-  font-size: 17px;
+  font-size: 16px;
   color: var(--text-main);
   line-height: 1.6;
-  max-width: 700px;
+  max-width: 800px;
 }
 
-/* ======== СЕТКА КОНТЕНТА: YouTube + Записи ======== */
-.profile-content-grid {
+/* ======== СЕТКА КОНТЕНТА: YouTube слева, Записи справа ======== */
+.content-grid {
   display: grid;
-  grid-template-columns: 500px 1fr;
+  grid-template-columns: 480px 1fr;
   gap: 24px;
   align-items: start;
 }
 
-/* ======== YOUTUBE СЕКЦИЯ (СЛЕВА) ======== */
-.youtube-section {
+/* ======== YOUTUBE БЛОК (слева, увеличен) ======== */
+.youtube-block {
   background: var(--bg-card);
   border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 24px;
-  height: fit-content;
+  border-radius: 12px;
+  padding: 20px;
 }
 
-.section-title {
-  font-size: 18px;
-  font-weight: 700;
+.sidebar-title {
+  font-size: 16px;
+  font-weight: 600;
   color: var(--accent);
   margin-bottom: 16px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
+/* проигрыватель */
 .video-wrapper {
   position: relative;
   padding-bottom: 56.25%;
   height: 0;
   overflow: hidden;
   border-radius: 12px;
-  background: #000;
 }
 
 .video-wrapper iframe {
@@ -181,9 +190,8 @@ body.profile-page .site-wrapper {
 }
 
 .youtube-empty p {
-  margin-bottom: 16px;
+  margin-bottom: 12px;
   color: var(--text-secondary);
-  font-size: 15px;
 }
 
 .add-video-btn {
@@ -203,31 +211,29 @@ body.profile-page .site-wrapper {
   transform: translateY(-1px);
 }
 
-/* ======== СТЕНА С ЗАПИСЯМИ (СПРАВА) ======== */
+/* ======== СТЕНА С ЗАПИСЯМИ (справа) ======== */
 .wall-section {
   background: var(--bg-card);
   border: 1px solid var(--border);
-  border-radius: 16px;
+  border-radius: 12px;
   overflow: hidden;
 }
 
 .wall-header {
-  padding: 20px 24px;
+  padding: 16px 20px;
   border-bottom: 1px solid var(--border);
 }
 
 .wall-header h2 {
   font-size: 18px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--accent);
   margin: 0;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
 }
 
 /* Форма создания записи */
 .post-composer {
-  padding: 20px 24px;
+  padding: 20px;
   border-bottom: 1px solid var(--border);
   background: linear-gradient(180deg, #0f1112, #0d0d0d);
 }
@@ -316,7 +322,7 @@ body.profile-page .site-wrapper {
 }
 
 .post-item {
-  padding: 20px 24px;
+  padding: 20px;
   border-bottom: 1px solid var(--border);
   transition: background 0.2s;
 }
@@ -340,13 +346,13 @@ body.profile-page .site-wrapper {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--accent), #00cc6a);
+  background: #000;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 16px;
   font-weight: 700;
-  color: #000;
+  color: #fff;
   flex-shrink: 0;
 }
 
@@ -596,29 +602,20 @@ body.profile-page .site-wrapper {
   display: none !important;
 }
 
-/* ======== СТАРЫЕ КЛАССЫ (СКРЫТЫ) ======== */
-.profile-sidebar,
-.profile-main,
-.stat-item,
-.quick-action,
-.settings-link {
-  display: none !important;
-}
-
 /* ======== АДАПТИВНОСТЬ ======== */
 @media (max-width: 1200px) {
-  .profile-content-grid {
-    grid-template-columns: 450px 1fr;
+  .content-grid {
+    grid-template-columns: 420px 1fr;
   }
 }
 
 @media (max-width: 1024px) {
-  .profile-content-grid {
+  .content-grid {
     grid-template-columns: 1fr;
     gap: 20px;
   }
 
-  .youtube-section {
+  .youtube-block {
     max-width: 600px;
     margin: 0 auto;
   }
@@ -637,7 +634,6 @@ body.profile-page .site-wrapper {
     flex-direction: column;
     align-items: center;
     text-align: center;
-    gap: 20px;
   }
 
   .profile-avatar {
@@ -647,9 +643,9 @@ body.profile-page .site-wrapper {
   }
 
   .avatar-upload-btn {
-    width: 40px;
-    height: 40px;
-    font-size: 18px;
+    width: 38px;
+    height: 38px;
+    font-size: 16px;
   }
 
   .profile-name {
@@ -659,10 +655,6 @@ body.profile-page .site-wrapper {
   .profile-name-section {
     flex-direction: column;
     gap: 10px;
-  }
-
-  .profile-bio {
-    max-width: 100%;
   }
 
   .post-composer {
@@ -683,29 +675,23 @@ body.profile-page .site-wrapper {
 }
 
 @media (max-width: 480px) {
-  .profile-card {
-    padding: 20px;
-  }
-
   .profile-avatar {
     width: 100px;
     height: 100px;
     font-size: 40px;
-    border: 4px solid var(--bg-card);
   }
 
   .avatar-upload-btn {
-    width: 36px;
-    height: 36px;
-    font-size: 16px;
+    width: 34px;
+    height: 34px;
+    font-size: 14px;
   }
 
   .profile-name {
     font-size: 24px;
   }
 
-  .wall-header h2,
-  .section-title {
+  .wall-header h2 {
     font-size: 16px;
   }
 
