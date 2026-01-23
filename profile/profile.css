@@ -651,11 +651,6 @@ body.profile-page .site-wrapper {
     grid-template-columns: 1fr;
     gap: 20px;
   }
-
-  .youtube-block {
-    max-width: 600px;
-    margin: 0 auto;
-  }
 }
 
 @media (max-width: 768px) {
