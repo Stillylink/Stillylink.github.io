@@ -60,7 +60,6 @@ const logoutBtn = document.getElementById("logoutBtn");
 const profileAvatar = document.getElementById("profileAvatar");
 const avatarLetterProfile = document.getElementById("avatarLetter");
 const profileName = document.getElementById("profileName");
-const profileEmail = document.getElementById("profileEmail");
 const profileBio = document.getElementById("profileBio");
 const avatarUpload = document.getElementById("avatarUpload");
 
