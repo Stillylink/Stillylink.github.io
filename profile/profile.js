@@ -538,6 +538,7 @@ if (postsCount) {
 }, (error) => {
     console.error("Ошибка загрузки постов:", error);
 });
+    }
 
 // Добавление записи в UI
 function addPostToUI(postId, post) {
