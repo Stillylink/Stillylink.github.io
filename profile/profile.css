@@ -135,7 +135,7 @@ body.profile-page .site-wrapper {
 /* ======== СЕТКА КОНТЕНТА: YouTube слева, Записи справа ======== */
 .content-grid {
   display: grid;
-  grid-template-columns: 480px 1fr;
+  grid-template-columns: 320px 1fr;
   gap: 24px;
   align-items: start;
 }
