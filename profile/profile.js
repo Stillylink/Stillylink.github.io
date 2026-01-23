@@ -82,7 +82,6 @@ const photoModal = document.getElementById("photoModal");
 const closePhotoModal = document.getElementById("closePhotoModal");
 const modalPhoto = document.getElementById("modalPhoto");
 
-const chatsCount = document.getElementById("chatsCount");
 const postsCount = document.getElementById("postsCount");
 const memberSince = document.getElementById("memberSince");
 
@@ -501,39 +500,45 @@ function loadUserPosts() {
         equalTo(currentUser.uid)
     );
 
-    postsListener = onValue(userPostsQuery, (snapshot) => {
-        postsList.innerHTML = "";
+postsListener = onValue(userPostsQuery, (snapshot) => {
+    postsList.innerHTML = "";
 
-        if (!snapshot.exists()) {
-            postsList.innerHTML = `
-                <div class="posts-empty">
-                    <div class="posts-empty-icon">📝</div>
-                    <div class="posts-empty-text">Здесь пока нет записей. Создайте первую!</div>
+    if (!snapshot.exists()) {
+        postsList.innerHTML = `
+            <div class="posts-empty">
+                <div class="posts-empty-icon">📝</div>
+                <div class="posts-empty-text">
+                    Здесь пока нет записей. Создайте первую!
                 </div>
-            `;
+            </div>
+        `;
+
+        if (postsCount) {
             postsCount.textContent = "0";
-            return;
         }
+        return;
+    }
 
-        const posts = [];
-        snapshot.forEach(childSnapshot => {
-            posts.push({
-                id: childSnapshot.key,
-                data: childSnapshot.val()
-            });
+    const posts = [];
+    snapshot.forEach(childSnapshot => {
+        posts.push({
+            id: childSnapshot.key,
+            data: childSnapshot.val()
         });
-
-        posts.sort((a, b) => b.data.createdAt - a.data.createdAt);
-
-        posts.forEach(post => {
-            addPostToUI(post.id, post.data);
-        });
-
-        postsCount.textContent = posts.length.toString();
-    }, (error) => {
-        console.error("Ошибка загрузки постов:", error);
     });
+
+    posts.sort((a, b) => b.data.createdAt - a.data.createdAt);
+
+    posts.forEach(post => {
+        addPostToUI(post.id, post.data);
+    });
+
+if (postsCount) {
+    postsCount.textContent = posts.length.toString();
 }
+}, (error) => {
+    console.error("Ошибка загрузки постов:", error);
+});
 
 // Добавление записи в UI
 function addPostToUI(postId, post) {
