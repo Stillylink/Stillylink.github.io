@@ -90,6 +90,9 @@ const youtubeEmpty = document.getElementById("youtubeEmpty");
 const youtubeIframe = document.getElementById("youtubeIframe");
 const addVideoBtn = document.getElementById("addVideoBtn");
 
+// Статус элементы
+const statusText = document.querySelector(".status-text");
+
 let currentUser = null;
 let currentUserData = null; 
 let currentPhotoFile = null;
@@ -129,6 +132,153 @@ document.addEventListener("click", e => {
     if (userMenu.contains(e.target) || avatar.contains(e.target)) return;
     userMenu.classList.remove("open");
 });
+
+// 📝 СТАТУС ФУНКЦИИ
+function renderStatus(status) {
+    if (!statusText) return;
+    
+    if (!status || status.trim() === "") {
+        statusText.innerHTML = `
+            <span style="opacity: 0.5; font-style: italic;">Нажмите, чтобы добавить статус</span>
+        `;
+    } else {
+        statusText.innerHTML = `
+            <div style="position: relative;">
+                <div class="status-content">${escapeHtml(status)}</div>
+                <button class="status-edit-btn" style="position: absolute; top: -8px; right: -8px; width: 28px; height: 28px; border-radius: 50%; background: var(--accent); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px; opacity: 0; transition: opacity 0.2s;">✏️</button>
+            </div>
+        `;
+        
+        const editBtn = statusText.querySelector('.status-edit-btn');
+        statusText.addEventListener('mouseenter', () => {
+            editBtn.style.opacity = '1';
+        });
+        statusText.addEventListener('mouseleave', () => {
+            editBtn.style.opacity = '0';
+        });
+        
+        editBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            openStatusEditor(status);
+        });
+    }
+    
+    statusText.style.cursor = 'pointer';
+    statusText.onclick = () => {
+        if (!status || status.trim() === "") {
+            openStatusEditor("");
+        }
+    };
+}
+
+function openStatusEditor(currentStatus) {
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Редактировать статус</h3>
+                <button class="modal-close" id="closeStatusModal">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="statusInput">Ваш статус или цитата</label>
+                    <textarea id="statusInput" class="form-textarea" rows="4" placeholder="Например: 'Живи, улыбайся, твори!' или 'На пути к новым целям 🚀'" maxlength="200">${escapeHtml(currentStatus || '')}</textarea>
+                    <div style="text-align: right; font-size: 12px; color: var(--text-secondary); margin-top: 4px;">
+                        <span id="statusCharCount">0</span>/200
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                ${currentStatus ? '<button class="modal-btn delete" id="deleteStatusBtn" style="margin-right: auto; background: transparent; border: 1px solid #ff3b30; color: #ff3b30;">Удалить</button>' : ''}
+                <button class="modal-btn cancel" id="cancelStatusBtn">Отмена</button>
+                <button class="modal-btn save" id="saveStatusBtn">Сохранить</button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    const statusInput = modal.querySelector('#statusInput');
+    const charCount = modal.querySelector('#statusCharCount');
+    const closeBtn = modal.querySelector('#closeStatusModal');
+    const cancelBtn = modal.querySelector('#cancelStatusBtn');
+    const saveBtn = modal.querySelector('#saveStatusBtn');
+    const deleteBtn = modal.querySelector('#deleteStatusBtn');
+    
+    // Обновление счетчика символов
+    function updateCharCount() {
+        charCount.textContent = statusInput.value.length;
+    }
+    updateCharCount();
+    statusInput.addEventListener('input', updateCharCount);
+    
+    // Закрытие
+    const closeModal = () => {
+        modal.remove();
+    };
+    
+    closeBtn.addEventListener('click', closeModal);
+    cancelBtn.addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) closeModal();
+    });
+    
+    // Сохранение
+    saveBtn.addEventListener('click', async () => {
+        const newStatus = statusInput.value.trim();
+        
+        if (newStatus.length > 200) {
+            alert('Статус не может быть длиннее 200 символов');
+            return;
+        }
+        
+        try {
+            await saveStatus(newStatus);
+            renderStatus(newStatus);
+            closeModal();
+        } catch (error) {
+            alert('Не удалось сохранить статус');
+        }
+    });
+    
+    // Удаление
+    if (deleteBtn) {
+        deleteBtn.addEventListener('click', async () => {
+            if (confirm('Удалить статус?')) {
+                try {
+                    await saveStatus("");
+                    renderStatus("");
+                    closeModal();
+                } catch (error) {
+                    alert('Не удалось удалить статус');
+                }
+            }
+        });
+    }
+    
+    statusInput.focus();
+}
+
+async function saveStatus(status) {
+    if (!currentUser) return;
+    
+    try {
+        const userDocRef = doc(db, "users", currentUser.uid);
+        await setDoc(userDocRef, {
+            status: status || ""
+        }, { merge: true });
+        
+        // Обновляем кэш
+        currentUserData.status = status || "";
+        localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(currentUserData));
+        
+        console.log("Статус сохранен!");
+    } catch (error) {
+        console.error("Ошибка сохранения статуса:", error);
+        throw error;
+    }
+}
 
 // 🎬 YOUTUBE ФУНКЦИИ
 function extractVideoId(url) {
@@ -179,9 +329,9 @@ async function saveYoutubeVideo(videoId) {
     
     try {
         const userDocRef = doc(db, "users", currentUser.uid);
-await setDoc(userDocRef, {
-    youtubeVideoId: videoId || null
-}, { merge: true });
+        await setDoc(userDocRef, {
+            youtubeVideoId: videoId || null
+        }, { merge: true });
         
         // Обновляем кэш
         currentUserData.youtubeVideoId = videoId || null;
@@ -245,7 +395,8 @@ onAuthStateChanged(auth, async (user) => {
                 email: user.email,
                 bio: "Расскажите о себе...",
                 avatarUrl: null,
-                youtubeVideoId: null
+                youtubeVideoId: null,
+                status: ""
             };
 
             await setDoc(userDocRef, newProfile);
@@ -266,6 +417,9 @@ onAuthStateChanged(auth, async (user) => {
 
     // Профиль
     renderProfile(currentUserData);
+    
+    // 📝 Загружаем статус
+    renderStatus(currentUserData.status || "");
     
     // 🎬 Загружаем YouTube видео
     loadYoutubeVideo(currentUserData.youtubeVideoId);
@@ -499,46 +653,46 @@ function loadUserPosts() {
         equalTo(currentUser.uid)
     );
 
-postsListener = onValue(userPostsQuery, (snapshot) => {
-    postsList.innerHTML = "";
+    postsListener = onValue(userPostsQuery, (snapshot) => {
+        postsList.innerHTML = "";
 
-    if (!snapshot.exists()) {
-        postsList.innerHTML = `
-            <div class="posts-empty">
-                <div class="posts-empty-icon">📝</div>
-                <div class="posts-empty-text">
-                    Здесь пока нет записей. Создайте первую!
+        if (!snapshot.exists()) {
+            postsList.innerHTML = `
+                <div class="posts-empty">
+                    <div class="posts-empty-icon">📝</div>
+                    <div class="posts-empty-text">
+                        Здесь пока нет записей. Создайте первую!
+                    </div>
                 </div>
-            </div>
-        `;
+            `;
+
+            if (postsCount) {
+                postsCount.textContent = "0";
+            }
+            return;
+        }
+
+        const posts = [];
+        snapshot.forEach(childSnapshot => {
+            posts.push({
+                id: childSnapshot.key,
+                data: childSnapshot.val()
+            });
+        });
+
+        posts.sort((a, b) => b.data.createdAt - a.data.createdAt);
+
+        posts.forEach(post => {
+            addPostToUI(post.id, post.data);
+        });
 
         if (postsCount) {
-            postsCount.textContent = "0";
+            postsCount.textContent = posts.length.toString();
         }
-        return;
-    }
-
-    const posts = [];
-    snapshot.forEach(childSnapshot => {
-        posts.push({
-            id: childSnapshot.key,
-            data: childSnapshot.val()
-        });
+    }, (error) => {
+        console.error("Ошибка загрузки постов:", error);
     });
-
-    posts.sort((a, b) => b.data.createdAt - a.data.createdAt);
-
-    posts.forEach(post => {
-        addPostToUI(post.id, post.data);
-    });
-
-if (postsCount) {
-    postsCount.textContent = posts.length.toString();
 }
-}, (error) => {
-    console.error("Ошибка загрузки постов:", error);
-});
-    }
 
 // Добавление записи в UI
 function addPostToUI(postId, post) {
