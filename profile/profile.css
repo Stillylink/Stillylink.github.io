@@ -130,7 +130,16 @@ body.profile-page .site-wrapper {
   color: var(--text-main);
   line-height: 1.6;
   max-width: 800px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
+
+.profile-bio:empty::before {
+  content: "Расскажите о себе...";
+  color: #888;
+}
+
 .profile-meta {
   margin-top: 8px;
   font-size: 14px;
