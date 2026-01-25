@@ -135,8 +135,9 @@ body.profile-page .site-wrapper {
   overflow-wrap: anywhere;
 }
 
-.profile-bio:empty::before {
-  content: "Расскажите о себе...";
+.profile-bio.empty {
+  opacity: 0.5;
+  font-style: italic;
   color: #888;
 }
 
