@@ -546,11 +546,6 @@ editBio.addEventListener("input", () => {
   editBio.value = normalizeBio(editBio.value);
 });
 
-let bioText = bioTextarea.value;
-bioText = normalizeBio(bioText);
-
-bioTextarea.value = bioText;
-
 saveProfileBtn.addEventListener("click", async () => {
     if (!currentUser) return;
 
@@ -603,7 +598,6 @@ editModal.addEventListener("click", (e) => {
 });
 
 function normalizeBio(text) {
-  // Ограничение на 10 строк СНАЧАЛА
   const lines = text.split("\n");
   if (lines.length > 10) {
     text = lines.slice(0, 10).join("\n");
@@ -612,8 +606,6 @@ function normalizeBio(text) {
   if (text.length > 100) {
     text = text.slice(0, 100);
   }
-
-  text = text.replace(/\s+$/g, "");
 
   return text;
 }
