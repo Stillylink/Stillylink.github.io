@@ -393,7 +393,7 @@ onAuthStateChanged(auth, async (user) => {
             const newProfile = {
                 name: defaultName,
                 email: user.email,
-                bio: "Расскажите о себе...",
+                bio: "",
                 avatarUrl: null,
                 youtubeVideoId: null,
                 status: ""
@@ -447,13 +447,18 @@ logoutBtn?.addEventListener("click", async (e) => {
 function renderProfile(userData) {
     profileName.textContent = userData.name;
 
-    if (!userData.bio || !userData.bio.trim()) {
-        profileBio.textContent = "Расскажите о себе…";
-        profileBio.classList.add("empty");
-    } else {
-        profileBio.textContent = userData.bio;
-        profileBio.classList.remove("empty");
-    }
+const hasBio = userData.bio && 
+               userData.bio.trim() !== "" && 
+               userData.bio !== "Расскажите о себе..." &&
+               userData.bio !== "Расскажите о себе…";
+
+if (hasBio) {
+    profileBio.textContent = userData.bio;
+    profileBio.classList.remove("empty");
+} else {
+    profileBio.textContent = "Расскажите о себе…";
+    profileBio.classList.add("empty");
+}
 
     if (userData.avatarUrl) {
         avatarLetterProfile.style.display = "none";
@@ -515,8 +520,14 @@ avatarUpload.addEventListener("change", async (e) => {
 editProfileBtn.addEventListener("click", () => {
     if (!currentUserData) return;
 
-    editName.value = currentUserData.name || "";
-    editBio.value = currentUserData.bio || "";
+editName.value = currentUserData.name || "";
+
+const hasBio = currentUserData.bio && 
+               currentUserData.bio.trim() !== "" && 
+               currentUserData.bio !== "Расскажите о себе..." &&
+               currentUserData.bio !== "Расскажите о себе…";
+
+editBio.value = hasBio ? currentUserData.bio : "";
 
     editModal.classList.remove("hidden");
 });
@@ -559,12 +570,18 @@ saveProfileBtn.addEventListener("click", async () => {
         });
 
         currentUserData.name = name;
-        currentUserData.bio = bio || "Расскажите о себе...";
+        currentUserData.bio = bio || "";
         
         localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(currentUserData));
 
         profileName.textContent = name;
-        profileBio.textContent = bio || "Расскажите о себе...";
+        if (bio) {
+        profileBio.textContent = bio;
+        profileBio.classList.remove("empty");
+        } else {
+       profileBio.textContent = "Расскажите о себе…";
+       profileBio.classList.add("empty");
+       }
         
         const newLetter = name.charAt(0).toUpperCase();
         avatarLetterProfile.textContent = newLetter;
@@ -586,16 +603,17 @@ editModal.addEventListener("click", (e) => {
 });
 
 function normalizeBio(text) {
-  text = text.replace(/\s+$/g, "");
+  // Ограничение на 10 строк СНАЧАЛА
+  const lines = text.split("\n");
+  if (lines.length > 10) {
+    text = lines.slice(0, 10).join("\n");
+  }
 
   if (text.length > 100) {
     text = text.slice(0, 100);
   }
 
-  const lines = text.split("\n");
-  if (lines.length > 10) {
-    text = lines.slice(0, 10).join("\n");
-  }
+  text = text.replace(/\s+$/g, "");
 
   return text;
 }
