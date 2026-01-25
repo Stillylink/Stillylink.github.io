@@ -446,7 +446,14 @@ logoutBtn?.addEventListener("click", async (e) => {
 // Загрузка профиля пользователя
 function renderProfile(userData) {
     profileName.textContent = userData.name;
-    profileBio.textContent = userData.bio || "Расскажите о себе...";
+
+    if (!userData.bio || !userData.bio.trim()) {
+        profileBio.textContent = "Расскажите о себе…";
+        profileBio.classList.add("empty");
+    } else {
+        profileBio.textContent = userData.bio;
+        profileBio.classList.remove("empty");
+    }
 
     if (userData.avatarUrl) {
         avatarLetterProfile.style.display = "none";
@@ -524,6 +531,10 @@ cancelEditBtn.addEventListener("click", () => {
 
 const bioTextarea = document.getElementById("editBio");
 
+editBio.addEventListener("input", () => {
+  editBio.value = normalizeBio(editBio.value);
+});
+
 let bioText = bioTextarea.value;
 bioText = normalizeBio(bioText);
 
@@ -544,7 +555,7 @@ saveProfileBtn.addEventListener("click", async () => {
         const userDocRef = doc(db, "users", currentUser.uid);
         await updateDoc(userDocRef, {
             name,
-            bio: bio || "Расскажите о себе..."
+            bio: bio || ""
         });
 
         currentUserData.name = name;
