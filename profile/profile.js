@@ -522,6 +522,13 @@ cancelEditBtn.addEventListener("click", () => {
     editModal.classList.add("hidden");
 });
 
+const bioTextarea = document.getElementById("editBio");
+
+let bioText = bioTextarea.value;
+bioText = normalizeBio(bioText);
+
+bioTextarea.value = bioText;
+
 saveProfileBtn.addEventListener("click", async () => {
     if (!currentUser) return;
 
@@ -566,6 +573,21 @@ editModal.addEventListener("click", (e) => {
         editModal.classList.add("hidden");
     }
 });
+
+function normalizeBio(text) {
+  text = text.replace(/\s+$/g, "");
+
+  if (text.length > 100) {
+    text = text.slice(0, 100);
+  }
+
+  const lines = text.split("\n");
+  if (lines.length > 10) {
+    text = lines.slice(0, 10).join("\n");
+  }
+
+  return text;
+}
 
 // Публикация записи
 attachPhotoBtn.addEventListener("click", () => {
