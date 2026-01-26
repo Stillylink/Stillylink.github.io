@@ -53,6 +53,11 @@ const replyError = document.getElementById('replyError');
 const replySentBox = document.getElementById('replySentBox');
 const getAnotherBtn = document.getElementById('getAnotherBtn');
 
+/*  ===============  DOM - Модальное окно  =============== */
+const guestModal = document.getElementById('guestModal');
+const modalRegisterBtn = document.getElementById('modalRegisterBtn');
+const modalCancelBtn = document.getElementById('modalCancelBtn');
+
 /*  =====  Навигация / Аватарка  =====  */
 const regBtn = document.querySelector('.register-btn');
 const avatar = document.querySelector('.user-avatar');
@@ -63,6 +68,7 @@ const navToggle = document.querySelector('.nav-toggle');
 
 /*  ===============  Переменные  =============== */
 let uid = null;
+let isGuest = true; // По умолчанию считаем гостем
 let currentMessageId = null; // ID послания, которое пользователь читает
 
 /*  ===============  Utils  =============== */
@@ -108,7 +114,9 @@ onAuthStateChanged(auth, user => {
   }
   uid = user.uid;
   
+  // Проверяем, является ли пользователь гостем (анонимный вход без email)
   if (user.email) {
+    isGuest = false;
     const cachedLetter = localStorage.getItem('userAvatarLetter');
     if (cachedLetter) {
       avatarLetter.textContent = cachedLetter;
@@ -120,6 +128,7 @@ onAuthStateChanged(auth, user => {
     regBtn?.classList.add('hidden');
     avatar?.classList.remove('hidden');
   } else {
+    isGuest = true;
     regBtn?.classList.remove('hidden');
     avatar?.classList.add('hidden');
     localStorage.removeItem('userAvatarLetter');
@@ -128,6 +137,12 @@ onAuthStateChanged(auth, user => {
 
 /*  ===============  Навигация между экранами  =============== */
 writeMsgBtn.addEventListener('click', async () => {
+  // Проверяем, является ли пользователь гостем
+  if (isGuest) {
+    show(guestModal);
+    return;
+  }
+  
   hide(choiceScreen);
   show(writeScreen);
   
@@ -375,3 +390,19 @@ function hideReplyError() {
   replyError.textContent = '';
   replyError.classList.remove('visible');
 }
+
+/*  ===============  Модальное окно  =============== */
+modalRegisterBtn.addEventListener('click', () => {
+  window.location.href = '/login/';
+});
+
+modalCancelBtn.addEventListener('click', () => {
+  hide(guestModal);
+});
+
+// Закрытие модального окна по клику вне его
+guestModal.addEventListener('click', (e) => {
+  if (e.target === guestModal) {
+    hide(guestModal);
+  }
+});
