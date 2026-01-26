@@ -63,7 +63,7 @@ body.messages-page .site-wrapper {
   align-items: center;
   padding: 40px 24px;
   overflow-y: auto;
-  background: linear-gradient(180deg, #0f1112, #0b0b0b);
+  background: var(--bg-card);
 }
 
 .choice-screen h2 {
