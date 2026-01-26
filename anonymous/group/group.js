@@ -66,7 +66,7 @@ const hide = el => el.classList.add('hidden');
 logoutBtn?.addEventListener('click', async e => {
   e.preventDefault();
   await auth.signOut();
-  localStorage.removeItem('userAvatarLetter');
+  localStorage.clear();
   window.location.reload();
 });
 
