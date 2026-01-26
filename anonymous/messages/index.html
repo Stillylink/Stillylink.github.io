@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+  <title>Анонимные послания — StillyLink</title>
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="messages.css">
+</head>
+<body class="messages-page">
+<div class="site-wrapper">
+  <header class="navbar">
+    <div class="logo">StillyLink</div>
+    <nav class="nav-links">
+      <a href="/">Главная</a>
+      <a href="/#create-chat">Создать чат</a>
+      <a href="/anonymous/">Анонимное общение</a>
+      <a href="/login/" class="register-btn">Регистрация</a>
+    </nav>
+    <div class="user-avatar hidden" onclick="toggleUserMenu()">
+      <span>U</span>
+    </div>
+    <div class="user-menu">
+      <a href="/profile/">Профиль</a>
+      <a href="#" id="logoutBtn">Выйти</a>
+    </div>
+    <div class="nav-toggle" onclick="toggleMenu()">☰</div>
+  </header>
+
+  <!-- ========== ОСНОВНОЙ КОНТЕЙНЕР =========== -->
+  <main class="messages-container">
+    <div class="messages-box">
+      <div class="messages-shell">
+        
+        <!-- ========== ЭКРАН ВЫБОРА ДЕЙСТВИЯ ========== -->
+        <div id="choiceScreen" class="choice-screen">
+          <h2>Анонимные послания</h2>
+          <p class="choice-description">
+            Отправьте своё послание в небытие или получите случайное послание от другого пользователя
+          </p>
+          
+          <div class="choice-buttons">
+            <button class="choice-btn" id="writeMsgBtn">
+              <div class="choice-icon">✍️</div>
+              <div class="choice-title">Написать послание</div>
+              <div class="choice-desc">Отправьте своё сообщение в небытие</div>
+            </button>
+            
+            <button class="choice-btn" id="receiveMsgBtn">
+              <div class="choice-icon">📬</div>
+              <div class="choice-title">Получить послание</div>
+              <div class="choice-desc">Прочитайте и ответьте на чужое послание</div>
+            </button>
+          </div>
+
+          <button class="secondary-btn" id="viewRepliesBtn">
+            <span>📋</span> Посмотреть ответы на моё послание
+          </button>
+        </div>
+
+        <!-- ========== ЭКРАН НАПИСАНИЯ ПОСЛАНИЯ ========== -->
+        <div id="writeScreen" class="write-screen hidden">
+          <div class="screen-header">
+            <button class="back-btn" id="backFromWrite">← Назад</button>
+            <h3>Напишите своё послание</h3>
+          </div>
+          
+          <div class="write-content">
+            <textarea 
+              id="messageTextarea" 
+              class="message-textarea" 
+              placeholder="Напишите что угодно... Ваше послание будет анонимным и попадётся случайным людям"
+              maxlength="1000"
+            ></textarea>
+            <div class="char-counter">
+              <span id="charCount">0</span>/1000
+            </div>
+            <div id="writeError" class="error-text"></div>
+            <button class="btn" id="submitMessageBtn">Отправить в небытие</button>
+            
+            <div id="hasMessageInfo" class="info-box hidden">
+              <p>У вас уже есть активное послание. Отправка нового удалит предыдущее.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- ========== ЭКРАН ПОЛУЧЕНИЯ ПОСЛАНИЯ ========== -->
+        <div id="receiveScreen" class="receive-screen hidden">
+          <div class="screen-header">
+            <button class="back-btn" id="backFromReceive">← Назад</button>
+            <h3>Послание от незнакомца</h3>
+          </div>
+          
+          <div class="receive-content">
+            <div id="loadingMessage" class="loading-box">
+              <div class="loading-spinner"></div>
+              <p>Ищем послание...</p>
+            </div>
+
+            <div id="noMessagesBox" class="info-box hidden">
+              <p>😔 Пока нет доступных посланий. Попробуйте позже или напишите своё!</p>
+            </div>
+
+            <div id="messageBox" class="message-box hidden">
+              <div class="received-message" id="receivedMessage"></div>
+              <div class="message-meta" id="messageMeta"></div>
+              
+              <div class="reply-section">
+                <h4>Ваш анонимный ответ</h4>
+                <textarea 
+                  id="replyTextarea" 
+                  class="reply-textarea" 
+                  placeholder="Напишите свой ответ..."
+                  maxlength="500"
+                ></textarea>
+                <div class="char-counter">
+                  <span id="replyCharCount">0</span>/500
+                </div>
+                <div id="replyError" class="error-text"></div>
+                <button class="btn" id="sendReplyBtn">Отправить ответ</button>
+              </div>
+            </div>
+
+            <div id="replySentBox" class="success-box hidden">
+              <div class="success-icon">✓</div>
+              <h4>Ответ отправлен!</h4>
+              <p>Ваш анонимный ответ был доставлен автору послания</p>
+              <button class="btn" id="getAnotherBtn">Получить ещё послание</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ========== ЭКРАН ПРОСМОТРА ОТВЕТОВ ========== -->
+        <div id="repliesScreen" class="replies-screen hidden">
+          <div class="screen-header">
+            <button class="back-btn" id="backFromReplies">← Назад</button>
+            <h3>Ответы на моё послание</h3>
+          </div>
+          
+          <div class="replies-content">
+            <div id="loadingReplies" class="loading-box">
+              <div class="loading-spinner"></div>
+              <p>Загружаем ответы...</p>
+            </div>
+
+            <div id="noRepliesBox" class="info-box hidden">
+              <p>📭 У вас пока нет ответов на послание</p>
+            </div>
+
+            <div id="myMessageBox" class="my-message-box hidden">
+              <h4>Ваше послание:</h4>
+              <div class="my-message" id="myMessage"></div>
+            </div>
+
+            <div id="repliesList" class="replies-list hidden"></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer">© 2026 StillyLink.</footer>
+</div>
+
+<script type="module" src="messages.js"></script>
+</body>
+</html>
