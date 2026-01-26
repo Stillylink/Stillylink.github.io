@@ -41,21 +41,15 @@
           
           <div class="choice-buttons">
             <button class="choice-btn" id="writeMsgBtn">
-              <div class="choice-icon">✍️</div>
               <div class="choice-title">Написать послание</div>
               <div class="choice-desc">Отправьте своё сообщение в небытие</div>
             </button>
             
             <button class="choice-btn" id="receiveMsgBtn">
-              <div class="choice-icon">📬</div>
               <div class="choice-title">Получить послание</div>
               <div class="choice-desc">Прочитайте и ответьте на чужое послание</div>
             </button>
           </div>
-
-          <button class="secondary-btn" id="viewRepliesBtn">
-            <span>📋</span> Посмотреть ответы на моё послание
-          </button>
         </div>
 
         <!-- ========== ЭКРАН НАПИСАНИЯ ПОСЛАНИЯ ========== -->
@@ -98,7 +92,7 @@
             </div>
 
             <div id="noMessagesBox" class="info-box hidden">
-              <p>😔 Пока нет доступных посланий. Попробуйте позже или напишите своё!</p>
+              <p>Пока нет доступных посланий. Попробуйте позже или напишите своё!</p>
             </div>
 
             <div id="messageBox" class="message-box hidden">
@@ -127,32 +121,6 @@
               <p>Ваш анонимный ответ был доставлен автору послания</p>
               <button class="btn" id="getAnotherBtn">Получить ещё послание</button>
             </div>
-          </div>
-        </div>
-
-        <!-- ========== ЭКРАН ПРОСМОТРА ОТВЕТОВ ========== -->
-        <div id="repliesScreen" class="replies-screen hidden">
-          <div class="screen-header">
-            <button class="back-btn" id="backFromReplies">← Назад</button>
-            <h3>Ответы на моё послание</h3>
-          </div>
-          
-          <div class="replies-content">
-            <div id="loadingReplies" class="loading-box">
-              <div class="loading-spinner"></div>
-              <p>Загружаем ответы...</p>
-            </div>
-
-            <div id="noRepliesBox" class="info-box hidden">
-              <p>📭 У вас пока нет ответов на послание</p>
-            </div>
-
-            <div id="myMessageBox" class="my-message-box hidden">
-              <h4>Ваше послание:</h4>
-              <div class="my-message" id="myMessage"></div>
-            </div>
-
-            <div id="repliesList" class="replies-list hidden"></div>
           </div>
         </div>
 
