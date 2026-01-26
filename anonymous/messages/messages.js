@@ -280,10 +280,15 @@ async function loadRandomMessage() {
     currentMessageId = randomMsg.id;
     
     // Отображаем послание
-    receivedMessage.textContent = randomMsg.text;
+    receivedMessage.textContent = randomMsg.text || 'Послание без текста';
     
-    const date = new Date(randomMsg.createdAt);
-    messageMeta.textContent = `Отправлено ${date.toLocaleDateString()} в ${date.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}`;
+    // Форматируем дату
+    if (randomMsg.createdAt && !isNaN(randomMsg.createdAt)) {
+      const date = new Date(randomMsg.createdAt);
+      messageMeta.textContent = `Отправлено ${date.toLocaleDateString('ru-RU')} в ${date.toLocaleTimeString('ru-RU', {hour: '2-digit', minute: '2-digit'})}`;
+    } else {
+      messageMeta.textContent = 'Отправлено недавно';
+    }
     
     replyTextarea.value = '';
     replyCharCount.textContent = '0';
