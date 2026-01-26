@@ -427,6 +427,19 @@ onAuthStateChanged(auth, async (user) => {
         return;
     }
 
+    // Проверяем, совпадает ли UID с сохраненным
+    const cachedUID = localStorage.getItem("currentUserUID");
+    
+    if (cachedUID && cachedUID !== user.uid) {
+        // Пользователь сменился - очищаем кэш предыдущего пользователя
+        console.log("Обнаружена смена пользователя, очистка кэша...");
+        localStorage.removeItem(PROFILE_CACHE_KEY);
+        localStorage.removeItem("userAvatarLetter");
+    }
+    
+    // Сохраняем текущий UID
+    localStorage.setItem("currentUserUID", user.uid);
+
     currentUser = user;
 
     const userDocRef = doc(db, "users", user.uid);
@@ -435,9 +448,17 @@ onAuthStateChanged(auth, async (user) => {
     const cachedProfile = localStorage.getItem(PROFILE_CACHE_KEY);
 
     if (cachedProfile) {
-        currentUserData = JSON.parse(cachedProfile);
-        console.log("Профиль загружен из кэша");
-    } else {
+        try {
+            currentUserData = JSON.parse(cachedProfile);
+            console.log("Профиль загружен из кэша");
+        } catch (e) {
+            console.error("Ошибка парсинга кэша, загружаем из Firestore");
+            localStorage.removeItem(PROFILE_CACHE_KEY);
+            currentUserData = null;
+        }
+    }
+    
+    if (!currentUserData) {
         // Если кэша нет — читаем Firestore
         const userSnap = await getDoc(userDocRef);
 
@@ -492,8 +513,7 @@ logoutBtn?.addEventListener("click", async (e) => {
     }
     
     await signOut(auth);
-    localStorage.removeItem("userAvatarLetter");
-    localStorage.removeItem(PROFILE_CACHE_KEY);
+    localStorage.clear();
     window.location.href = "/login/";
 });
 
