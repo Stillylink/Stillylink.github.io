@@ -139,15 +139,20 @@ function renderStatus(status) {
     
     if (!status || status.trim() === "") {
         statusText.innerHTML = `
-            <span style="opacity: 0.5; font-style: italic;">Нажмите, чтобы добавить статус</span>
+            <span style="opacity: 0.5; font-style: italic; color: var(--text-secondary);">Нажмите, чтобы добавить статус</span>
         `;
     } else {
+        // Используем textContent вместо innerHTML, чтобы избежать <br>
         statusText.innerHTML = `
             <div style="position: relative;">
-                <div class="status-content">${escapeHtml(status)}</div>
+                <div class="status-content" style="white-space: pre-wrap; word-break: break-word;"></div>
                 <button class="status-edit-btn" style="position: absolute; top: -8px; right: -8px; width: 28px; height: 28px; border-radius: 50%; background: var(--accent); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px; opacity: 0; transition: opacity 0.2s;">✏️</button>
             </div>
         `;
+        
+        // Используем textContent для безопасного отображения текста с сохранением переносов
+        const contentDiv = statusText.querySelector('.status-content');
+        contentDiv.textContent = status;
         
         const editBtn = statusText.querySelector('.status-edit-btn');
         statusText.addEventListener('mouseenter', () => {
@@ -183,9 +188,9 @@ function openStatusEditor(currentStatus) {
             <div class="modal-body">
                 <div class="form-group">
                     <label for="statusInput">Ваш статус или цитата</label>
-                    <textarea id="statusInput" class="form-textarea" rows="4" placeholder="Например: 'Живи, улыбайся, твори!' или 'На пути к новым целям 🚀'" maxlength="200">${escapeHtml(currentStatus || '')}</textarea>
+                    <textarea id="statusInput" class="form-textarea" rows="4" placeholder="Добавьте статус"></textarea>
                     <div style="text-align: right; font-size: 12px; color: var(--text-secondary); margin-top: 4px;">
-                        <span id="statusCharCount">0</span>/200
+                        <span id="statusCharCount">0</span>/100 символов, <span id="statusLineCount">0</span>/10 строк
                     </div>
                 </div>
             </div>
@@ -201,17 +206,60 @@ function openStatusEditor(currentStatus) {
     
     const statusInput = modal.querySelector('#statusInput');
     const charCount = modal.querySelector('#statusCharCount');
+    const lineCount = modal.querySelector('#statusLineCount');
     const closeBtn = modal.querySelector('#closeStatusModal');
     const cancelBtn = modal.querySelector('#cancelStatusBtn');
     const saveBtn = modal.querySelector('#saveStatusBtn');
     const deleteBtn = modal.querySelector('#deleteStatusBtn');
     
-    // Обновление счетчика символов
-    function updateCharCount() {
-        charCount.textContent = statusInput.value.length;
+    // Устанавливаем текущий статус (если есть)
+    if (currentStatus) {
+        statusInput.value = currentStatus;
     }
-    updateCharCount();
-    statusInput.addEventListener('input', updateCharCount);
+    
+    // Обновление счетчиков символов и строк
+    function updateCounts() {
+        const text = statusInput.value;
+        const lines = text.split('\n');
+        
+        charCount.textContent = text.length;
+        lineCount.textContent = lines.length;
+        
+        // Подсветка превышения лимитов
+        if (text.length > 100) {
+            charCount.style.color = '#ff3b30';
+        } else {
+            charCount.style.color = 'var(--text-secondary)';
+        }
+        
+        if (lines.length > 10) {
+            lineCount.style.color = '#ff3b30';
+        } else {
+            lineCount.style.color = 'var(--text-secondary)';
+        }
+    }
+    
+    // Ограничение на ввод
+    statusInput.addEventListener('input', () => {
+        let text = statusInput.value;
+        let lines = text.split('\n');
+        
+        // Ограничение на 10 строк
+        if (lines.length > 10) {
+            text = lines.slice(0, 10).join('\n');
+            statusInput.value = text;
+            lines = text.split('\n');
+        }
+        
+        // Ограничение на 100 символов
+        if (text.length > 100) {
+            statusInput.value = text.slice(0, 100);
+        }
+        
+        updateCounts();
+    });
+    
+    updateCounts();
     
     // Закрытие
     const closeModal = () => {
@@ -228,8 +276,14 @@ function openStatusEditor(currentStatus) {
     saveBtn.addEventListener('click', async () => {
         const newStatus = statusInput.value.trim();
         
-        if (newStatus.length > 200) {
-            alert('Статус не может быть длиннее 200 символов');
+        const lines = newStatus.split('\n');
+        if (lines.length > 10) {
+            alert('Статус не может содержать более 10 строк');
+            return;
+        }
+        
+        if (newStatus.length > 100) {
+            alert('Статус не может быть длиннее 100 символов');
             return;
         }
         
