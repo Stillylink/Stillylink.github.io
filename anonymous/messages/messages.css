@@ -185,7 +185,7 @@ body.messages-page .site-wrapper {
   color: var(--text-main);
   font-size: 16px;
   line-height: 1.5;
-  resize: vertical;
+  resize: none;
   outline: none;
   font-family: inherit;
 }
@@ -288,7 +288,7 @@ body.messages-page .site-wrapper {
   color: var(--text-main);
   font-size: 15px;
   line-height: 1.5;
-  resize: vertical;
+  resize: none;
   outline: none;
   font-family: inherit;
   margin-bottom: 8px;
