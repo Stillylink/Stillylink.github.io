@@ -216,7 +216,7 @@ onAuthStateChanged(auth, user => {
 // --- Выход ---
 logoutBtn.onclick = e => {
     e.preventDefault();
-    localStorage.removeItem("userAvatarLetter");
+    localStorage.clear();
     signOut(auth).then(() => location.reload());
 };
 </script>
