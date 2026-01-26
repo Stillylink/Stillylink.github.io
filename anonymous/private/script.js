@@ -161,7 +161,7 @@ window.addEventListener("DOMContentLoaded", () => {
         clearRoomStorage();
 
         await auth.signOut();
-        localStorage.removeItem("userAvatarLetter");
+        localStorage.clear();
 
         window.location.reload();
     });
