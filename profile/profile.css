@@ -348,6 +348,20 @@ body.profile-page .site-wrapper {
   transform: translateY(-1px);
 }
 
+/* Счётчик записей в шапке стены */
+.wall-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.posts-counter {
+  font-size: 0.9rem;
+  color: #888; /* тот же серый, что и «Регистрация: …» */
+  white-space: nowrap;
+}
+
 /* Список записей */
 .posts-list {
   max-height: 600px;
