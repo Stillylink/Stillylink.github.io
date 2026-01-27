@@ -216,15 +216,21 @@ body.messages-page .site-wrapper {
 
 /* ========== ЭКРАН ПОЛУЧЕНИЯ ========== */
 .loading-box {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
   text-align: center;
   padding: 40px 20px;
   color: var(--text-secondary);
+  min-height: 200px;
 }
 
 .loading-spinner {
   width: 40px;
   height: 40px;
-  margin: 0 auto 16px;
+  margin: 0 0 16px 0;
   border: 3px solid var(--border);
   border-top-color: var(--accent);
   border-radius: 50%;
@@ -299,6 +305,11 @@ body.messages-page .site-wrapper {
 }
 
 .success-box {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
   text-align: center;
   padding: 40px 20px;
 }
