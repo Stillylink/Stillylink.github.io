@@ -174,13 +174,25 @@ async function enterRoom() {
   onlineCount.classList.remove('hidden');
 
   try {
-    /* 1. Регистрируем присутствие */
+    /* 1. Очищаем некорректные сообщения (опционально, только при первом входе) */
+    const messagesSnapshot = await get(messagesRef);
+    if (messagesSnapshot.exists()) {
+      messagesSnapshot.forEach(child => {
+        const data = child.val();
+        // Удаляем сообщения без обязательных полей
+        if (!data.text || !data.nick || !data.sender) {
+          remove(ref(rtdb, `messages/${ROOM_ID}/${child.key}`)).catch(() => {});
+        }
+      });
+    }
+    
+    /* 2. Регистрируем присутствие */
     const now = Date.now();
     await set(presenceRef, { nick: nickname, online: true, lastSeen: now });
 
     onDisconnect(presenceRef).remove();
 
-    /* 2. слушаем сообщения */
+    /* 3. слушаем сообщения */
     let loaded = 0;
     messagesListener = (snap) => {
       if (++loaded > MSG_LIMIT) messagesEl.firstChild?.remove();
@@ -188,7 +200,7 @@ async function enterRoom() {
     };
     onChildAdded(messagesRef, messagesListener);
 
-    /* 3. сразу считаем и показываем онлайн, потом таймер */
+    /* 4. сразу считаем и показываем онлайн, потом таймер */
     const presenceRoot = ref(rtdb, `presence/${ROOM_ID}`);
 
     async function countAndDisplay() {
@@ -214,7 +226,7 @@ async function enterRoom() {
     if (onlineInterval) clearInterval(onlineInterval);
     onlineInterval = setInterval(countAndDisplay, 5_000);
 
-    /* 4. регулярный пинг */
+    /* 5. регулярный пинг */
     markOnlineEvents();
     
   } catch (error) {
@@ -313,6 +325,13 @@ function addMessageToUI(data) {
   if (!data) return;
   
   const { sender, nick, text, type, createdAt } = data;
+  
+  // ← ВАЖНО: Пропускаем сообщения без текста или ника
+  if (!text || !nick || !sender) {
+    console.warn('Пропущено некорректное сообщение:', data);
+    return;
+  }
+  
   const isOwn = sender === uid;
 
   const row = document.createElement('div');
