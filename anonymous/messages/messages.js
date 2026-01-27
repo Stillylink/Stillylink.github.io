@@ -147,8 +147,8 @@ writeMsgBtn.addEventListener('click', async () => {
   show(writeScreen);
   
   // Проверяем, есть ли у пользователя уже послание
-  const userMessageRef = ref(rtdb, `messages/${uid}`);
-  const snap = await get(userMessageRef);
+  const messageRef = ref(rtdb, `anonymous/messages/${uid}`);
+  const snap = await get(messageRef);
   
   if (snap.exists()) {
     const data = snap.val();
@@ -211,15 +211,15 @@ submitMessageBtn.addEventListener('click', async () => {
     submitMessageBtn.disabled = true;
     submitMessageBtn.textContent = 'Отправляем...';
     
-    const userMessageRef = ref(rtdb, `messages/${uid}`);
+    const messageRef = ref(rtdb, `anonymous/messages/${uid}`);
     
     // Сохраняем послание с uid пользователя в качестве ключа
-    await set(userMessageRef, {
-      text: text,
-      authorId: uid,
-      createdAt: Date.now(),
-      repliesCount: 0
-    });
+    await set(messageRef, {
+  text,
+  authorId: uid,
+  createdAt: Date.now(),
+  repliesCount: 0
+});
     
     // Успешно отправлено
     messageTextarea.value = '';
@@ -248,7 +248,7 @@ async function loadRandomMessage() {
   show(loadingMessage);
   
   try {
-    const messagesRef = ref(rtdb, 'messages');
+    const messagesRef = ref(rtdb, 'anonymous/messages');
     const snapshot = await get(messagesRef);
     
     if (!snapshot.exists()) {
@@ -261,7 +261,7 @@ async function loadRandomMessage() {
     snapshot.forEach(child => {
       const data = child.val();
       // Не показываем своё собственное послание
-      if (child.key !== uid) {
+      if (!uid || child.key !== uid) {
         allMessages.push({
           id: child.key,
           ...data
@@ -336,7 +336,7 @@ sendReplyBtn.addEventListener('click', async () => {
     });
     
     // Обновляем счётчик ответов
-    const messageRef = ref(rtdb, `messages/${currentMessageId}`);
+    const messageRef = ref(rtdb, `anonymous/messages/${currentMessageId}`);
     const msgSnap = await get(messageRef);
     if (msgSnap.exists()) {
       const currentCount = msgSnap.val().repliesCount || 0;
