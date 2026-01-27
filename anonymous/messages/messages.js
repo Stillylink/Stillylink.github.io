@@ -180,15 +180,27 @@ writeMsgBtn.addEventListener('click', async () => {
 });
 
 receiveMsgBtn.addEventListener('click', async () => {
-  // ← КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ: ждём завершения авторизации
+  // ← Сразу переходим на экран получения
+  hide(choiceScreen);
+  show(receiveScreen);
+  
+  // Показываем индикатор загрузки
+  show(loadingMessage);
+  hide(noMessagesBox);
+  hide(messageBox);
+  hide(replySentBox);
+  
+  // ← Ждём завершения авторизации
   const ready = await waitForAuth();
   if (!ready) {
+    hide(loadingMessage);
     alert('Ошибка авторизации. Попробуйте перезагрузить страницу.');
+    hide(receiveScreen);
+    show(choiceScreen);
     return;
   }
   
-  hide(choiceScreen);
-  show(receiveScreen);
+  // Загружаем послание
   loadRandomMessage();
 });
 
@@ -266,10 +278,10 @@ submitMessageBtn.addEventListener('click', async () => {
 
 /*  ===============  Загрузка случайного послания  =============== */
 async function loadRandomMessage() {
+  // Скрываем другие блоки (loadingMessage уже показан)
   hide(noMessagesBox);
   hide(messageBox);
   hide(replySentBox);
-  show(loadingMessage);
   
   try {
     const messagesRef = ref(rtdb, 'anonymous/messages');
@@ -385,6 +397,7 @@ sendReplyBtn.addEventListener('click', async () => {
 /*  ===============  Получить ещё послание  =============== */
 getAnotherBtn.addEventListener('click', () => {
   resetReceiveScreen();
+  show(loadingMessage); // ← Показываем индикатор загрузки
   loadRandomMessage();
 });
 
