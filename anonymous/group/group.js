@@ -4,7 +4,7 @@ import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gsta
 import { getFirestore } from 'https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js';
 import {
   getDatabase,
-  ref, set, push, onChildAdded, onDisconnect, remove, get
+  ref, set, push, onChildAdded, onDisconnect, remove, get, off
 } from 'https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js';
 
 /*  ===============  Firebase-конфиг  ===============  */
@@ -57,6 +57,9 @@ let nickname    = '';
 let presenceRef = null;
 let messagesRef = null;
 let lastMark    = 0;
+let hasJoinedRoom = false; // ← КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ: флаг входа в комнату
+let messagesListener = null; // ← Для отписки от слушателя
+let onlineInterval = null; // ← Для очистки интервала
 
 /*  ===============  Utils  =============== */
 const show = el => el.classList.remove('hidden');
@@ -116,7 +119,11 @@ onAuthStateChanged(auth, user => {
     avatar?.classList.add('hidden');
     localStorage.removeItem('userAvatarLetter');
   }
-  show(joinScreen);
+  
+  // ← КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ: показываем joinScreen только если ещё не в чате
+  if (!hasJoinedRoom) {
+    show(joinScreen);
+  }
 });
 
 /*  ===============  Join  =============== */
@@ -133,13 +140,22 @@ function hideNickError() {
 nickInput.addEventListener('input', hideNickError);
 
 joinBtn.addEventListener('click', () => {
+  // ← Защита от повторного нажатия
+  if (hasJoinedRoom) return;
+  
   const raw = nickInput.value.trim();
   if (raw.length < 3 || raw.length > 20) {
     showNickError('Никнейм должен быть от 3 до 20 символов.');
     return;
   }
+  
+  // ← Блокируем кнопку
+  joinBtn.disabled = true;
+  
   nickError.textContent = '';
   nickname = raw;
+  hasJoinedRoom = true; // ← Устанавливаем флаг ДО скрытия экрана
+  
   hide(joinScreen);
   show(chatWindow);
   enterRoom();
@@ -147,60 +163,90 @@ joinBtn.addEventListener('click', () => {
 
 /*  ===============  Enter room (RTDB)  =============== */
 async function enterRoom() {
+  // ← Очищаем старые слушатели если они есть
+  if (messagesRef && messagesListener) {
+    off(messagesRef, 'child_added', messagesListener);
+  }
+  
   messagesRef = ref(rtdb, `messages/${ROOM_ID}`);
   presenceRef = ref(rtdb, `presence/${ROOM_ID}/${uid}`);
 
   onlineCount.classList.remove('hidden');
 
-  /* 1. ждём, пока своя запись появится в базе */
-  const now = Date.now();
-  await set(presenceRef, { nick: nickname, online: true, lastSeen: now });
-
-  onDisconnect(presenceRef).remove();
-
-  /* 2. слушаем сообщения */
-  let loaded = 0;
-  onChildAdded(messagesRef, snap => {
-    if (++loaded > MSG_LIMIT) messagesEl.firstChild?.remove();
-    addMessageToUI(snap.val());
-  });
-
-  /* 3. сразу считаем и показываем онлайн, потом таймер */
-  const presenceRoot = ref(rtdb, `presence/${ROOM_ID}`);
-
-  async function countAndDisplay() {
-    const snap = await get(presenceRoot);
-    const data = snap.val() || {};
-    let onlineUsers = 0;
+  try {
+    /* 1. Регистрируем присутствие */
     const now = Date.now();
-    for (const [id, u] of Object.entries(data)) {
-      if (now - u.lastSeen > STALE_MS) {
-        remove(ref(rtdb, `presence/${ROOM_ID}/${id}`));
-      } else if (u.online) onlineUsers++;
+    await set(presenceRef, { nick: nickname, online: true, lastSeen: now });
+
+    onDisconnect(presenceRef).remove();
+
+    /* 2. слушаем сообщения */
+    let loaded = 0;
+    messagesListener = (snap) => {
+      if (++loaded > MSG_LIMIT) messagesEl.firstChild?.remove();
+      addMessageToUI(snap.val());
+    };
+    onChildAdded(messagesRef, messagesListener);
+
+    /* 3. сразу считаем и показываем онлайн, потом таймер */
+    const presenceRoot = ref(rtdb, `presence/${ROOM_ID}`);
+
+    async function countAndDisplay() {
+      try {
+        const snap = await get(presenceRoot);
+        const data = snap.val() || {};
+        let onlineUsers = 0;
+        const now = Date.now();
+        for (const [id, u] of Object.entries(data)) {
+          if (now - u.lastSeen > STALE_MS) {
+            remove(ref(rtdb, `presence/${ROOM_ID}/${id}`)).catch(() => {});
+          } else if (u.online) onlineUsers++;
+        }
+        onlineCount.textContent = `${Math.max(1, onlineUsers)} онлайн`;
+      } catch (err) {
+        console.error('Ошибка подсчёта онлайн:', err);
+      }
     }
-    onlineCount.textContent = `${Math.max(1, onlineUsers)} онлайн`;
+
+    await countAndDisplay();
+    
+    // ← Очищаем старый интервал если есть
+    if (onlineInterval) clearInterval(onlineInterval);
+    onlineInterval = setInterval(countAndDisplay, 5_000);
+
+    /* 4. регулярный пинг */
+    markOnlineEvents();
+    
+  } catch (error) {
+    console.error('Ошибка входа в чат:', error);
+    alert('Не удалось войти в чат. Попробуйте перезагрузить страницу.');
+    
+    // ← Откатываем состояние при ошибке
+    hasJoinedRoom = false;
+    joinBtn.disabled = false;
+    hide(chatWindow);
+    show(joinScreen);
   }
-
-  await countAndDisplay();
-  setInterval(countAndDisplay, 5_000);
-
-  /* 4. регулярный пинг */
-  markOnlineEvents();
 }
 
 /*  =====  пинг-обновление ===== */
+let markEventsInitialized = false; // ← Защита от повторной инициализации
+
 function markOnlineEvents() {
+  if (markEventsInitialized) return; // ← Важно!
+  markEventsInitialized = true;
+  
   document.addEventListener('keydown', markOnline);
   document.addEventListener('mousemove', markOnline);
   setInterval(markOnline, MARK_DELTA);
 }
 
 function markOnline() {
-  if (!presenceRef) return;
+  if (!presenceRef || !hasJoinedRoom) return;
   const now = Date.now();
   if (now - lastMark < MARK_DELTA) return;
   lastMark = now;
-  set(presenceRef, { nick: nickname, online: true, lastSeen: now });
+  set(presenceRef, { nick: nickname, online: true, lastSeen: now }).catch(() => {});
 }
 
 /*  ===============  Send  =============== */
@@ -218,10 +264,9 @@ function resetTextareaHeight() {
 }
 
 function send(text, type) {
-  if (!text) return;
+  if (!text || !hasJoinedRoom) return;
 
   textInput.value = '';
-
   resetTextareaHeight();
 
   push(messagesRef, {
@@ -230,6 +275,8 @@ function send(text, type) {
     text,
     type,
     createdAt: Date.now()
+  }).catch(err => {
+    console.error('Ошибка отправки:', err);
   });
 }
 
@@ -238,6 +285,14 @@ photoBtn.addEventListener('click', () => photoInput.click());
 photoInput.addEventListener('change', () => {
   const file = photoInput.files?.[0];
   if (!file) return;
+  
+  // ← Проверка размера (макс 5MB)
+  if (file.size > 5 * 1024 * 1024) {
+    alert('Файл слишком большой. Максимум 5 МБ.');
+    photoInput.value = '';
+    return;
+  }
+  
   const reader = new FileReader();
   reader.onload = e => send(e.target.result, 'image');
   reader.readAsDataURL(file);
@@ -255,6 +310,8 @@ document.querySelectorAll('.emoji').forEach(btn =>
 
 /*  ===============  Render message  =============== */
 function addMessageToUI(data) {
+  if (!data) return;
+  
   const { sender, nick, text, type, createdAt } = data;
   const isOwn = sender === uid;
 
@@ -263,7 +320,7 @@ function addMessageToUI(data) {
 
   const ava = document.createElement('div');
   ava.className = 'avatar';
-  ava.textContent = nick.slice(0, 2).toUpperCase();
+  ava.textContent = (nick || 'A').slice(0, 2).toUpperCase();
 
   const msg = document.createElement('div');
   msg.className = 'message' + (isOwn ? ' own' : '');
@@ -273,10 +330,15 @@ function addMessageToUI(data) {
     img.src = text;
     img.style.maxWidth = '240px';
     img.style.borderRadius = '8px';
+    img.style.cursor = 'pointer';
     img.onclick = () => window.open(text, '_blank');
+    img.onerror = () => {
+      img.style.display = 'none';
+      msg.textContent = '[Изображение не загрузилось]';
+    };
     msg.appendChild(img);
   } else {
-    msg.textContent = text;
+    msg.textContent = text || '';
   }
 
   const meta = document.createElement('div');
@@ -284,7 +346,7 @@ function addMessageToUI(data) {
   const time = createdAt
     ? new Date(createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     : '';
-  meta.textContent = `${nick} · ${time}`;
+  meta.textContent = `${nick || 'Аноним'} · ${time}`;
   msg.appendChild(meta);
 
   if (isOwn) row.appendChild(msg);
@@ -296,6 +358,20 @@ function addMessageToUI(data) {
 
 /*  ===============  Leave  =============== */
 leaveBtn.addEventListener('click', async () => {
-  if (presenceRef) await remove(presenceRef).catch(() => {});
+  // ← Очищаем всё перед уходом
+  if (presenceRef) {
+    await remove(presenceRef).catch(() => {});
+  }
+  
+  if (messagesRef && messagesListener) {
+    off(messagesRef, 'child_added', messagesListener);
+  }
+  
+  if (onlineInterval) {
+    clearInterval(onlineInterval);
+  }
+  
+  hasJoinedRoom = false;
+  
   window.location.replace('/anonymous/');
 });
