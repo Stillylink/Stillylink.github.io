@@ -874,14 +874,15 @@ async function cleanupRoomsByInactivity() {
             const room = roomSnap.val();
             const rId = roomSnap.key;
 
+            // ИСПРАВЛЕНИЕ: Закрытые комнаты удаляются немедленно независимо от времени
             if (room.closed === true) {
                 console.log('🧹 Удаляем закрытую комнату:', rId);
                 jobs.push(deleteRoomFully(rId));
-                return;
+                return; // Пропускаем дальнейшие проверки для этой комнаты
             }
 
+            // Проверяем неактивные открытые комнаты
             const last = room.lastActivity || room.createdAt || 0;
-
             if (now - last > ROOM_TTL) {
                 console.log(
                     '🧹 Удаляем неактивную комнату:',
