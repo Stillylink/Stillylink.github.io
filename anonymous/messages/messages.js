@@ -70,6 +70,7 @@ const navToggle = document.querySelector('.nav-toggle');
 let uid = null;
 let isGuest = true; // По умолчанию считаем гостем
 let currentMessageId = null; // ID послания, которое пользователь читает
+let authReady = false; // ← НОВОЕ: флаг готовности авторизации
 
 /*  ===============  Utils  =============== */
 const show = el => el.classList.remove('hidden');
@@ -113,6 +114,7 @@ onAuthStateChanged(auth, user => {
     return; 
   }
   uid = user.uid;
+  authReady = true; // ← НОВОЕ: авторизация завершена
   
   // Проверяем, является ли пользователь гостем (анонимный вход без email)
   if (user.email) {
@@ -134,6 +136,21 @@ onAuthStateChanged(auth, user => {
     localStorage.removeItem('userAvatarLetter');
   }
 });
+
+/*  ===============  Функция ожидания авторизации  =============== */
+async function waitForAuth() {
+  // Если уже авторизованы, возвращаем сразу
+  if (authReady) return true;
+  
+  // Ждём максимум 5 секунд
+  let attempts = 0;
+  while (!authReady && attempts < 50) {
+    await new Promise(resolve => setTimeout(resolve, 100));
+    attempts++;
+  }
+  
+  return authReady;
+}
 
 /*  ===============  Навигация между экранами  =============== */
 writeMsgBtn.addEventListener('click', async () => {
@@ -162,7 +179,14 @@ writeMsgBtn.addEventListener('click', async () => {
   }
 });
 
-receiveMsgBtn.addEventListener('click', () => {
+receiveMsgBtn.addEventListener('click', async () => {
+  // ← КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ: ждём завершения авторизации
+  const ready = await waitForAuth();
+  if (!ready) {
+    alert('Ошибка авторизации. Попробуйте перезагрузить страницу.');
+    return;
+  }
+  
   hide(choiceScreen);
   show(receiveScreen);
   loadRandomMessage();
@@ -215,11 +239,11 @@ submitMessageBtn.addEventListener('click', async () => {
     
     // Сохраняем послание с uid пользователя в качестве ключа
     await set(messageRef, {
-  text,
-  authorId: uid,
-  createdAt: Date.now(),
-  repliesCount: 0
-});
+      text,
+      authorId: uid,
+      createdAt: Date.now(),
+      repliesCount: 0
+    });
     
     // Успешно отправлено
     messageTextarea.value = '';
