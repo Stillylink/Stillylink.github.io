@@ -421,21 +421,15 @@ async function startSearch() {
     waitingRefPath = 'waiting';
     
     onValue(waitingRef, async (snap) => {
-        // ✅ ИСПРАВЛЕНИЕ: Более точные проверки
         if (!snap.exists()) return;
         if (searchCancelled || roomId) return;
-        if (matchmakingInProgress) {
-            console.log('⏳ Matchmaking уже в процессе');
-            return;
-        }
+        if (matchmakingInProgress) return;
         
         const now = Date.now();
         let candidates = [];
 
         snap.forEach(child => {
             const data = child.val();
-            
-            // Пропускаем себя и уже занятых
             if (child.key === uid) return;
             if (data.claimed) return;
             
@@ -447,102 +441,56 @@ async function startSearch() {
 
         if (candidates.length === 0) return;
 
-        // Сортируем по времени создания
         candidates.sort((a, b) => a.createdAt - b.createdAt);
         const other = candidates[0];
+        const otherUid = other.id; // Определяем ID партнера
 
-        console.log('👥 Найден кандидат:', other.id, 'Мой UID:', uid);
-
-        // ✅ ИСПРАВЛЕНИЕ: Используем хеш для детерминированного выбора
-        // Кто создает комнату определяется по сравнению UID
-        const shouldCreateRoom = uid.localeCompare(other.id) < 0;
+        // Детерминированный выбор: создает тот, чей UID меньше
+        const shouldCreate = uid < otherUid;
         
-        if (!shouldCreateRoom) {
-            console.log('⏳ Ожидаем, пока собеседник создаст комнату');
+        if (!shouldCreate) {
+            console.log('⏳ Ждем, пока партнер создаст комнату...');
             return;
         }
 
         matchmakingInProgress = true;
-        console.log('🔨 Начинаем создание комнаты');
+        console.log('🔨 Создаем комнату для:', uid, 'и', otherUid);
+
+        const newRoomRef = push(ref(rtdb, 'rooms'));
+        const newRoomId = newRoomRef.key;
 
         try {
-            // Проверяем что оба пользователя всё ещё в очереди
-            const [otherCheck, myCheck] = await Promise.all([
-                get(ref(rtdb, `waiting/${other.id}`)),
-                get(ref(rtdb, `waiting/${uid}`))
-            ]);
-
-            if (!otherCheck.exists() || !myCheck.exists()) {
-                console.log('⚠️ Один из пользователей покинул очередь');
+            // Проверка, что партнер всё еще свободен
+            const otherCheck = await get(ref(rtdb, `waiting/${otherUid}`));
+            if (!otherCheck.exists() || otherCheck.val().claimed) {
                 matchmakingInProgress = false;
                 return;
             }
 
-            const otherData = otherCheck.val();
-            const myData = myCheck.val();
-
-            if (otherData.claimed || myData.claimed) {
-                console.log('⚠️ Один из пользователей уже занят');
-                matchmakingInProgress = false;
-                return;
-            }
-
-            // Создаем комнату
-            const newRoomRef = push(ref(rtdb, 'rooms'));
-            const newRoomId = newRoomRef.key;
-
-            console.log('📝 Создаем комнату:', newRoomId);
-
-            // ✅ 1. Создаем комнату
+            // 1. Создаем комнату
             await set(newRoomRef, {
-                participants: [uid, other.id],
+                participants: [uid, otherUid],
                 createdAt: Date.now(),
                 lastActivity: Date.now(),
                 closed: false
             });
 
-            // ✅ 2. Проверяем что комната создалась
-            const verifySnap = await get(newRoomRef);
-            if (!verifySnap.exists()) {
-                console.error('❌ Комната не создалась!');
-                matchmakingInProgress = false;
-                return;
-            }
-
-            console.log('✅ Комната создана успешно');
-
-            // ✅ 3. Помечаем обоих как claimed
+            // 2. Рассылаем приглашения
             await Promise.all([
-                update(ref(rtdb, `waiting/${other.id}`), { 
-                    claimed: true, 
-                    roomId: newRoomId 
-                }),
-                update(ref(rtdb, `waiting/${uid}`), { 
-                    claimed: true, 
-                    roomId: newRoomId 
-                })
+                update(ref(rtdb, `waiting/${otherUid}`), { claimed: true, roomId: newRoomId }),
+                update(ref(rtdb, `waiting/${uid}`), { claimed: true, roomId: newRoomId })
             ]);
 
-            console.log('✅ Оба пользователя помечены как claimed');
+            // 3. Удаляем из очереди с задержкой
+            setTimeout(() => {
+                remove(ref(rtdb, `waiting/${uid}`)).catch(() => {});
+                remove(ref(rtdb, `waiting/${otherUid}`)).catch(() => {});
+            }, 2000);
 
-            // ✅ 4. Удаляем из очереди (не через timeout, а сразу после небольшой задержки)
-            setTimeout(async () => {
-                try {
-                    await Promise.all([
-                        remove(ref(rtdb, `waiting/${uid}`)),
-                        remove(ref(rtdb, `waiting/${other.id}`))
-                    ]);
-                    console.log('✅ Пользователи удалены из очереди');
-                } catch (e) {
-                    console.warn('⚠️ Ошибка удаления из очереди:', e);
-                }
-            }, 1000); // Уменьшил с 5000 до 1000
-
-            // Сбрасываем флаг после успешного создания
             matchmakingInProgress = false;
 
         } catch (err) {
-            console.error('❌ Ошибка matchmaking:', err);
+            console.error('❌ Ошибка подбора:', err);
             matchmakingInProgress = false;
         }
     });
@@ -606,6 +554,7 @@ async function connectToRoom(rId) {
 
         // Показываем UI
         hide(searchScreen);
+        textInput.value = '';
         show(chatWindow);
         hide(endScreen);
 
@@ -892,3 +841,37 @@ async function deleteRoomFully(rId) {
 }
 
 const ROOM_TTL = 20 * 60 * 1000; 
+
+async function runAutoCleanup() {
+    console.log("🧹 Запуск плановой очистки базы...");
+    const now = Date.now();
+    const TWENTY_MINUTES = 20 * 60 * 1000;
+
+    try {
+        const roomsSnap = await get(ref(rtdb, 'rooms'));
+        if (roomsSnap.exists()) {
+            roomsSnap.forEach(snap => {
+                const room = snap.val();
+                const last = room.lastActivity || room.createdAt || 0;
+                if (room.closed === true || (now - last > TWENTY_MINUTES)) {
+                    remove(ref(rtdb, `rooms/${snap.key}`)).catch(() => {});
+                }
+            });
+        }
+
+        const waitingSnap = await get(ref(rtdb, 'waiting'));
+        if (waitingSnap.exists()) {
+            waitingSnap.forEach(snap => {
+                const user = snap.val();
+                const ls = user.lastSeen || user.createdAt || 0;
+                if (now - ls > 60000) {
+                    remove(ref(rtdb, `waiting/${snap.key}`)).catch(() => {});
+                }
+            });
+        }
+    } catch (e) {
+        console.warn("Ошибка очистки:", e);
+    }
+}
+
+setInterval(runAutoCleanup, 120000);
