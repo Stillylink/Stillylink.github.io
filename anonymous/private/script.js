@@ -367,6 +367,7 @@ async function startSearch() {
 
     chatClosed = false;
     matchmakingInProgress = false;
+    searchCancelled = false; // Сбрасываем флаг при начале
 
     await clearAllListenersAndState();
     clearMessages();
@@ -385,15 +386,18 @@ async function startSearch() {
             roomId: null,
             lastSeen: Date.now()
         });
+        // Если вкладка закроется, Firebase сам удалит запись
+        onDisconnect(myWaitingRef).remove();
     } catch (e) {
         console.error('Failed to create waiting entry', e);
         return;
     }
 
+    // Слушаем свою запись: не назначена ли нам комната?
     onValue(myWaitingRef, (snap) => {
         if (!snap.exists()) return;
         const data = snap.val();
-        if (data.claimed && data.roomId) {
+        if (data.claimed && data.roomId && !roomId) {
             roomId = data.roomId;
             saveRoomToStorage(roomId, null);
             stopWaitingHeartbeat();
@@ -409,35 +413,31 @@ async function startSearch() {
 
     startWaitingHeartbeat();
 
+    // Поиск собеседника
     const waitingRef = ref(rtdb, 'waiting');
     waitingRefPath = 'waiting';
     
     onValue(waitingRef, async (snap) => {
-        if (!snap.exists()) return;
-        if (matchmakingInProgress) return;
+        if (!snap.exists() || matchmakingInProgress || roomId || searchCancelled) return;
         
         const now = Date.now();
         let otherUid = null;
 
         snap.forEach(child => {
             const data = child.val();
-            
-            if (child.key === uid || data.uid === uid) return;
+            if (child.key === uid) return;
             if (data.claimed) return;
             
             const ls = data.lastSeen || data.createdAt || 0;
             if ((now - ls) > WAITING_STALE_MS) return;
             
-            if (!otherUid) {
+            // Логика: выбирает того, чей UID "меньше", чтобы избежать двойного создания комнаты
+            if (!otherUid && uid < child.key) {
                 otherUid = child.key;
             }
         });
 
         if (!otherUid) return;
-
-        if (uid > otherUid) {
-            return;
-        }
 
         matchmakingInProgress = true;
 
@@ -445,34 +445,11 @@ async function startSearch() {
             const otherRef = ref(rtdb, `waiting/${otherUid}`);
             const myRef = ref(rtdb, `waiting/${uid}`);
             
-            const [otherSnap, mySnap] = await Promise.all([
-                get(otherRef),
-                get(myRef)
-            ]);
-
-            if (!otherSnap.exists() || !mySnap.exists()) {
-                matchmakingInProgress = false;
-                return;
-            }
-            
-            const otherData = otherSnap.val();
-            const myData = mySnap.val();
-            
-            if (otherData.claimed || myData.claimed) {
-                matchmakingInProgress = false;
-                return;
-            }
-            
-            if (otherData.uid === uid || otherUid === uid) {
-                console.warn('Попытка создать комнату с самим собой!');
-                matchmakingInProgress = false;
-                return;
-            }
-
             const roomsRef = ref(rtdb, 'rooms');
             const newRoomRef = push(roomsRef);
             const newRoomId = newRoomRef.key;
 
+            // 1. Сначала создаем комнату
             await set(newRoomRef, {
                 participants: [uid, otherUid],
                 createdAt: Date.now(),
@@ -480,20 +457,21 @@ async function startSearch() {
                 closed: false
             });
 
+            // 2. Обновляем статусы обоих участников
             await Promise.all([
                 update(otherRef, { claimed: true, roomId: newRoomId }),
                 update(myRef, { claimed: true, roomId: newRoomId })
             ]);
 
-            await Promise.all([
-                remove(otherRef),
-                remove(myRef)
-            ]);
-
             console.log('✅ Комната создана:', newRoomId);
+
+            setTimeout(() => {
+                remove(otherRef).catch(() => {});
+                remove(myRef).catch(() => {});
+            }, 3000);
             
         } catch (err) {
-            console.log('Matchmaking race condition:', err);
+            console.error('Matchmaking error:', err);
             matchmakingInProgress = false;
         }
     });
@@ -501,107 +479,57 @@ async function startSearch() {
 
 async function connectToRoom(rId) {
     try {
-        if (!rId) return;
-        if (isConnecting) {
-            console.log('Already connecting to a room');
-            return;
-        }
-
+        if (!rId || isConnecting) return;
         isConnecting = true;
 
-        if (currentRoomRefPath) {
-            off(ref(rtdb, currentRoomRefPath));
-        }
-        if (messagesRefPath) {
-            off(ref(rtdb, messagesRefPath));
-        }
-        if (presenceRefPath) {
-            off(ref(rtdb, presenceRefPath));
-        }
+        // Чистим старые слушатели
+        if (currentRoomRefPath) off(ref(rtdb, currentRoomRefPath));
+        if (messagesRefPath) off(ref(rtdb, messagesRefPath));
+        if (presenceRefPath) off(ref(rtdb, presenceRefPath));
 
         roomId = rId;
         const roomRef = ref(rtdb, `rooms/${roomId}`);
         currentRoomRefPath = `rooms/${roomId}`;
         
-        saveRoomToStorage(roomId, partnerId);
-
         hide(searchScreen);
         show(chatWindow);
         hide(endScreen);
 
+        // Просто получаем данные комнаты
         const roomSnap = await get(roomRef);
         if (roomSnap.exists()) {
             const data = roomSnap.val();
             const parts = data.participants || [];
-            if (!parts.includes(uid) && parts.length < 2) {
-                parts.push(uid);
-                await update(roomRef, { participants: parts });
-            }
-            
             partnerId = parts.find(p => p !== uid) || null;
             saveRoomToStorage(roomId, partnerId);
         }
 
+        // Слушаем статус комнаты (не закрыл ли собеседник)
         onValue(roomRef, (snap) => {
             if (!snap.exists()) {
-                console.log('Комната удалена');
                 chatClosed = true;
                 endChatUI();
                 return;
             }
-            
             const data = snap.val();
-            
             if (data.closed === true) {
-                console.log('Комната закрыта собеседником');
                 chatClosed = true;
                 endChatUI();
-                return;
             }
-            
-            const participants = data.participants || [];
-            partnerId = participants.find(p => p !== uid) || null;
-            saveRoomToStorage(roomId, partnerId);
         });
 
+        // Слушаем сообщения
         const messagesRef = ref(rtdb, `rooms/${roomId}/messages`);
         messagesRefPath = `rooms/${roomId}/messages`;
-        
         clearMessages();
-
         onChildAdded(messagesRef, (snap) => {
-            if (chatClosed) return;
-            addMessageToUI(snap.val());
+            if (!chatClosed) addMessageToUI(snap.val());
         });
 
+        // Включаем присутствие
         await setMyPresence();
         
-        const presenceRef = ref(rtdb, `rooms/${roomId}/presence`);
-        presenceRefPath = `rooms/${roomId}/presence`;
-        
-        onValue(presenceRef, async (snap) => {
-            if (!snap.exists()) return;
-            
-            const now = Date.now();
-            let hasAlive = false;
-            
-            snap.forEach(child => {
-                const data = child.val();
-                const ls = data.lastSeen || 0;
-                if ((now - ls) < PRESENCE_STALE_MS) {
-                    hasAlive = true;
-                }
-            });
-
-            if (!hasAlive && !chatClosed) {
-                try {
-                    await fullRoomCleanup();
-                } catch (e) { }
-            }
-        });
-
         isConnecting = false;
-
     } catch (err) {
         console.error('connectToRoom error', err);
         isConnecting = false;
