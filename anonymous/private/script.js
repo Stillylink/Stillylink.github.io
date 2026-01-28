@@ -257,24 +257,17 @@ function addMessageToUI(data) {
 
 async function sendMessageToRoom(text, type = 'text') {
     if (!roomId) return;
-
-    const now = Date.now();
-    const roomRef = ref(rtdb, `rooms/${roomId}`);
     const messagesRef = ref(rtdb, `rooms/${roomId}/messages`);
     const newMsgRef = push(messagesRef);
 
-await Promise.all([
-    update(ref(rtdb, `waiting/${otherUid}`), { 
-        claimed: true, 
-        roomId: newRoomId,
-        uid: otherUid 
-    }),
-    update(ref(rtdb, `waiting/${uid}`), { 
-        claimed: true, 
-        roomId: newRoomId,
-        uid: uid 
-    })
-]);
+    await set(newMsgRef, {
+        sender: uid,
+        text: text,
+        type: type,
+        createdAt: Date.now()
+    });
+    // Обновляем активность комнаты, чтобы она не удалилась как старая
+    await update(ref(rtdb, `rooms/${roomId}`), { lastActivity: Date.now() });
 }
 
 photoBtn.addEventListener('click', () => photoInput.click());
@@ -480,13 +473,19 @@ async function startSearch() {
                 closed: false
             });
 
-            // 2. Рассылаем приглашения
-            await Promise.all([
-                update(ref(rtdb, `waiting/${otherUid}`), { claimed: true, roomId: newRoomId }),
-                update(ref(rtdb, `waiting/${uid}`), { claimed: true, roomId: newRoomId })
-            ]);
+await Promise.all([
+    update(ref(rtdb, `waiting/${otherUid}`), { 
+        claimed: true, 
+        roomId: newRoomId,
+        uid: otherUid
+    }),
+    update(ref(rtdb, `waiting/${uid}`), { 
+        claimed: true, 
+        roomId: newRoomId,
+        uid: uid
+    })
+]);
 
-            // 3. Удаляем из очереди с задержкой
             setTimeout(() => {
                 remove(ref(rtdb, `waiting/${uid}`)).catch(() => {});
                 remove(ref(rtdb, `waiting/${otherUid}`)).catch(() => {});
