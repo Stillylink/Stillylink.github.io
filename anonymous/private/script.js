@@ -177,7 +177,6 @@ onAuthStateChanged(auth, user => {
     isRealUser = !!user.email;
 
     if (isRealUser) {
-        // ОПТИМИЗАЦИЯ: Используем кэш или первую букву email, БЕЗ запроса в Firestore
         const cachedLetter = localStorage.getItem('userAvatarLetter');
         if (cachedLetter) {
             avatarLetter.textContent = cachedLetter;
@@ -266,7 +265,6 @@ async function sendMessageToRoom(text, type = 'text') {
         type: type,
         createdAt: Date.now()
     });
-    // Обновляем активность комнаты, чтобы она не удалилась как старая
     await update(ref(rtdb, `rooms/${roomId}`), { lastActivity: Date.now() });
 }
 
@@ -277,7 +275,7 @@ photoInput.addEventListener('change', (e) => {
     const reader = new FileReader();
     reader.onload = function (ev) {
         const dataUrl = ev.target.result;
-        sendMessageToRoom(dataUrl, 'image').catch(console.error);
+        sendMessageToRoom(dataUrl, 'image').catch(() => {});
     };
     reader.readAsDataURL(file);
     photoInput.value = '';
@@ -292,7 +290,7 @@ sendBtn.addEventListener('click', () => {
     textInput.offsetHeight;
     textInput.style.display = '';
 
-    sendMessageToRoom(txt, 'text').catch(err => console.error(err));
+    sendMessageToRoom(txt, 'text').catch(() => {});
 });
 
 textInput.addEventListener('keydown', (e) => {
@@ -301,7 +299,7 @@ textInput.addEventListener('keydown', (e) => {
         const txt = textInput.value.trim();
         if (!txt) return;
         textInput.value = '';
-        sendMessageToRoom(txt, 'text').catch(err => console.error('send failed:', err));
+        sendMessageToRoom(txt, 'text').catch(() => {});
     }
 });
 
@@ -363,8 +361,6 @@ async function startSearch() {
     const saved = loadRoomFromStorage();
     if (saved.roomId) return;
 
-    console.log('🔍 Начинаем поиск. UID:', uid);
-
     chatClosed = false;
     matchmakingInProgress = false;
     searchCancelled = false;
@@ -387,18 +383,14 @@ async function startSearch() {
             lastSeen: Date.now()
         });
         onDisconnect(myWaitingRef).remove();
-        console.log('✅ Добавлены в очередь');
     } catch (e) {
-        console.error('❌ Не удалось добавить в очередь', e);
         return;
     }
 
-    // Слушаем свою запись: не назначена ли нам комната?
     onValue(myWaitingRef, (snap) => {
         if (!snap.exists()) return;
         const data = snap.val();
         if (data.claimed && data.roomId && !roomId) {
-            console.log('🎉 Получено приглашение в комнату:', data.roomId);
             roomId = data.roomId;
             saveRoomToStorage(roomId, null);
             stopWaitingHeartbeat();
@@ -408,13 +400,12 @@ async function startSearch() {
                 waitingRefPath = null;
             }
             
-            connectToRoom(roomId).catch(console.warn);
+            connectToRoom(roomId).catch(() => {});
         }
     });
 
     startWaitingHeartbeat();
 
-    // Поиск собеседника
     const waitingRef = ref(rtdb, 'waiting');
     waitingRefPath = 'waiting';
     
@@ -441,31 +432,26 @@ async function startSearch() {
 
         candidates.sort((a, b) => a.createdAt - b.createdAt);
         const other = candidates[0];
-        const otherUid = other.id; // Определяем ID партнера
+        const otherUid = other.id;
 
-        // Детерминированный выбор: создает тот, чей UID меньше
         const shouldCreate = uid < otherUid;
         
         if (!shouldCreate) {
-            console.log('⏳ Ждем, пока партнер создаст комнату...');
             return;
         }
 
         matchmakingInProgress = true;
-        console.log('🔨 Создаем комнату для:', uid, 'и', otherUid);
 
         const newRoomRef = push(ref(rtdb, 'rooms'));
         const newRoomId = newRoomRef.key;
 
         try {
-            // Проверка, что партнер всё еще свободен
             const otherCheck = await get(ref(rtdb, `waiting/${otherUid}`));
             if (!otherCheck.exists() || otherCheck.val().claimed) {
                 matchmakingInProgress = false;
                 return;
             }
 
-            // 1. Создаем комнату
             await set(newRoomRef, {
                 participants: [uid, otherUid],
                 createdAt: Date.now(),
@@ -473,18 +459,18 @@ async function startSearch() {
                 closed: false
             });
 
-await Promise.all([
-    update(ref(rtdb, `waiting/${otherUid}`), { 
-        claimed: true, 
-        roomId: newRoomId,
-        uid: otherUid
-    }),
-    update(ref(rtdb, `waiting/${uid}`), { 
-        claimed: true, 
-        roomId: newRoomId,
-        uid: uid
-    })
-]);
+            await Promise.all([
+                update(ref(rtdb, `waiting/${otherUid}`), { 
+                    claimed: true, 
+                    roomId: newRoomId,
+                    uid: otherUid
+                }),
+                update(ref(rtdb, `waiting/${uid}`), { 
+                    claimed: true, 
+                    roomId: newRoomId,
+                    uid: uid
+                })
+            ]);
 
             setTimeout(() => {
                 remove(ref(rtdb, `waiting/${uid}`)).catch(() => {});
@@ -494,7 +480,6 @@ await Promise.all([
             matchmakingInProgress = false;
 
         } catch (err) {
-            console.error('❌ Ошибка подбора:', err);
             matchmakingInProgress = false;
         }
     });
@@ -503,19 +488,15 @@ await Promise.all([
 async function connectToRoom(rId) {
     try {
         if (!rId) {
-            console.error('❌ Нет ID комнаты');
             return;
         }
         
         if (isConnecting) {
-            console.log('⏳ Уже подключаемся');
             return;
         }
 
         isConnecting = true;
-        console.log('🔌 Подключение к комнате:', rId);
 
-        // Чистим старые слушатели
         if (currentRoomRefPath) off(ref(rtdb, currentRoomRefPath));
         if (messagesRefPath) off(ref(rtdb, messagesRefPath));
         if (presenceRefPath) off(ref(rtdb, presenceRefPath));
@@ -524,10 +505,8 @@ async function connectToRoom(rId) {
         const roomRef = ref(rtdb, `rooms/${roomId}`);
         currentRoomRefPath = `rooms/${roomId}`;
 
-        // ✅ ИСПРАВЛЕНИЕ: Проверяем существование комнаты ДО показа UI
         const roomSnap = await get(roomRef);
         if (!roomSnap.exists()) {
-            console.error('❌ Комната не существует');
             isConnecting = false;
             roomId = null;
             clearRoomStorage();
@@ -538,11 +517,7 @@ async function connectToRoom(rId) {
         const data = roomSnap.val();
         const parts = data.participants || [];
 
-        console.log('📋 Участники:', parts, 'Мой UID:', uid);
-
-        // Проверяем что мы в списке участников
         if (!parts.includes(uid)) {
-            console.error('❌ Мы не участники этой комнаты!');
             isConnecting = false;
             roomId = null;
             clearRoomStorage();
@@ -551,34 +526,27 @@ async function connectToRoom(rId) {
         }
 
         partnerId = parts.find(p => p !== uid) || null;
-        console.log('👤 ID собеседника:', partnerId);
 
-        // ✅ Сохраняем только после всех проверок
         saveRoomToStorage(roomId, partnerId);
 
-        // Показываем UI
         hide(searchScreen);
         textInput.value = '';
         show(chatWindow);
         hide(endScreen);
 
-        // Слушаем статус комнаты
         onValue(roomRef, (snap) => {
             if (!snap.exists()) {
-                console.log('❌ Комната удалена');
                 chatClosed = true;
                 endChatUI();
                 return;
             }
             const data = snap.val();
             if (data.closed === true) {
-                console.log('🔒 Комната закрыта');
                 chatClosed = true;
                 endChatUI();
             }
         });
 
-        // Слушаем сообщения
         const messagesRef = ref(rtdb, `rooms/${roomId}/messages`);
         messagesRefPath = `rooms/${roomId}/messages`;
         clearMessages();
@@ -587,14 +555,11 @@ async function connectToRoom(rId) {
             if (!chatClosed) addMessageToUI(snap.val());
         });
 
-        // Включаем presence
         await setMyPresence();
         
-        console.log('✅ Подключены к комнате');
         isConnecting = false;
 
     } catch (err) {
-        console.error('❌ Ошибка подключения:', err);
         isConnecting = false;
     }
 }
@@ -607,9 +572,7 @@ async function setMyPresence() {
     try {
         await set(presRef, { lastSeen: Date.now() });
         onDisconnect(presRef).remove();
-    } catch (e) {
-        console.warn('set presence failed', e);
-    }
+    } catch (e) { }
     
     if (presenceHeartbeatInterval) clearInterval(presenceHeartbeatInterval);
     presenceHeartbeatInterval = setInterval(async () => {
@@ -620,7 +583,6 @@ async function setMyPresence() {
 }
 
 async function finishChat() {
-    console.log('🛑 Завершаем чат');
     const currentRoomId = roomId;
     
     if (currentRoomId) {
@@ -634,7 +596,6 @@ async function finishChat() {
             clearRoomStorage();
 
         } catch (err) {
-            console.warn('Ошибка завершения:', err);
             endChatUI();
             await clearAllListenersAndState();
         }
@@ -720,9 +681,7 @@ async function clearAllListenersAndState() {
             if (snap.exists()) {
                 await remove(myWaitingRef);
             }
-        } catch (e) {
-            console.warn('clear waiting error', e);
-        }
+        } catch (e) { }
     }
     
     if (roomId && uid) {
@@ -836,16 +795,12 @@ async function deleteRoomFully(rId) {
     try {
         const roomRef = ref(rtdb, `rooms/${rId}`);
         await remove(roomRef);
-        console.log("✅ Комната полностью удалена из базы:", rId);
-    } catch (e) {
-        console.warn("⚠️ Ошибка при полном удалении комнаты:", e);
-    }
+    } catch (e) { }
 }
 
 const ROOM_TTL = 20 * 60 * 1000; 
 
 async function runAutoCleanup() {
-    console.log("🧹 Запуск плановой очистки базы...");
     const now = Date.now();
     const TWENTY_MINUTES = 20 * 60 * 1000;
 
@@ -871,9 +826,7 @@ async function runAutoCleanup() {
                 }
             });
         }
-    } catch (e) {
-        console.warn("Ошибка очистки:", e);
-    }
+    } catch (e) { }
 }
 
 setInterval(runAutoCleanup, 120000);
