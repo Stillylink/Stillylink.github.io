@@ -179,11 +179,32 @@ body.replies-page .site-wrapper {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 24px;
+  padding-right: 20px;
   display: flex;
   flex-direction: column;
   gap: 32px;
   background: linear-gradient(180deg, #0f1112, #0b0b0b);
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,.25) transparent;
+}
+
+.replies-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.replies-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.replies-content::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,.18);
+  border-radius: 6px;
+}
+
+.replies-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(255,255,255,.32);
 }
 
 /* ========== СЕКЦИЯ ВАШЕГО ПОСЛАНИЯ ========== */
@@ -362,7 +383,11 @@ body.replies-page .footer {
   /* Контент */
   body.replies-page .replies-content {
     padding: 16px;
+    padding-right: 12px;
     gap: 24px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
   }
   
   body.replies-page .section-title {
