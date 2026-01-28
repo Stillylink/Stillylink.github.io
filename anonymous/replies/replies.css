@@ -62,6 +62,7 @@ body.replies-page .site-wrapper {
   display: flex;
   align-items: center;
   gap: 16px;
+  position: relative;
 }
 
 .back-link {
@@ -86,6 +87,9 @@ body.replies-page .site-wrapper {
   font-size: 20px;
   margin: 0;
   font-weight: 600;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
 }
 
 .header-description {
