@@ -617,28 +617,26 @@ async function setMyPresence() {
 
 async function finishChat() {
     console.log('🛑 Завершаем чат');
-    
     const currentRoomId = roomId;
     
     if (currentRoomId) {
         try {
             await update(ref(rtdb, `rooms/${currentRoomId}`), { closed: true });
             
+            await deleteRoomFully(currentRoomId);
+            
             endChatUI();
             await clearAllListenersAndState();
             clearRoomStorage();
 
-            setTimeout(async () => {
-                await deleteRoomFully(currentRoomId);
-            }, 3000); 
-
         } catch (err) {
             console.warn('Ошибка завершения:', err);
+            endChatUI();
+            await clearAllListenersAndState();
         }
     } else {
         endChatUI();
         await clearAllListenersAndState();
-        clearRoomStorage();
     }
 }
 
