@@ -156,7 +156,17 @@ async function loadReplies() {
     // Форматируем дату
     if (messageData.createdAt && !isNaN(messageData.createdAt)) {
       const date = new Date(messageData.createdAt);
-      messageDate.textContent = `Отправлено ${date.toLocaleDateString('ru-RU')} в ${date.toLocaleTimeString('ru-RU', {hour: '2-digit', minute: '2-digit'})}`;
+      const today = new Date();
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+      
+      if (date.toDateString() === today.toDateString()) {
+        messageDate.textContent = 'Отправлено сегодня';
+      } else if (date.toDateString() === yesterday.toDateString()) {
+        messageDate.textContent = 'Отправлено вчера';
+      } else {
+        messageDate.textContent = `Отправлено ${date.toLocaleDateString('ru-RU')}`;
+      }
     } else {
       messageDate.textContent = 'Отправлено недавно';
     }
@@ -221,11 +231,11 @@ function displayReplies(replies) {
       yesterday.setDate(yesterday.getDate() - 1);
       
       if (date.toDateString() === today.toDateString()) {
-        dateStr = `Сегодня в ${date.toLocaleTimeString('ru-RU', {hour: '2-digit', minute: '2-digit'})}`;
+        dateStr = 'Сегодня';
       } else if (date.toDateString() === yesterday.toDateString()) {
-        dateStr = `Вчера в ${date.toLocaleTimeString('ru-RU', {hour: '2-digit', minute: '2-digit'})}`;
+        dateStr = 'Вчера';
       } else {
-        dateStr = `${date.toLocaleDateString('ru-RU')} в ${date.toLocaleTimeString('ru-RU', {hour: '2-digit', minute: '2-digit'})}`;
+        dateStr = date.toLocaleDateString('ru-RU');
       }
     }
     
