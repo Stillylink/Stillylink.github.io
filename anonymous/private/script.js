@@ -263,17 +263,18 @@ async function sendMessageToRoom(text, type = 'text') {
     const messagesRef = ref(rtdb, `rooms/${roomId}/messages`);
     const newMsgRef = push(messagesRef);
 
-    await Promise.all([
-        set(newMsgRef, {
-            sender: uid,
-            text,
-            type,
-            createdAt: now
-        }),
-        update(roomRef, {
-            lastActivity: now
-        })
-    ]);
+await Promise.all([
+    update(ref(rtdb, `waiting/${otherUid}`), { 
+        claimed: true, 
+        roomId: newRoomId,
+        uid: otherUid 
+    }),
+    update(ref(rtdb, `waiting/${uid}`), { 
+        claimed: true, 
+        roomId: newRoomId,
+        uid: uid 
+    })
+]);
 }
 
 photoBtn.addEventListener('click', () => photoInput.click());
@@ -331,11 +332,15 @@ document.addEventListener('click', (e) => {
 
 async function startWaitingHeartbeat() {
     if (!uid) return;
-    
     const waitingRef = ref(rtdb, `waiting/${uid}`);
     
+    const heartbeatData = { 
+        lastSeen: Date.now(),
+        uid: uid 
+    };
+
     try {
-        await update(waitingRef, { lastSeen: Date.now() }).catch(async () => {
+        await update(waitingRef, heartbeatData).catch(async () => {
             await set(waitingRef, {
                 uid,
                 createdAt: Date.now(),
@@ -349,7 +354,7 @@ async function startWaitingHeartbeat() {
     if (waitingHeartbeatInterval) clearInterval(waitingHeartbeatInterval);
     waitingHeartbeatInterval = setInterval(async () => {
         try {
-            await update(waitingRef, { lastSeen: Date.now() });
+            await update(waitingRef, heartbeatData);
         } catch (e) { }
     }, WAITING_HEARTBEAT_INTERVAL);
 }
