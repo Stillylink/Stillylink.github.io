@@ -241,7 +241,7 @@ function displayReplies(replies) {
     
     replyCard.innerHTML = `
       <div class="reply-header">
-        <span class="reply-author">Анонимный ответ #${replies.length - index}</span>
+        <span class="reply-author">Анонимный ответ</span>
         <span class="reply-date">${dateStr}</span>
       </div>
       <div class="reply-text">${escapeHtml(reply.text || '')}</div>
