@@ -4,7 +4,7 @@ import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gsta
 import { getFirestore } from 'https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js';
 import {
   getDatabase,
-  ref, set, push, get, remove, update, query, orderByChild, equalTo
+  ref, set, push, get, remove, update, increment, query, orderByChild, equalTo
 } from 'https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js';
 
 /*  ===============  Firebase-конфиг  ===============  */
@@ -372,24 +372,25 @@ sendReplyBtn.addEventListener('click', async () => {
     sendReplyBtn.disabled = true;
     sendReplyBtn.textContent = 'Отправляем...';
     
-    // Добавляем ответ в список ответов для этого послания
-    const repliesRef = ref(rtdb, `replies/${currentMessageId}`);
-    const newReplyRef = push(repliesRef);
+    // Генерируем новый ID для ответа локально
+    const newReplyRef = push(ref(rtdb, `replies/${currentMessageId}`));
     
-    await set(newReplyRef, {
+    // Создаем объект обновлений для атомарной записи
+    // Это гарантирует, что либо всё запишется, либо ничего
+    const updates = {};
+    
+    // 1. Путь к самому ответу
+    updates[`replies/${currentMessageId}/${newReplyRef.key}`] = {
       text: text,
       createdAt: Date.now()
-    });
+    };
     
-    // Обновляем счётчик ответов
-    const messageRef = ref(rtdb, `anonymous/messages/${currentMessageId}`);
-    const msgSnap = await get(messageRef);
-    if (msgSnap.exists()) {
-      const currentCount = msgSnap.val().repliesCount || 0;
-      await update(messageRef, {
-        repliesCount: currentCount + 1
-      });
-    }
+    // 2. Путь к счетчику в послании (используем increment)
+    // Это идеально подходит под правило ".validate": "... newData.val() === data.val() + 1"
+    updates[`anonymous/messages/${currentMessageId}/repliesCount`] = increment(1);
+
+    // Выполняем один запрос вместо двух
+    await update(ref(rtdb), updates);
     
     // Показываем успех
     hide(messageBox);
@@ -397,7 +398,8 @@ sendReplyBtn.addEventListener('click', async () => {
     
   } catch (error) {
     console.error('Ошибка отправки ответа:', error);
-    showReplyError('Не удалось отправить ответ. Попробуйте позже.');
+    // Если правила не пропустят (например, текст слишком длинный), сработает этот блок
+    showReplyError('Ошибка доступа. Возможно, текст слишком длинный или произошел сбой.');
   } finally {
     sendReplyBtn.disabled = false;
     sendReplyBtn.textContent = 'Отправить ответ';
