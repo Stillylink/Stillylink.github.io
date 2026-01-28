@@ -321,7 +321,17 @@ async function loadRandomMessage() {
     // Форматируем дату
     if (randomMsg.createdAt && !isNaN(randomMsg.createdAt)) {
       const date = new Date(randomMsg.createdAt);
-      messageMeta.textContent = `Отправлено ${date.toLocaleDateString('ru-RU')} в ${date.toLocaleTimeString('ru-RU', {hour: '2-digit', minute: '2-digit'})}`;
+      const today = new Date();
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+      
+      if (date.toDateString() === today.toDateString()) {
+        messageMeta.textContent = 'Отправлено сегодня';
+      } else if (date.toDateString() === yesterday.toDateString()) {
+        messageMeta.textContent = 'Отправлено вчера';
+      } else {
+        messageMeta.textContent = `Отправлено ${date.toLocaleDateString('ru-RU')}`;
+      }
     } else {
       messageMeta.textContent = 'Отправлено недавно';
     }
