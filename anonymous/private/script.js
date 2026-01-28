@@ -844,13 +844,8 @@ async function deleteRoomFully(rId) {
 
         const participants = snap.val().participants || [];
 
-        for (const uid of participants) {
-            await remove(ref(rtdb, `waiting/${uid}`)).catch(() => { });
-        }
-
         await remove(ref(rtdb, `rooms/${rId}/messages`)).catch(() => { });
         await remove(ref(rtdb, `rooms/${rId}/presence`)).catch(() => { });
-        await remove(roomRef).catch(() => { });
 
         console.log("Комната удалена:", rId);
     } catch (e) {
@@ -859,86 +854,3 @@ async function deleteRoomFully(rId) {
 }
 
 const ROOM_TTL = 20 * 60 * 1000; 
-
-async function cleanupRoomsByInactivity() {
-    try {
-        const roomsRef = ref(rtdb, 'rooms');
-        const snap = await get(roomsRef);
-
-        if (!snap.exists()) return;
-
-        const now = Date.now();
-        const jobs = [];
-
-        snap.forEach(roomSnap => {
-            const room = roomSnap.val();
-            const rId = roomSnap.key;
-
-            // ИСПРАВЛЕНИЕ: Закрытые комнаты удаляются немедленно независимо от времени
-            if (room.closed === true) {
-                console.log('🧹 Удаляем закрытую комнату:', rId);
-                jobs.push(deleteRoomFully(rId));
-                return; // Пропускаем дальнейшие проверки для этой комнаты
-            }
-
-            // Проверяем неактивные открытые комнаты
-            const last = room.lastActivity || room.createdAt || 0;
-            if (now - last > ROOM_TTL) {
-                console.log(
-                    '🧹 Удаляем неактивную комнату:',
-                    rId,
-                    'неактивна',
-                    Math.floor((now - last) / 60000),
-                    'минут'
-                );
-                jobs.push(deleteRoomFully(rId));
-            }
-        });
-
-        await Promise.all(jobs);
-    } catch (e) {
-        console.warn('cleanupRoomsByInactivity error', e);
-    }
-}
-
-async function cleanupStaleWaitingUsers() {
-    try {
-        const waitingRef = ref(rtdb, 'waiting');
-        const snap = await get(waitingRef);
-        
-        if (!snap.exists()) return;
-        
-        const now = Date.now();
-        const deletePromises = [];
-
-        snap.forEach((child) => {
-            const data = child.val();
-            if (data.claimed === true) return;
-
-            const ls = data.lastSeen || 0;
-            if (!ls) return;
-
-            if (now - ls > WAITING_STALE_MS) {
-                deletePromises.push(
-                    remove(child.ref).then(() => {
-                        console.log('Удалён зависший пользователь:', child.key);
-                    }).catch(() => {})
-                );
-            }
-        });
-
-        await Promise.all(deletePromises);
-    } catch (e) {
-        console.warn('Ошибка при чистке waiting:', e);
-    }
-}
-
-setInterval(() => {
-    cleanupRoomsByInactivity();
-    cleanupStaleWaitingUsers();
-}, 2 * 60 * 1000);
-
-setTimeout(() => {
-    cleanupRoomsByInactivity();
-    cleanupStaleWaitingUsers();
-}, 20000);
