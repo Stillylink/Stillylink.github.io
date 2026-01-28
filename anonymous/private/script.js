@@ -414,6 +414,7 @@ async function startSearch() {
     startWaitingHeartbeat();
 
     // Поиск собеседника
+// Поиск собеседника
     const waitingRef = ref(rtdb, 'waiting');
     waitingRefPath = 'waiting';
     
@@ -421,7 +422,7 @@ async function startSearch() {
         if (!snap.exists() || matchmakingInProgress || roomId || searchCancelled) return;
         
         const now = Date.now();
-        let otherUid = null;
+        let candidates = [];
 
         snap.forEach(child => {
             const data = child.val();
@@ -429,50 +430,47 @@ async function startSearch() {
             if (data.claimed) return;
             
             const ls = data.lastSeen || data.createdAt || 0;
-            if ((now - ls) > WAITING_STALE_MS) return;
-            
-            // Логика: выбирает того, чей UID "меньше", чтобы избежать двойного создания комнаты
-            if (!otherUid && uid < child.key) {
-                otherUid = child.key;
+            if ((now - ls) < WAITING_STALE_MS) {
+                candidates.push({id: child.key, ...data});
             }
         });
 
-        if (!otherUid) return;
+        if (candidates.length === 0) return;
 
-        matchmakingInProgress = true;
+        // Сортируем по времени создания, чтобы брать самого "старого" ожидающего
+        candidates.sort((a, b) => a.createdAt - b.createdAt);
+        const other = candidates[0];
 
-        try {
-            const otherRef = ref(rtdb, `waiting/${otherUid}`);
-            const myRef = ref(rtdb, `waiting/${uid}`);
-            
-            const roomsRef = ref(rtdb, 'rooms');
-            const newRoomRef = push(roomsRef);
-            const newRoomId = newRoomRef.key;
+        // Тот, чей UID меньше, создает комнату. Это исключает дубликаты.
+        if (uid < other.id) {
+            matchmakingInProgress = true;
+            try {
+                const newRoomRef = push(ref(rtdb, 'rooms'));
+                const newRoomId = newRoomRef.key;
 
-            // 1. Сначала создаем комнату
-            await set(newRoomRef, {
-                participants: [uid, otherUid],
-                createdAt: Date.now(),
-                lastActivity: Date.now(),
-                closed: false
-            });
+                // 1. Сначала пишем комнату
+                await set(newRoomRef, {
+                    participants: [uid, other.id],
+                    createdAt: Date.now(),
+                    closed: false
+                });
 
-            // 2. Обновляем статусы обоих участников
-            await Promise.all([
-                update(otherRef, { claimed: true, roomId: newRoomId }),
-                update(myRef, { claimed: true, roomId: newRoomId })
-            ]);
+                // 2. СРАЗУ обновляем метки "claimed"
+                await update(ref(rtdb, `waiting/${other.id}`), { claimed: true, roomId: newRoomId });
+                await update(ref(rtdb, `waiting/${uid}`), { claimed: true, roomId: newRoomId });
 
-            console.log('✅ Комната создана:', newRoomId);
+                console.log('✅ Комната создана:', newRoomId);
+                
+                // 3. Удаляем из очереди только через 5 секунд!
+                setTimeout(() => {
+                    remove(ref(rtdb, `waiting/${uid}`));
+                    remove(ref(rtdb, `waiting/${other.id}`));
+                }, 5000);
 
-            setTimeout(() => {
-                remove(otherRef).catch(() => {});
-                remove(myRef).catch(() => {});
-            }, 3000);
-            
-        } catch (err) {
-            console.error('Matchmaking error:', err);
-            matchmakingInProgress = false;
+            } catch (err) {
+                console.error('Match error:', err);
+                matchmakingInProgress = false;
+            }
         }
     });
 }
