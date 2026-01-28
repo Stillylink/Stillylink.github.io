@@ -137,6 +137,7 @@ body.messages-page .site-wrapper {
   align-items: center;
   gap: 16px;
   background: var(--bg-card);
+  position: relative;
 }
 
 .back-btn {
@@ -160,6 +161,9 @@ body.messages-page .site-wrapper {
   font-size: 20px;
   margin: 0;
   font-weight: 600;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
 }
 
 /* ========== КОНТЕНТ ЭКРАНОВ ========== */
