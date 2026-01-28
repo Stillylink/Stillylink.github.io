@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+  <title>Мои ответы — StillyLink</title>
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="replies.css">
+</head>
+<body class="replies-page">
+<div class="site-wrapper">
+  <header class="navbar">
+    <div class="logo">StillyLink</div>
+    <nav class="nav-links">
+      <a href="/">Главная</a>
+      <a href="/#create-chat">Создать чат</a>
+      <a href="/anonymous/">Анонимное общение</a>
+      <a href="/login/" class="register-btn">Регистрация</a>
+    </nav>
+    <div class="user-avatar hidden" onclick="toggleUserMenu()">
+      <span>U</span>
+    </div>
+    <div class="user-menu">
+      <a href="/profile/">Профиль</a>
+      <a href="/anonymous/replies/">Мои ответы</a>
+      <a href="#" id="logoutBtn">Выйти</a>
+    </div>
+    <div class="nav-toggle" onclick="toggleMenu()">☰</div>
+  </header>
+
+  <!-- ========== ОСНОВНОЙ КОНТЕЙНЕР =========== -->
+  <main class="replies-container">
+    <div class="replies-box">
+      <div class="replies-shell">
+        
+        <!-- ========== ЗАГОЛОВОК ========== -->
+        <div class="replies-header">
+          <a href="/anonymous/messages/" class="back-link">← К посланиям</a>
+          <h2>Мои ответы</h2>
+          <p class="header-description">Анонимные ответы на ваше послание</p>
+        </div>
+
+        <!-- ========== ИНДИКАТОР ЗАГРУЗКИ ========== -->
+        <div id="loadingBox" class="loading-box">
+          <div class="loading-spinner"></div>
+          <p>Загружаем ответы...</p>
+        </div>
+
+        <!-- ========== НЕТ ПОСЛАНИЯ ========== -->
+        <div id="noMessageBox" class="empty-state hidden">
+          <div class="empty-icon">📝</div>
+          <h3>У вас нет послания</h3>
+          <p>Создайте своё анонимное послание, чтобы получать ответы от других пользователей</p>
+          <a href="/anonymous/messages/" class="btn-link">Написать послание</a>
+        </div>
+
+        <!-- ========== НЕТ ОТВЕТОВ ========== -->
+        <div id="noRepliesBox" class="empty-state hidden">
+          <div class="empty-icon">💬</div>
+          <h3>Пока нет ответов</h3>
+          <p>На ваше послание ещё никто не ответил. Ответы появятся здесь, когда их увидят другие пользователи.</p>
+          <a href="/anonymous/messages/" class="btn-link">Вернуться к посланиям</a>
+        </div>
+
+        <!-- ========== ТРЕБУЕТСЯ АВТОРИЗАЦИЯ ========== -->
+        <div id="guestBox" class="empty-state hidden">
+          <div class="empty-icon">🔒</div>
+          <h3>Требуется регистрация</h3>
+          <p>Чтобы просматривать ответы на послания, необходимо зарегистрироваться</p>
+          <a href="/login/" class="btn-link">Зарегистрироваться</a>
+        </div>
+
+        <!-- ========== КОНТЕНТ С ОТВЕТАМИ ========== -->
+        <div id="repliesContent" class="replies-content hidden">
+          
+          <!-- Ваше послание -->
+          <div class="your-message-section">
+            <h3 class="section-title">Ваше послание</h3>
+            <div class="message-card">
+              <div class="message-text" id="yourMessageText"></div>
+              <div class="message-footer">
+                <span class="message-date" id="messageDate"></span>
+                <span class="replies-count" id="repliesCount">0 ответов</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Список ответов -->
+          <div class="replies-section">
+            <h3 class="section-title">Полученные ответы</h3>
+            <div id="repliesList" class="replies-list">
+              <!-- Ответы будут добавлены динамически -->
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer">© 2026 StillyLink.</footer>
+</div>
+
+<script type="module" src="replies.js"></script>
+</body>
+</html>
