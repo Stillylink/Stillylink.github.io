@@ -674,21 +674,22 @@ async function finishChat() {
     if (currentRoomId) {
         try {
             await update(ref(rtdb, `rooms/${currentRoomId}`), { closed: true });
-            console.log('✅ Комната помечена как закрытая:', currentRoomId);
+            
+            endChatUI();
+            await clearAllListenersAndState();
+            clearRoomStorage();
+
+            setTimeout(async () => {
+                await deleteRoomFully(currentRoomId);
+            }, 3000); 
+
         } catch (err) {
-            console.warn('Ошибка закрытия комнаты:', err);
+            console.warn('Ошибка завершения:', err);
         }
-    }
-    
-    endChatUI();
-    
-    await clearAllListenersAndState();
-    clearRoomStorage();
-    
-    if (currentRoomId) {
-        setTimeout(async () => {
-            await deleteRoomFully(currentRoomId);
-        }, 2000);
+    } else {
+        endChatUI();
+        await clearAllListenersAndState();
+        clearRoomStorage();
     }
 }
 
@@ -852,10 +853,16 @@ modalFinish.addEventListener('click', async () => {
 });
 
 newChatBtn.addEventListener('click', async () => {
+    const oldRoomId = roomId;
     searchCancelled = false;
     await fullRoomCleanup();
     await clearAllListenersAndState();
     clearRoomStorage();
+
+    if (oldRoomId) {
+        deleteRoomFully(oldRoomId);
+    }
+
     startSearch();
 });
 
@@ -874,20 +881,13 @@ exitBtn.addEventListener('click', function (e) {
 });
 
 async function deleteRoomFully(rId) {
+    if (!rId) return;
     try {
         const roomRef = ref(rtdb, `rooms/${rId}`);
-        const snap = await get(roomRef);
-        
-        if (!snap.exists()) return;
-
-        const participants = snap.val().participants || [];
-
-        await remove(ref(rtdb, `rooms/${rId}/messages`)).catch(() => { });
-        await remove(ref(rtdb, `rooms/${rId}/presence`)).catch(() => { });
-
-        console.log("Комната удалена:", rId);
+        await remove(roomRef);
+        console.log("✅ Комната полностью удалена из базы:", rId);
     } catch (e) {
-        console.warn("Ошибка удаления комнаты:", e);
+        console.warn("⚠️ Ошибка при полном удалении комнаты:", e);
     }
 }
 
