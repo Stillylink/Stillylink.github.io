@@ -153,47 +153,59 @@ async function waitForAuth() {
 }
 
 /*  ===============  Навигация между экранами  =============== */
-writeMsgBtn.addEventListener('click', async () => {
-  if (isGuest) {
-    show(guestModal);
+/*  ===============  Отправка послания  =============== */
+submitMessageBtn.addEventListener('click', async () => {
+  const text = messageTextarea.value.trim();
+  
+  if (text.length < 10) {
+    showWriteError('Послание должно содержать минимум 10 символов');
     return;
   }
   
-  const messageRef = ref(rtdb, `anonymous/messages/${uid}`);
-  const snap = await get(messageRef);
+  if (text.length > 1000) {
+    showWriteError('Послание не может быть длиннее 1000 символов');
+    return;
+  }
   
-  if (snap.exists()) {
-    const confirm = window.confirm(
-      '⚠️ У вас уже есть послание.\n\n' +
-      'Хотите удалить старое и создать новое?\n' +
-      '(Это действие нельзя отменить)'
-    );
+  try {
+    submitMessageBtn.disabled = true;
+    submitMessageBtn.textContent = 'Отправляем...';
     
-    if (confirm) {
-      try {
-        // Удаляем старое послание
-        await remove(messageRef);
-        
-        // Открываем экран написания
-        hide(choiceScreen);
-        show(writeScreen);
-        messageTextarea.value = '';
-        charCount.textContent = '0';
-        hide(hasMessageInfo);
-      } catch (error) {
-        console.error('Ошибка удаления:', error);
-        alert('Не удалось удалить послание');
-      }
+    const messageRef = ref(rtdb, `anonymous/messages/${uid}`);
+    
+    // Проверяем, существует ли уже послание
+    const snap = await get(messageRef);
+    
+    if (snap.exists()) {
+      // Если существует - удаляем старое
+      await remove(messageRef);
     }
-    return;
+    
+    // Создаём новое послание
+    await set(messageRef, {
+      text,
+      authorId: uid,
+      createdAt: Date.now(),
+      repliesCount: 0
+    });
+    
+    // Успешно отправлено
+    messageTextarea.value = '';
+    charCount.textContent = '0';
+    hide(hasMessageInfo);
+    
+    alert('✓ Ваше послание отправлено в небытие!');
+    
+    hide(writeScreen);
+    show(choiceScreen);
+    
+  } catch (error) {
+    console.error('Ошибка отправки:', error);
+    showWriteError('Не удалось отправить послание. Попробуйте позже.');
+  } finally {
+    submitMessageBtn.disabled = false;
+    submitMessageBtn.textContent = 'Отправить в небытие';
   }
-  
-  // Если послания нет - открываем экран написания
-  hide(choiceScreen);
-  show(writeScreen);
-  messageTextarea.value = '';
-  charCount.textContent = '0';
-  hide(hasMessageInfo);
 });
 
 receiveMsgBtn.addEventListener('click', async () => {
