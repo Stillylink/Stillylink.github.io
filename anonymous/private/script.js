@@ -538,19 +538,23 @@ async function startSearch() {
                 closed: false
             });
 
-            // Помечаем обоих как занятых и передаём ID комнаты
-            await Promise.all([
-                update(ref(rtdb, `waiting/${otherUid}`), { 
-                    claimed: true, 
-                    roomId: newRoomId,
-                    uid: otherUid
-                }),
-                update(myWaitingRef, { 
-                    claimed: true, 
-                    roomId: newRoomId,
-                    uid: myUid
-                })
-            ]);
+ 
+await Promise.all([
+    set(ref(rtdb, `waiting/${otherUid}`), { 
+        uid: otherUid,
+        createdAt: other.createdAt,
+        claimed: true, 
+        roomId: newRoomId,
+        lastSeen: other.lastSeen || other.createdAt
+    }),
+    set(myWaitingRef, { 
+        uid: myUid,
+        createdAt: mySnap.val().createdAt,
+        claimed: true, 
+        roomId: newRoomId,
+        lastSeen: mySnap.val().lastSeen
+    })
+]);
 
             // Удаляем из очереди через 2 секунды (даём время другому получить roomId)
 setTimeout(() => {
