@@ -79,6 +79,11 @@ const hide = el => el.classList.add('hidden');
 /*  ===============  Logout  =============== */
 logoutBtn?.addEventListener('click', async e => {
   e.preventDefault();
+  
+  messageTextarea.value = '';
+  charCount.textContent = '0';
+  hide(hasMessageInfo);
+  
   await auth.signOut();
   localStorage.clear();
   window.location.reload();
@@ -113,10 +118,14 @@ onAuthStateChanged(auth, user => {
     signInAnonymously(auth); 
     return; 
   }
-  uid = user.uid;
-  authReady = true; // ← НОВОЕ: авторизация завершена
   
-  // Проверяем, является ли пользователь гостем (анонимный вход без email)
+  messageTextarea.value = '';
+  charCount.textContent = '0';
+  hide(hasMessageInfo);
+  
+  uid = user.uid;
+  authReady = true;
+  
   if (user.email) {
     isGuest = false;
     const cachedLetter = localStorage.getItem('userAvatarLetter');
