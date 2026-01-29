@@ -424,7 +424,7 @@ async function startSearch() {
     
     try {
         // 6. Создаем запись в очереди с актуальным UID
-        await update(myWaitingRef, {
+        await set(myWaitingRef, {
             uid: myUid,                    // Явно сохраняем свой UID
             createdAt: Date.now(),
             claimed: false,
