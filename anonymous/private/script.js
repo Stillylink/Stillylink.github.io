@@ -256,16 +256,32 @@ function addMessageToUI(data) {
 
 async function sendMessageToRoom(text, type = 'text') {
     if (!roomId) return;
-    const messagesRef = ref(rtdb, `rooms/${roomId}/messages`);
-    const newMsgRef = push(messagesRef);
+    
+    try {
+        const messagesRef = ref(rtdb, `rooms/${roomId}/messages`);
+        const newMsgRef = push(messagesRef);
 
-    await set(newMsgRef, {
-        sender: uid,
-        text: text,
-        type: type,
-        createdAt: Date.now()
-    });
-    await update(ref(rtdb, `rooms/${roomId}`), { lastActivity: Date.now() });
+        await set(newMsgRef, {
+            sender: uid,
+            text: text,
+            type: type,
+            createdAt: Date.now()
+        });
+
+
+        const roomRef = ref(rtdb, `rooms/${roomId}`);
+        const snap = await get(roomRef);
+        if (snap.exists()) {
+            const currentData = snap.val();
+            await update(roomRef, {
+                ...currentData,
+                lastActivity: Date.now()
+            });
+        }
+
+    } catch (err) {
+        console.error("Ошибка в sendMessageToRoom:", err);
+    }
 }
 
 photoBtn.addEventListener('click', () => photoInput.click());
