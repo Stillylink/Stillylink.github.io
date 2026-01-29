@@ -258,50 +258,27 @@ replyTextarea.addEventListener('input', () => {
   hideReplyError();
 });
 
-/*  ===============  Отправка послания  =============== */
-submitMessageBtn.addEventListener('click', async () => {
-  const text = messageTextarea.value.trim();
-  
-  if (text.length < 10) {
-    showWriteError('Послание должно содержать минимум 10 символов');
+writeMsgBtn.addEventListener('click', async () => {
+  if (isGuest) {
+    show(guestModal);
     return;
   }
   
-  if (text.length > 1000) {
-    showWriteError('Послание не может быть длиннее 1000 символов');
-    return;
-  }
+  hide(choiceScreen);
+  show(writeScreen);
   
-  try {
-    submitMessageBtn.disabled = true;
-    submitMessageBtn.textContent = 'Отправляем...';
-    
-    const messageRef = ref(rtdb, `anonymous/messages/${uid}`);
-    
-    // Сохраняем послание с uid пользователя в качестве ключа
-    await set(messageRef, {
-      text,
-      authorId: uid,
-      createdAt: Date.now(),
-      repliesCount: 0
-    });
-    
-    // Успешно отправлено
+  const messageRef = ref(rtdb, `anonymous/messages/${uid}`);
+  const snap = await get(messageRef);
+  
+  if (snap.exists()) {
+    const data = snap.val();
+    messageTextarea.value = data.text || '';
+    charCount.textContent = messageTextarea.value.length;
+    show(hasMessageInfo);
+  } else {
     messageTextarea.value = '';
     charCount.textContent = '0';
     hide(hasMessageInfo);
-    
-    alert('✓ Ваше послание отправлено в небытие!');
-    
-    hide(writeScreen);
-    show(choiceScreen);
-    
-  } catch (error) {
-    console.error('Ошибка отправки:', error);
-    showWriteError('Не удалось отправить послание. Попробуйте позже.');
-  } finally {
-    submitMessageBtn.disabled = false;
-    submitMessageBtn.textContent = 'Отправить в небытие';
   }
 });
 
