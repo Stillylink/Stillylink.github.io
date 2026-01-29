@@ -346,7 +346,11 @@ async function startWaitingHeartbeat() {
     };
 
     try {
-        await update(waitingRef, heartbeatData).catch(async () => {
+        const snap = await get(waitingRef);
+        
+        if (snap.exists()) {
+            await update(waitingRef, heartbeatData);
+        } else {
             await set(waitingRef, {
                 uid,
                 createdAt: Date.now(),
@@ -354,8 +358,10 @@ async function startWaitingHeartbeat() {
                 roomId: null,
                 lastSeen: Date.now()
             });
-        });
-    } catch (e) { }
+        }
+    } catch (e) { 
+        console.error("Ошибка heartbeat:", e);
+    }
 
     if (waitingHeartbeatInterval) clearInterval(waitingHeartbeatInterval);
     waitingHeartbeatInterval = setInterval(async () => {
