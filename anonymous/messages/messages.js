@@ -160,7 +160,6 @@ writeMsgBtn.addEventListener('click', async () => {
     return;
   }
   
-  // Сразу открываем экран написания
   hide(choiceScreen);
   show(writeScreen);
   
