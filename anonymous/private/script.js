@@ -147,24 +147,29 @@ function clearRoomStorage() {
 }
 
 window.addEventListener("DOMContentLoaded", () => {
-    logoutBtn?.addEventListener("click", async e => {
-        e.preventDefault();
+logoutBtn?.addEventListener("click", async e => {
+    e.preventDefault();
 
-        if (roomId && !chatClosed) {
-            chatClosed = true;
-            try {
-                await update(ref(rtdb, `rooms/${roomId}`), { closed: true });
-            } catch (err) { }
+    if (roomId && !chatClosed) {
+        chatClosed = true;
+        try {
+            await update(ref(rtdb, `rooms/${roomId}`), { 
+                closed: true,
+                lastActivity: Date.now() 
+            });
+        } catch (err) {
+            console.error("Ошибка закрытия комнаты:", err);
         }
+    }
 
-        await clearAllListenersAndState();
-        clearRoomStorage();
+    await clearAllListenersAndState();
+    clearRoomStorage();
 
-        await auth.signOut();
-        localStorage.clear();
+    await auth.signOut();
+    localStorage.clear();
 
-        window.location.reload();
-    });
+    window.location.reload();
+});
 });
 
 onAuthStateChanged(auth, user => {
@@ -268,7 +273,8 @@ async function sendMessageToRoom(text, type = 'text') {
             createdAt: Date.now()
         });
 
-        await update(ref(rtdb, `rooms/${roomId}`), {
+        const roomRef = ref(rtdb, `rooms/${roomId}`);
+        await update(roomRef, {
             lastActivity: Date.now()
         });
 
@@ -596,7 +602,10 @@ async function finishChat() {
     
     if (currentRoomId) {
         try {
-            await update(ref(rtdb, `rooms/${currentRoomId}`), { closed: true });
+            await update(ref(rtdb, `rooms/${currentRoomId}`), { 
+                closed: true,
+                lastActivity: Date.now()
+            });
             
             await deleteRoomFully(currentRoomId);
             
@@ -605,6 +614,7 @@ async function finishChat() {
             clearRoomStorage();
 
         } catch (err) {
+            console.error("Ошибка завершения чата:", err);
             endChatUI();
             await clearAllListenersAndState();
         }
