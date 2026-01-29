@@ -160,22 +160,24 @@ writeMsgBtn.addEventListener('click', async () => {
     return;
   }
   
+  // Сразу открываем экран написания
+  hide(choiceScreen);
+  show(writeScreen);
+  
   // Проверяем, есть ли у пользователя уже послание
   const messageRef = ref(rtdb, `anonymous/messages/${uid}`);
   const snap = await get(messageRef);
   
   if (snap.exists()) {
-    // Если послание уже есть - показываем уведомление
-    alert('⚠️ У вас уже есть послание в небытии! Вы можете отправить только одно послание.');
-    return; // НЕ открываем экран написания!
+    const data = snap.val();
+    messageTextarea.value = data.text || '';
+    charCount.textContent = messageTextarea.value.length;
+    show(hasMessageInfo);
+  } else {
+    messageTextarea.value = '';
+    charCount.textContent = '0';
+    hide(hasMessageInfo);
   }
-  
-  // Если послания нет - открываем экран написания
-  hide(choiceScreen);
-  show(writeScreen);
-  messageTextarea.value = '';
-  charCount.textContent = '0';
-  hide(hasMessageInfo);
 });
 
 receiveMsgBtn.addEventListener('click', async () => {
