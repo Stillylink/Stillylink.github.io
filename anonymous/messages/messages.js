@@ -154,29 +154,46 @@ async function waitForAuth() {
 
 /*  ===============  Навигация между экранами  =============== */
 writeMsgBtn.addEventListener('click', async () => {
-  // Проверяем, является ли пользователь гостем
   if (isGuest) {
     show(guestModal);
     return;
   }
   
-  hide(choiceScreen);
-  show(writeScreen);
-  
-  // Проверяем, есть ли у пользователя уже послание
   const messageRef = ref(rtdb, `anonymous/messages/${uid}`);
   const snap = await get(messageRef);
   
   if (snap.exists()) {
-    const data = snap.val();
-    messageTextarea.value = data.text || '';
-    charCount.textContent = messageTextarea.value.length;
-    show(hasMessageInfo);
-  } else {
-    messageTextarea.value = '';
-    charCount.textContent = '0';
-    hide(hasMessageInfo);
+    const confirm = window.confirm(
+      '⚠️ У вас уже есть послание.\n\n' +
+      'Хотите удалить старое и создать новое?\n' +
+      '(Это действие нельзя отменить)'
+    );
+    
+    if (confirm) {
+      try {
+        // Удаляем старое послание
+        await remove(messageRef);
+        
+        // Открываем экран написания
+        hide(choiceScreen);
+        show(writeScreen);
+        messageTextarea.value = '';
+        charCount.textContent = '0';
+        hide(hasMessageInfo);
+      } catch (error) {
+        console.error('Ошибка удаления:', error);
+        alert('Не удалось удалить послание');
+      }
+    }
+    return;
   }
+  
+  // Если послания нет - открываем экран написания
+  hide(choiceScreen);
+  show(writeScreen);
+  messageTextarea.value = '';
+  charCount.textContent = '0';
+  hide(hasMessageInfo);
 });
 
 receiveMsgBtn.addEventListener('click', async () => {
