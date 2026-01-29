@@ -372,26 +372,28 @@ sendReplyBtn.addEventListener('click', async () => {
     sendReplyBtn.disabled = true;
     sendReplyBtn.textContent = 'Отправляем...';
     
-    // Генерируем новый ID для ответа локально
     const newReplyRef = push(ref(rtdb, `replies/${currentMessageId}`));
-    
-    // Записываем ответ
     await set(newReplyRef, {
       text: text,
       createdAt: Date.now()
     });
     
-    // Увеличиваем счетчик ответов
-    const counterRef = ref(rtdb, `anonymous/messages/${currentMessageId}/repliesCount`);
-    await set(counterRef, increment(1));
+    const messageRef = ref(rtdb, `anonymous/messages/${currentMessageId}`);
+    await update(messageRef, {
+      repliesCount: increment(1)
+    });
     
-    // Показываем успех
     hide(messageBox);
     show(replySentBox);
     
   } catch (error) {
     console.error('Ошибка отправки ответа:', error);
-    showReplyError('Не удалось отправить ответ. Попробуйте позже.');
+    
+    if (error.message.includes('PERMISSION_DENIED')) {
+      showReplyError('Ошибка доступа: проверьте правила базы данных.');
+    } else {
+      showReplyError('Не удалось отправить ответ. Попробуйте позже.');
+    }
   } finally {
     sendReplyBtn.disabled = false;
     sendReplyBtn.textContent = 'Отправить ответ';
