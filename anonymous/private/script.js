@@ -339,35 +339,17 @@ document.addEventListener('click', (e) => {
 async function startWaitingHeartbeat() {
     if (!uid) return;
     const waitingRef = ref(rtdb, `waiting/${uid}`);
-    
-    const heartbeatData = { 
-        lastSeen: Date.now(),
-        uid: uid 
-    };
-
-    try {
-        const snap = await get(waitingRef);
-        
-        if (snap.exists()) {
-            await update(waitingRef, heartbeatData);
-        } else {
-            await set(waitingRef, {
-                uid,
-                createdAt: Date.now(),
-                claimed: false,
-                roomId: null,
-                lastSeen: Date.now()
-            });
-        }
-    } catch (e) { 
-        console.error("Ошибка heartbeat:", e);
-    }
 
     if (waitingHeartbeatInterval) clearInterval(waitingHeartbeatInterval);
+    
     waitingHeartbeatInterval = setInterval(async () => {
         try {
-            await update(waitingRef, heartbeatData);
-        } catch (e) { }
+            await update(waitingRef, { 
+                lastSeen: Date.now() 
+            });
+        } catch (e) {
+            stopWaitingHeartbeat();
+        }
     }, WAITING_HEARTBEAT_INTERVAL);
 }
 
@@ -381,6 +363,13 @@ function stopWaitingHeartbeat() {
 async function startSearch() {
     const saved = loadRoomFromStorage();
     if (saved.roomId) return;
+
+    // 1. Проверка авторизации (защита от той самой ошибки)
+    if (!auth.currentUser) {
+        console.warn("Ждем авторизации...");
+        return; 
+    }
+    uid = auth.currentUser.uid; 
 
     chatClosed = false;
     matchmakingInProgress = false;
@@ -396,8 +385,8 @@ async function startSearch() {
     myWaitingRefPath = `waiting/${uid}`;
     
     try {
-        await set(myWaitingRef, {
-            uid,
+        await update(myWaitingRef, {
+            uid: uid,
             createdAt: Date.now(),
             claimed: false,
             roomId: null,
@@ -405,6 +394,7 @@ async function startSearch() {
         });
         onDisconnect(myWaitingRef).remove();
     } catch (e) {
+        console.error("Ошибка входа в очередь:", e);
         return;
     }
 
