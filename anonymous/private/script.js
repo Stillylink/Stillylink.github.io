@@ -369,7 +369,10 @@ async function startWaitingHeartbeat(userUid) {
         }
         
         try {
-            await update(waitingRef, { lastSeen: Date.now() });
+            await update(waitingRef, {
+        lastSeen: Date.now(),
+        uid: userUid
+                });
         } catch (e) {
             console.error("Ошибка heartbeat:", e);
             // Если permission_denied — останавливаем попытки
@@ -537,11 +540,13 @@ async function startSearch() {
             await Promise.all([
                 update(ref(rtdb, `waiting/${otherUid}`), { 
                     claimed: true, 
-                    roomId: newRoomId 
+                    roomId: newRoomId,
+                    uid: otherUid
                 }),
                 update(myWaitingRef, { 
                     claimed: true, 
-                    roomId: newRoomId 
+                    roomId: newRoomId,
+                    uid: myUid
                 })
             ]);
 
@@ -882,8 +887,10 @@ async function deleteRoomFully(rId) {
     if (!rId) return;
     try {
         const roomRef = ref(rtdb, `rooms/${rId}`);
-        await remove(roomRef);
-    } catch (e) { }
+        await update(roomRef, { closed: true, lastActivity: Date.now() });
+    } catch (e) { 
+        console.warn("Не удалось удалить комнату вручную (защита правил), она будет очищена ботом.");
+    }
 }
 
 const ROOM_TTL = 20 * 60 * 1000; 
