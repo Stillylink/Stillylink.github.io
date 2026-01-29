@@ -646,7 +646,7 @@ async function setMyPresence() {
     const presRef = ref(rtdb, `rooms/${roomId}/presence/${currentUid}`);
     
     try {
-        await set(presRef, { lastSeen: Date.now() });
+        await update(presRef, { lastSeen: Date.now() });
         onDisconnect(presRef).remove();
     } catch (e) { 
         console.error("Presence set error:", e);
