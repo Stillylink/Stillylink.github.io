@@ -553,10 +553,10 @@ async function startSearch() {
             ]);
 
             // Удаляем из очереди через 2 секунды (даём время другому получить roomId)
-            setTimeout(() => {
-                remove(myWaitingRef).catch(() => {});
-                remove(ref(rtdb, `waiting/${otherUid}`)).catch(() => {});
-            }, 2000);
+setTimeout(() => {
+    remove(myWaitingRef).catch(() => {});
+    remove(ref(rtdb, `waiting/${otherUid}`)).catch(() => {});
+}, 2000);
 
             matchmakingInProgress = false;
 
