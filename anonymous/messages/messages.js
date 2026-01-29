@@ -375,22 +375,15 @@ sendReplyBtn.addEventListener('click', async () => {
     // Генерируем новый ID для ответа локально
     const newReplyRef = push(ref(rtdb, `replies/${currentMessageId}`));
     
-    // Создаем объект обновлений для атомарной записи
-    // Это гарантирует, что либо всё запишется, либо ничего
-    const updates = {};
-    
-    // 1. Путь к самому ответу
-    updates[`replies/${currentMessageId}/${newReplyRef.key}`] = {
+    // Записываем ответ
+    await set(newReplyRef, {
       text: text,
       createdAt: Date.now()
-    };
+    });
     
-    // 2. Путь к счетчику в послании (используем increment)
-    // Это идеально подходит под правило ".validate": "... newData.val() === data.val() + 1"
-    updates[`anonymous/messages/${currentMessageId}/repliesCount`] = increment(1);
-
-    // Выполняем один запрос вместо двух
-    await update(ref(rtdb), updates);
+    // Увеличиваем счетчик ответов
+    const counterRef = ref(rtdb, `anonymous/messages/${currentMessageId}/repliesCount`);
+    await set(counterRef, increment(1));
     
     // Показываем успех
     hide(messageBox);
@@ -398,8 +391,7 @@ sendReplyBtn.addEventListener('click', async () => {
     
   } catch (error) {
     console.error('Ошибка отправки ответа:', error);
-    // Если правила не пропустят (например, текст слишком длинный), сработает этот блок
-    showReplyError('Ошибка доступа. Возможно, текст слишком длинный или произошел сбой.');
+    showReplyError('Не удалось отправить ответ. Попробуйте позже.');
   } finally {
     sendReplyBtn.disabled = false;
     sendReplyBtn.textContent = 'Отправить ответ';
