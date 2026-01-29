@@ -529,8 +529,10 @@ async function startSearch() {
             }
 
             // Создаём комнату
+            const sortedParticipants = [myUid, otherUid].sort();
+            
             await set(newRoomRef, {
-                participants: [myUid, otherUid],
+                participants: sortedParticipants,
                 createdAt: Date.now(),
                 lastActivity: Date.now(),
                 closed: false
