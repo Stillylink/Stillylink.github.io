@@ -372,15 +372,17 @@ sendReplyBtn.addEventListener('click', async () => {
     sendReplyBtn.disabled = true;
     sendReplyBtn.textContent = 'Отправляем...';
     
+    // 1. Сначала увеличиваем счетчик
+    const messageRef = ref(rtdb, `anonymous/messages/${currentMessageId}`);
+    await update(messageRef, {
+      repliesCount: increment(1)
+    });
+    
+    // 2. Потом сохраняем ответ
     const newReplyRef = push(ref(rtdb, `replies/${currentMessageId}`));
     await set(newReplyRef, {
       text: text,
       createdAt: Date.now()
-    });
-    
-    const messageRef = ref(rtdb, `anonymous/messages/${currentMessageId}`);
-    await update(messageRef, {
-      repliesCount: increment(1)
     });
     
     hide(messageBox);
