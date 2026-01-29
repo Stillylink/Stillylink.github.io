@@ -268,16 +268,9 @@ async function sendMessageToRoom(text, type = 'text') {
             createdAt: Date.now()
         });
 
-
-        const roomRef = ref(rtdb, `rooms/${roomId}`);
-        const snap = await get(roomRef);
-        if (snap.exists()) {
-            const currentData = snap.val();
-            await update(roomRef, {
-                ...currentData,
-                lastActivity: Date.now()
-            });
-        }
+        await update(ref(rtdb, `rooms/${roomId}`), {
+            lastActivity: Date.now()
+        });
 
     } catch (err) {
         console.error("Ошибка в sendMessageToRoom:", err);
