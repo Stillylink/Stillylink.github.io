@@ -42,11 +42,17 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const rtdb = getDatabase(app);
 
+// ============================================
+// ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ДЛЯ DOM ЭЛЕМЕНТОВ
+// ============================================
 let searchScreen, chatWindow, endScreen, messagesEl, textInput, sendBtn;
 let finishBtn, modal, modalCancel, modalFinish, newChatBtn;
 let emojiBtn, emojiPanel, photoBtn, photoInput, cancelSearch, exitBtn;
 let regBtn, avatar, avatarLetter, userMenu, logoutBtn;
 
+// ============================================
+// ИНИЦИАЛИЗАЦИЯ DOM ПОСЛЕ ЗАГРУЗКИ СТРАНИЦЫ
+// ============================================
 function initializeDOM() {
     searchScreen = document.getElementById('searchScreen');
     chatWindow = document.getElementById('chatWindow');
@@ -88,6 +94,9 @@ function initializeDOM() {
     return true;
 }
 
+// ============================================
+// ОБРАБОТЧИКИ МЕНЮ И UI
+// ============================================
 function initializeEventHandlers() {
     // Обработчики меню навигации
     document.addEventListener("click", e => {
@@ -303,6 +312,9 @@ function clearRoomStorage() {
     localStorage.removeItem('partnerId');
 }
 
+// ============================================
+// ЕДИНАЯ ФУНКЦИЯ ОСТАНОВКИ ВСЕЙ АКТИВНОСТИ
+// ============================================
 async function stopAllActivity() {
     // Останавливаем все интервалы
     if (presenceHeartbeatInterval) {
@@ -375,6 +387,9 @@ async function clearAllListenersAndState() {
     matchmakingInProgress = false;
 }
 
+// ============================================
+// ГЛАВНАЯ ТОЧКА ВХОДА - ИНИЦИАЛИЗАЦИЯ ПРИЛОЖЕНИЯ
+// ============================================
 document.addEventListener("DOMContentLoaded", () => {
     console.log('DOM загружен, инициализация приложения...');
     
@@ -450,9 +465,16 @@ onAuthStateChanged(auth, async user => {
     }
 });
 
-function clearMessages() { messagesEl.innerHTML = ''; }
+function clearMessages() { 
+    if (messagesEl) messagesEl.innerHTML = ''; 
+}
 
 function addMessageToUI(data) {
+    if (!messagesEl) {
+        console.warn('messagesEl не существует, сообщение не может быть отображено');
+        return;
+    }
+    
     const { sender, text, type, createdAt } = data;
     const wrap = document.createElement('div');
     const isOwn = sender === uid;
@@ -725,6 +747,7 @@ async function connectToRoom(rId) {
         }
 
         isConnecting = true;
+        chatClosed = false; // ✅ Сбрасываем флаг при входе в новую комнату
 
         // Удаляем себя из очереди при входе в комнату
         if (uid) {
@@ -799,8 +822,45 @@ async function connectToRoom(rId) {
         messagesRefPath = `rooms/${roomId}/messages`;
         clearMessages();
         
+        // ✅ ИСПРАВЛЕНИЕ: Сначала загружаем все существующие сообщения
+        let lastLoadedTimestamp = 0;
+        try {
+            const existingMessagesSnap = await get(messagesRef);
+            if (existingMessagesSnap.exists()) {
+                const messages = [];
+                existingMessagesSnap.forEach(child => {
+                    const msg = child.val();
+                    messages.push({ key: child.key, ...msg });
+                    // Запоминаем timestamp последнего сообщения
+                    if (msg.createdAt > lastLoadedTimestamp) {
+                        lastLoadedTimestamp = msg.createdAt;
+                    }
+                });
+                
+                // Сортируем по времени создания
+                messages.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+                
+                // Отображаем все существующие сообщения
+                messages.forEach(msg => {
+                    if (!chatClosed) addMessageToUI(msg);
+                });
+                
+                console.log(`Загружено ${messages.length} существующих сообщений`);
+            }
+        } catch (e) {
+            console.error("Ошибка загрузки существующих сообщений:", e);
+        }
+        
+        // ✅ Теперь устанавливаем слушатель для НОВЫХ сообщений
+        // Слушатель будет получать ВСЕ сообщения, но мы фильтруем уже отображённые
         onChildAdded(messagesRef, (snap) => {
-            if (!chatClosed) addMessageToUI(snap.val());
+            if (chatClosed) return;
+            
+            const msg = snap.val();
+            // Отображаем только сообщения новее последнего загруженного
+            if (msg.createdAt > lastLoadedTimestamp) {
+                addMessageToUI(msg);
+            }
         });
 
         await setMyPresence();
@@ -812,6 +872,9 @@ async function connectToRoom(rId) {
     }
 }
 
+// ============================================
+// ИСПРАВЛЕННАЯ setMyPresence БЕЗ ЛИШНЕГО get()
+// ============================================
 async function setMyPresence() {
     if (!roomId || !auth.currentUser) return;
     
@@ -838,7 +901,8 @@ async function setMyPresence() {
         }
         
         try {
-
+            // УБРАЛИ get() - просто обновляем presence
+            // Если комната удалена, update выдаст permission_denied и мы остановим интервал
             await update(presRef, { lastSeen: Date.now() });
         } catch (e) { 
             console.error("Presence heartbeat error:", e);
@@ -849,6 +913,9 @@ async function setMyPresence() {
     }, PRESENCE_PING_INTERVAL);
 }
 
+// ============================================
+// УПРОЩЕННАЯ finishChat
+// ============================================
 async function finishChat() {
     const currentRoomId = roomId;
     
@@ -881,11 +948,18 @@ async function finishChat() {
     }
 }
 
+// ============================================
+// УПРОЩЕННАЯ endChatUI - только UI
+// ============================================
 function endChatUI() {
     hide(searchScreen);
     hide(chatWindow);
     show(endScreen);
 }
+
+// ============================================
+// ИСПРАВЛЕННАЯ cancelSearchHandler
+// ============================================
 async function cancelSearchHandler() {
     searchCancelled = true;
     
@@ -918,3 +992,7 @@ async function cancelSearchHandler() {
     hide(searchScreen);
     show(endScreen);
 }
+
+// ============================================
+// ВСЕ ОБРАБОТЧИКИ СОБЫТИЙ ТЕПЕРЬ В initializeEventHandlers()
+// ============================================
