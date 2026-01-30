@@ -675,18 +675,28 @@ async function connectToRoom(rId) {
 
         onValue(roomRef, async (snap) => {
             if (!snap.exists()) {
-                chatClosed = true;
-                await clearAllListenersAndState();
-                clearRoomStorage();
-                endChatUI();
+                if (!chatClosed) {
+                    console.log("Комната удалена, закрываем чат");
+                    chatClosed = true;
+                    endChatUI();
+                    // Отложенная очистка чтобы не прервать обработку события
+                    setTimeout(async () => {
+                        await clearAllListenersAndState();
+                        clearRoomStorage();
+                    }, 100);
+                }
                 return;
             }
             const data = snap.val();
-            if (data.closed === true) {
+            if (data.closed === true && !chatClosed) {
+                console.log("Собеседник завершил чат, закрываем у себя");
                 chatClosed = true;
-                await clearAllListenersAndState();
-                clearRoomStorage();
                 endChatUI();
+                // Отложенная очистка чтобы не прервать обработку события
+                setTimeout(async () => {
+                    await clearAllListenersAndState();
+                    clearRoomStorage();
+                }, 100);
             }
         });
 
@@ -751,8 +761,11 @@ async function finishChat() {
     if (currentRoomId && !chatClosed) {
         chatClosed = true;
         
+        // Сначала показываем UI пользователю
+        endChatUI();
+        
         try {
-            // ТОЛЬКО ОДНО обновление - помечаем комнату закрытой
+            // Помечаем комнату закрытой (это триггернет слушатель у собеседника)
             await update(ref(rtdb, `rooms/${currentRoomId}`), { 
                 closed: true,
                 lastActivity: Date.now()
@@ -760,14 +773,18 @@ async function finishChat() {
         } catch (err) {
             console.error("Ошибка закрытия комнаты:", err);
         }
+        
+        // Даём время собеседнику получить событие, потом очищаем
+        setTimeout(async () => {
+            await clearAllListenersAndState();
+            clearRoomStorage();
+        }, 500);
+    } else {
+        // Если комната уже закрыта или её нет
+        endChatUI();
+        await clearAllListenersAndState();
+        clearRoomStorage();
     }
-    
-    // Останавливаем всю активность и очищаем
-    await clearAllListenersAndState();
-    clearRoomStorage();
-    
-    // UI
-    endChatUI();
 }
 
 function endChatUI() {
