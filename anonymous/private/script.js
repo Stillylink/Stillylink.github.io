@@ -504,6 +504,13 @@ async function startSearch() {
             });
 
             console.log("Комната успешно создана нами:", newRoomId);
+            roomId = newRoomId; 
+            stopWaitingHeartbeat();
+            if (waitingRefPath) {
+                off(ref(rtdb, waitingRefPath));
+                waitingRefPath = null;
+            }
+            await connectToRoom(newRoomId);
 
             setTimeout(() => {
                 remove(myWaitingRef).catch(() => {});
