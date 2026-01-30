@@ -391,7 +391,9 @@ async function startSearch() {
     const myUid = auth.currentUser.uid;
     uid = myUid;
     
-    if (roomId || localStorage.getItem('roomId')) {
+    // Проверка на существующую комнату
+    const saved = loadRoomFromStorage();
+    if (roomId || saved.roomId) {
         console.log("Поиск отменен: уже в комнате");
         return;
     }
@@ -420,38 +422,37 @@ async function startSearch() {
         onDisconnect(myWaitingRef).remove().catch(() => {});
     } catch (e) {
         console.error("Ошибка входа в очередь:", e);
-        if (e.message?.includes('permission_denied')) {
-            setTimeout(() => window.location.reload(), 1000);
-        }
         return;
     }
 
-    // --- УЛУЧШЕННЫЙ СЛУШАТЕЛЬ СЕБЯ ---
+    // --- СЛУШАТЕЛЬ СЕБЯ (для роли Ведомого) ---
     const unsubscribeSelf = onValue(myWaitingRef, (snap) => {
         const data = snap.val();
         if (!data) return;
         
-        // Если кто-то другой (Лидер) уже создал комнату и записал нас туда
+        // Если Лидер нас уже выбрал
         if (data.claimed === true && data.roomId && !roomId) {
-            console.log("Нас нашли! Подключаемся к комнате:", data.roomId);
+            console.log("Нас нашли! Переход в комнату:", data.roomId);
             
-            // 1. Снимаем слушателя сразу, чтобы не зайти сюда дважды
+            // НЕМЕДЛЕННО блокируем повторные входы
+            roomId = data.roomId; 
+            
+            // Гасим все слушатели очереди
             off(myWaitingRef); 
-            unsubscribeSelf(); 
-            
-            // 2. Глушим общий поиск (candidates), так как пара найдена
             if (waitingRefPath) {
                 off(ref(rtdb, waitingRefPath));
                 waitingRefPath = null;
             }
             
-            roomId = data.roomId;
             saveRoomToStorage(roomId, null);
             stopWaitingHeartbeat();
             
+            // Гарантируем смену экранов
+            hide(searchScreen);
+            show(chatWindow);
+
             connectToRoom(data.roomId).catch(console.error);
 
-            // Удаляем запись из очереди чуть позже, чтобы Лидер успел всё проверить
             setTimeout(() => {
                 remove(myWaitingRef).catch(() => {});
             }, 1000);
@@ -460,13 +461,13 @@ async function startSearch() {
 
     startWaitingHeartbeat(myUid);
 
+    // --- ПОИСК КАНДИДАТОВ (для роли Лидера) ---
     const waitingRef = ref(rtdb, 'waiting');
     waitingRefPath = 'waiting';
     
-    // Поиск кандидатов (логика Лидера)
     onValue(waitingRef, async (snap) => {
-        if (!snap.exists() || searchCancelled || roomId || matchmakingInProgress) return;
-        if (!auth.currentUser || auth.currentUser.uid !== myUid) return;
+        // Если нас уже "забрали" (roomId заполнен) или идет процесс — выходим
+        if (roomId || !snap.exists() || searchCancelled || matchmakingInProgress) return;
         
         const now = Date.now();
         let candidates = [];
@@ -486,7 +487,7 @@ async function startSearch() {
         candidates.sort((a, b) => a.createdAt - b.createdAt);
         const otherUid = candidates[0].id;
 
-        // ПРАВИЛО ЛИДЕРА: Создает комнату только тот, чей UID меньше (лексикографически)
+        // Лидер — тот, чей UID меньше
         if (myUid > otherUid) return;
 
         matchmakingInProgress = true;
@@ -495,19 +496,13 @@ async function startSearch() {
         const newRoomId = newRoomRef.key;
 
         try {
-            // Пытаемся забронировать обоих
+            // Атомарно бронируем обоих
             await Promise.all([
-                update(ref(rtdb, `waiting/${otherUid}`), { 
-                    claimed: true, 
-                    roomId: newRoomId
-                }),
-                update(myWaitingRef, { 
-                    claimed: true, 
-                    roomId: newRoomId
-                })
+                update(ref(rtdb, `waiting/${otherUid}`), { claimed: true, roomId: newRoomId }),
+                update(myWaitingRef, { claimed: true, roomId: newRoomId })
             ]);
 
-            // Если бронь прошла — создаем саму комнату
+            // Если бронь прошла, создаем комнату
             const sortedParticipants = [myUid, otherUid].sort();
             await set(newRoomRef, {
                 participants: sortedParticipants,
@@ -516,31 +511,31 @@ async function startSearch() {
                 closed: false
             });
 
-            console.log("Комната успешно создана нами (Лидер):", newRoomId);
+            console.log("Комната создана нами (Лидер):", newRoomId);
             
-            // Отключаем слушателей поиска
+            roomId = newRoomId; 
+            
+            // Выключаем поиск
             off(myWaitingRef);
             if (waitingRefPath) {
                 off(ref(rtdb, waitingRefPath));
                 waitingRefPath = null;
             }
             
-            roomId = newRoomId; 
             stopWaitingHeartbeat();
+            
+            // Принудительный UI переход
+            hide(searchScreen);
+            show(chatWindow);
+            
             await connectToRoom(newRoomId);
 
-            // Чистим за собой
             setTimeout(() => {
                 remove(myWaitingRef).catch(() => {});
-            }, 2000);
+            }, 1500);
 
         } catch (err) {
-            if (err.message.includes("PERMISSION_DENIED")) {
-                console.log("Конфликт: другой пользователь оказался быстрее.");
-            } else {
-                console.error("Критическая ошибка matchmaking:", err);
-            }
-        } finally {
+            console.log("Конфликт бронирования, откат.");
             matchmakingInProgress = false;
         }
     });
