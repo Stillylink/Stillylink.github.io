@@ -489,7 +489,7 @@ async function startSearch() {
         const newRoomRef = push(ref(rtdb, 'rooms'));
         const newRoomId = newRoomRef.key;
 
-        try {
+try {
             const [otherSnap, mySnap] = await Promise.all([
                 get(ref(rtdb, `waiting/${otherUid}`)),
                 get(myWaitingRef)
@@ -503,6 +503,7 @@ async function startSearch() {
 
             const sortedParticipants = [myUid, otherUid].sort();
             
+            // Сначала создаем саму комнату
             await set(newRoomRef, {
                 participants: sortedParticipants,
                 createdAt: Date.now(),
@@ -510,31 +511,39 @@ async function startSearch() {
                 closed: false
             });
 
-            // ✅ ИСПРАВЛЕНИЕ: Убрали uid из update
-            await Promise.all([
-                update(ref(rtdb, `waiting/${otherUid}`), { 
-                    claimed: true, 
-                    roomId: newRoomId
-                }),
-                update(myWaitingRef, { 
-                    claimed: true, 
-                    roomId: newRoomId
-                })
-            ]);
+            // А теперь пытаемся захватить участников
+            try {
+                await Promise.all([
+                    update(ref(rtdb, `waiting/${otherUid}`), { 
+                        claimed: true, 
+                        roomId: newRoomId
+                    }),
+                    update(myWaitingRef, { 
+                        claimed: true, 
+                        roomId: newRoomId
+                    })
+                ]);
 
-            // ✅ ИСПРАВЛЕНИЕ: Удаляем только свой узел
-            setTimeout(() => {
-                remove(myWaitingRef).catch(() => {});
-            }, 2000);
+                console.log("Комната создана нами!");
 
-            matchmakingInProgress = false;
+                setTimeout(() => {
+                    remove(myWaitingRef).catch(() => {});
+                }, 2000);
 
+            } catch (err) {
+                if (err.message.includes("PERMISSION_DENIED")) {
+                    console.log("Соперник успел первым, ожидаем перехода в комнату...");
+                } else {
+                    console.error("Ошибка при обновлении статуса участников:", err);
+                }
+            }
         } catch (err) {
             console.error("Ошибка создания комнаты:", err);
+        } finally {
             matchmakingInProgress = false;
         }
-    });
-}
+    }); // Конец onValue
+} // Конец startSearch
 
 async function connectToRoom(rId) {
     try {
