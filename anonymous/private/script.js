@@ -426,22 +426,35 @@ async function startSearch() {
         return;
     }
 
-    // Слушатель на самого себя (ждем, когда нас кто-то "заберет")
+    // --- УЛУЧШЕННЫЙ СЛУШАТЕЛЬ СЕБЯ ---
     const unsubscribeSelf = onValue(myWaitingRef, (snap) => {
-        if (!snap.exists()) return;
         const data = snap.val();
+        if (!data) return;
         
-        if (data.claimed && data.roomId && !roomId) {
-            roomId = data.roomId;
-            saveRoomToStorage(roomId, null);
-            stopWaitingHeartbeat();
+        // Если кто-то другой (Лидер) уже создал комнату и записал нас туда
+        if (data.claimed === true && data.roomId && !roomId) {
+            console.log("Нас нашли! Подключаемся к комнате:", data.roomId);
             
-            unsubscribeSelf();
+            // 1. Снимаем слушателя сразу, чтобы не зайти сюда дважды
+            off(myWaitingRef); 
+            unsubscribeSelf(); 
+            
+            // 2. Глушим общий поиск (candidates), так как пара найдена
             if (waitingRefPath) {
                 off(ref(rtdb, waitingRefPath));
                 waitingRefPath = null;
             }
-            connectToRoom(roomId).catch(console.error);
+            
+            roomId = data.roomId;
+            saveRoomToStorage(roomId, null);
+            stopWaitingHeartbeat();
+            
+            connectToRoom(data.roomId).catch(console.error);
+
+            // Удаляем запись из очереди чуть позже, чтобы Лидер успел всё проверить
+            setTimeout(() => {
+                remove(myWaitingRef).catch(() => {});
+            }, 1000);
         }
     });
 
@@ -450,16 +463,16 @@ async function startSearch() {
     const waitingRef = ref(rtdb, 'waiting');
     waitingRefPath = 'waiting';
     
+    // Поиск кандидатов (логика Лидера)
     onValue(waitingRef, async (snap) => {
         if (!snap.exists() || searchCancelled || roomId || matchmakingInProgress) return;
-        
         if (!auth.currentUser || auth.currentUser.uid !== myUid) return;
         
         const now = Date.now();
         let candidates = [];
 
         snap.forEach(child => {
-            const data = child.val();
+            const data = child.child.val() || child.val(); // Совместимость версий
             if (child.key === myUid || data.claimed) return;
             
             const lastSeen = data.lastSeen || data.createdAt || 0;
@@ -473,7 +486,7 @@ async function startSearch() {
         candidates.sort((a, b) => a.createdAt - b.createdAt);
         const otherUid = candidates[0].id;
 
-        // ПРАВИЛО ЛИДЕРА: Создает комнату только тот, чей UID меньше
+        // ПРАВИЛО ЛИДЕРА: Создает комнату только тот, чей UID меньше (лексикографически)
         if (myUid > otherUid) return;
 
         matchmakingInProgress = true;
@@ -494,7 +507,7 @@ async function startSearch() {
                 })
             ]);
 
-            // Если update прошел — мы лидер, создаем саму комнату
+            // Если бронь прошла — создаем саму комнату
             const sortedParticipants = [myUid, otherUid].sort();
             await set(newRoomRef, {
                 participants: sortedParticipants,
@@ -503,22 +516,27 @@ async function startSearch() {
                 closed: false
             });
 
-            console.log("Комната успешно создана нами:", newRoomId);
-            roomId = newRoomId; 
-            stopWaitingHeartbeat();
+            console.log("Комната успешно создана нами (Лидер):", newRoomId);
+            
+            // Отключаем слушателей поиска
+            off(myWaitingRef);
             if (waitingRefPath) {
                 off(ref(rtdb, waitingRefPath));
                 waitingRefPath = null;
             }
+            
+            roomId = newRoomId; 
+            stopWaitingHeartbeat();
             await connectToRoom(newRoomId);
 
+            // Чистим за собой
             setTimeout(() => {
                 remove(myWaitingRef).catch(() => {});
             }, 2000);
 
         } catch (err) {
             if (err.message.includes("PERMISSION_DENIED")) {
-                console.log("Соперник успел забронировать нас первым.");
+                console.log("Конфликт: другой пользователь оказался быстрее.");
             } else {
                 console.error("Критическая ошибка matchmaking:", err);
             }
