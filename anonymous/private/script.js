@@ -105,7 +105,6 @@ let isRealUser = false;
 let roomId = null;
 let partnerId = null;
 let chatClosed = false;
-let cleaning = false;
 let searchCancelled = false;
 let isConnecting = false;
 let matchmakingInProgress = false;
@@ -826,43 +825,15 @@ async function cancelSearchHandler() {
     show(endScreen);
 }
 
-const isMobile = /Android|iPhone|iPad|iPod|Opera Mini|IEMobile/i.test(navigator.userAgent);
-
-async function handlePageExit() {
-    if (cleaning) return;
-    cleaning = true;
-
-    const promises = [];
-
-    if (uid) {
-        promises.push(remove(ref(rtdb, `waiting/${uid}`)).catch(() => { }));
-    }
-
-    if (roomId && uid) {
-        promises.push(remove(ref(rtdb, `rooms/${roomId}/presence/${uid}`)).catch(() => { }));
-    }
-
-    await Promise.all(promises);
-}
-
-async function handlePageReturn() {
-    cleaning = false;
-
-    if (!roomId && !searchCancelled && isMobile) {
-        const myWaitingRef = ref(rtdb, `waiting/${uid}`);
-        const snap = await get(myWaitingRef);
-        if (!snap.exists()) {
-            startSearch();
-        }
-    }
-}
 
 document.addEventListener('visibilitychange', () => {
+    // Просто логируем для отладки
     if (document.visibilityState === 'hidden') {
-        handlePageExit();
+        console.log('Вкладка неактивна, но поиск продолжается');
     } else {
-        handlePageReturn();
+        console.log('Вкладка активна');
     }
+    // НЕ вмешиваемся в процесс поиска или чата
 });
 
 finishBtn.addEventListener('click', () => { modal.classList.remove('hidden'); });
