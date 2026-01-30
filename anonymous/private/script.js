@@ -417,18 +417,16 @@ async function startSearch() {
             roomId: null,
             lastSeen: Date.now()
         });
-        
         onDisconnect(myWaitingRef).remove().catch(() => {});
-        
     } catch (e) {
         console.error("Ошибка входа в очередь:", e);
         if (e.message?.includes('permission_denied')) {
-            console.error("Доступ запрещен. UID изменился?");
             setTimeout(() => window.location.reload(), 1000);
         }
         return;
     }
 
+    // Слушатель на самого себя (ждем, когда нас кто-то "заберет")
     const unsubscribeSelf = onValue(myWaitingRef, (snap) => {
         if (!snap.exists()) return;
         const data = snap.val();
@@ -443,7 +441,6 @@ async function startSearch() {
                 off(ref(rtdb, waitingRefPath));
                 waitingRefPath = null;
             }
-            
             connectToRoom(roomId).catch(console.error);
         }
     });
@@ -454,21 +451,16 @@ async function startSearch() {
     waitingRefPath = 'waiting';
     
     onValue(waitingRef, async (snap) => {
-        if (!snap.exists()) return;
-        if (searchCancelled || roomId || matchmakingInProgress) return;
+        if (!snap.exists() || searchCancelled || roomId || matchmakingInProgress) return;
         
-        if (!auth.currentUser || auth.currentUser.uid !== myUid) {
-            console.warn("UID изменился во время поиска, останавливаем matchmaking");
-            return;
-        }
+        if (!auth.currentUser || auth.currentUser.uid !== myUid) return;
         
         const now = Date.now();
         let candidates = [];
 
         snap.forEach(child => {
             const data = child.val();
-            if (child.key === myUid) return;
-            if (data.claimed) return;
+            if (child.key === myUid || data.claimed) return;
             
             const lastSeen = data.lastSeen || data.createdAt || 0;
             if ((now - lastSeen) < WAITING_STALE_MS) {
@@ -479,9 +471,9 @@ async function startSearch() {
         if (candidates.length === 0) return;
 
         candidates.sort((a, b) => a.createdAt - b.createdAt);
-        const other = candidates[0];
-        const otherUid = other.id;
+        const otherUid = candidates[0].id;
 
+        // ПРАВИЛО ЛИДЕРА: Создает комнату только тот, чей UID меньше
         if (myUid > otherUid) return;
 
         matchmakingInProgress = true;
@@ -489,21 +481,21 @@ async function startSearch() {
         const newRoomRef = push(ref(rtdb, 'rooms'));
         const newRoomId = newRoomRef.key;
 
-try {
-            const [otherSnap, mySnap] = await Promise.all([
-                get(ref(rtdb, `waiting/${otherUid}`)),
-                get(myWaitingRef)
+        try {
+            // Пытаемся забронировать обоих
+            await Promise.all([
+                update(ref(rtdb, `waiting/${otherUid}`), { 
+                    claimed: true, 
+                    roomId: newRoomId
+                }),
+                update(myWaitingRef, { 
+                    claimed: true, 
+                    roomId: newRoomId
+                })
             ]);
 
-            if (!otherSnap.exists() || otherSnap.val().claimed || 
-                !mySnap.exists() || mySnap.val().claimed) {
-                matchmakingInProgress = false;
-                return;
-            }
-
+            // Если update прошел — мы лидер, создаем саму комнату
             const sortedParticipants = [myUid, otherUid].sort();
-            
-            // Сначала создаем саму комнату
             await set(newRoomRef, {
                 participants: sortedParticipants,
                 createdAt: Date.now(),
@@ -511,39 +503,23 @@ try {
                 closed: false
             });
 
-            // А теперь пытаемся захватить участников
-            try {
-                await Promise.all([
-                    update(ref(rtdb, `waiting/${otherUid}`), { 
-                        claimed: true, 
-                        roomId: newRoomId
-                    }),
-                    update(myWaitingRef, { 
-                        claimed: true, 
-                        roomId: newRoomId
-                    })
-                ]);
+            console.log("Комната успешно создана нами:", newRoomId);
 
-                console.log("Комната создана нами!");
+            setTimeout(() => {
+                remove(myWaitingRef).catch(() => {});
+            }, 2000);
 
-                setTimeout(() => {
-                    remove(myWaitingRef).catch(() => {});
-                }, 2000);
-
-            } catch (err) {
-                if (err.message.includes("PERMISSION_DENIED")) {
-                    console.log("Соперник успел первым, ожидаем перехода в комнату...");
-                } else {
-                    console.error("Ошибка при обновлении статуса участников:", err);
-                }
-            }
         } catch (err) {
-            console.error("Ошибка создания комнаты:", err);
+            if (err.message.includes("PERMISSION_DENIED")) {
+                console.log("Соперник успел забронировать нас первым.");
+            } else {
+                console.error("Критическая ошибка matchmaking:", err);
+            }
         } finally {
             matchmakingInProgress = false;
         }
-    }); // Конец onValue
-} // Конец startSearch
+    });
+}
 
 async function connectToRoom(rId) {
     try {
