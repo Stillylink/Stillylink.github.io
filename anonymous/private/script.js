@@ -472,7 +472,7 @@ async function startSearch() {
         let candidates = [];
 
         snap.forEach(child => {
-            const data = child.child.val() || child.val(); // Совместимость версий
+            const data = child.val();
             if (child.key === myUid || data.claimed) return;
             
             const lastSeen = data.lastSeen || data.createdAt || 0;
