@@ -183,7 +183,6 @@ onAuthStateChanged(auth, async user => {
         console.warn("UID changed! Cleaning up...", currentUserUid, "->", user.uid);
         await clearAllListenersAndState();
         clearRoomStorage();
-        // Сбрасываем интерфейс
         hide(chatWindow);
         hide(searchScreen);
         show(endScreen);
@@ -193,7 +192,6 @@ onAuthStateChanged(auth, async user => {
     uid = user.uid;
     isRealUser = !!user.email;
 
-    // Логика с аватаркой (без изменений)
     if (isRealUser) {
         const cachedLetter = localStorage.getItem('userAvatarLetter');
         if (cachedLetter) {
@@ -211,18 +209,17 @@ onAuthStateChanged(auth, async user => {
         localStorage.removeItem("userAvatarLetter");
     }
 
-    // --- ИСПРАВЛЕННАЯ ЛОГИКА ЗАПУСКА ---
     const saved = loadRoomFromStorage();
     if (saved.roomId) {
         try {
             const roomRef = ref(rtdb, `rooms/${saved.roomId}`);
-            const snap = await get(roomRef); // Используем await для чистоты
+            const snap = await get(roomRef);
             
             if (snap.exists() && !snap.val().closed) {
                 roomId = saved.roomId;
                 partnerId = saved.partnerId;
                 connectToRoom(roomId);
-                return; // ВАЖНО: Выходим, поиск НЕ нужен
+                return;
             }
         } catch (e) {
             console.warn("Комната не валидна, идем в поиск");
@@ -230,7 +227,6 @@ onAuthStateChanged(auth, async user => {
         clearRoomStorage();
     }
     
-    // Запускаем поиск только если мы не в комнате
     if (!roomId) {
         startSearch();
     }
@@ -355,13 +351,11 @@ document.addEventListener('click', (e) => {
 async function startWaitingHeartbeat(userUid) {
     if (!userUid) return;
     
-    // Очищаем старый интервал на всякий случай
     if (waitingHeartbeatInterval) clearInterval(waitingHeartbeatInterval);
     
     const waitingRef = ref(rtdb, `waiting/${userUid}`);
     
     waitingHeartbeatInterval = setInterval(async () => {
-        // Проверка: мы всё ещё тот же пользователь?
         if (!auth.currentUser || auth.currentUser.uid !== userUid) {
             console.warn("Heartbeat остановлен: UID изменился");
             stopWaitingHeartbeat();
@@ -370,12 +364,10 @@ async function startWaitingHeartbeat(userUid) {
         
         try {
             await update(waitingRef, {
-        lastSeen: Date.now(),
-        uid: userUid
-                });
+                lastSeen: Date.now()
+            });
         } catch (e) {
             console.error("Ошибка heartbeat:", e);
-            // Если permission_denied — останавливаем попытки
             if (e.message?.includes('permission_denied')) {
                 stopWaitingHeartbeat();
             }
@@ -391,63 +383,52 @@ function stopWaitingHeartbeat() {
 }
 
 async function startSearch() {
-    // 1. Проверяем авторизацию и получаем АКТУАЛЬНЫЙ UID
     if (!auth.currentUser) {
         console.warn("Ожидание авторизации для начала поиска...");
         return;
     }
     
     const myUid = auth.currentUser.uid;
-    uid = myUid; // Синхронизируем глобальную переменную
+    uid = myUid;
     
-    // 2. Проверяем, не в комнате ли уже (защита от двойного запуска)
     if (roomId || localStorage.getItem('roomId')) {
         console.log("Поиск отменен: уже в комнате");
         return;
     }
 
-    // 3. Сброс локальных флагов
     chatClosed = false;
     matchmakingInProgress = false;
     searchCancelled = false;
 
-    // 4. Очистка интерфейса и старых слушателей
     await clearAllListenersAndState();
     clearMessages();
     show(searchScreen);
     hide(chatWindow);
     hide(endScreen);
 
-    // 5. Подготовка путей в БД с актуальным UID
     const myWaitingRef = ref(rtdb, `waiting/${myUid}`);
     myWaitingRefPath = `waiting/${myUid}`;
     
     try {
-        // 6. Создаем запись в очереди с актуальным UID
         await update(myWaitingRef, {
-            uid: myUid,                    // Явно сохраняем свой UID
+            uid: myUid,
             createdAt: Date.now(),
             claimed: false,
             roomId: null,
             lastSeen: Date.now()
         });
         
-        // Устанавливаем удаление при дисконнекте
         onDisconnect(myWaitingRef).remove().catch(() => {});
         
     } catch (e) {
         console.error("Ошибка входа в очередь:", e);
-        // Если permission_denied — возможно, UID изменился с момента загрузки страницы
         if (e.message?.includes('permission_denied')) {
             console.error("Доступ запрещен. UID изменился?");
-            // Перезагружаем страницу для получения нового auth state
             setTimeout(() => window.location.reload(), 1000);
         }
         return;
     }
 
-    // 7. Слушатель на свою запись: ждём когда нас "подберут"
-    // Сохраняем функцию отписки, чтобы потом очистить
     const unsubscribeSelf = onValue(myWaitingRef, (snap) => {
         if (!snap.exists()) return;
         const data = snap.val();
@@ -457,7 +438,6 @@ async function startSearch() {
             saveRoomToStorage(roomId, null);
             stopWaitingHeartbeat();
             
-            // Очищаем слушатели
             unsubscribeSelf();
             if (waitingRefPath) {
                 off(ref(rtdb, waitingRefPath));
@@ -468,10 +448,8 @@ async function startSearch() {
         }
     });
 
-    // 8. Запускаем heartbeat с ПЕРЕДАЧЕЙ UID (защита от замыкания)
     startWaitingHeartbeat(myUid);
 
-    // 9. Matchmaking — поиск партнёров
     const waitingRef = ref(rtdb, 'waiting');
     waitingRefPath = 'waiting';
     
@@ -479,7 +457,6 @@ async function startSearch() {
         if (!snap.exists()) return;
         if (searchCancelled || roomId || matchmakingInProgress) return;
         
-        // Критическая проверка: наш UID не изменился?
         if (!auth.currentUser || auth.currentUser.uid !== myUid) {
             console.warn("UID изменился во время поиска, останавливаем matchmaking");
             return;
@@ -490,8 +467,8 @@ async function startSearch() {
 
         snap.forEach(child => {
             const data = child.val();
-            if (child.key === myUid) return;          // Себя пропускаем
-            if (data.claimed) return;                  // Занятых пропускаем
+            if (child.key === myUid) return;
+            if (data.claimed) return;
             
             const lastSeen = data.lastSeen || data.createdAt || 0;
             if ((now - lastSeen) < WAITING_STALE_MS) {
@@ -501,13 +478,11 @@ async function startSearch() {
 
         if (candidates.length === 0) return;
 
-        // Берём самого "старого" в очереди
         candidates.sort((a, b) => a.createdAt - b.createdAt);
         const other = candidates[0];
         const otherUid = other.id;
 
-        // Только один из двух создаёт комнату (у кого UID меньше лексикографически)
-        if (myUid > otherUid) return; // Ждём, пока другой создаст
+        if (myUid > otherUid) return;
 
         matchmakingInProgress = true;
 
@@ -515,20 +490,17 @@ async function startSearch() {
         const newRoomId = newRoomRef.key;
 
         try {
-            // Двойная проверка перед созданием (race condition)
             const [otherSnap, mySnap] = await Promise.all([
                 get(ref(rtdb, `waiting/${otherUid}`)),
                 get(myWaitingRef)
             ]);
 
-            // Проверяем, что оба всё ещё свободны
             if (!otherSnap.exists() || otherSnap.val().claimed || 
                 !mySnap.exists() || mySnap.val().claimed) {
                 matchmakingInProgress = false;
                 return;
             }
 
-            // Создаём комнату
             const sortedParticipants = [myUid, otherUid].sort();
             
             await set(newRoomRef, {
@@ -538,25 +510,22 @@ async function startSearch() {
                 closed: false
             });
 
-            // Помечаем обоих как занятых и передаём ID комнаты
+            // ✅ ИСПРАВЛЕНИЕ: Убрали uid из update
             await Promise.all([
                 update(ref(rtdb, `waiting/${otherUid}`), { 
                     claimed: true, 
-                    roomId: newRoomId,
-                    uid: otherUid
+                    roomId: newRoomId
                 }),
                 update(myWaitingRef, { 
                     claimed: true, 
-                    roomId: newRoomId,
-                    uid: myUid
+                    roomId: newRoomId
                 })
             ]);
 
-            // Удаляем из очереди через 2 секунды (даём время другому получить roomId)
-setTimeout(() => {
-    remove(myWaitingRef).catch(() => {});
-    remove(ref(rtdb, `waiting/${otherUid}`)).catch(() => {});
-}, 2000);
+            // ✅ ИСПРАВЛЕНИЕ: Удаляем только свой узел
+            setTimeout(() => {
+                remove(myWaitingRef).catch(() => {});
+            }, 2000);
 
             matchmakingInProgress = false;
 
@@ -578,6 +547,11 @@ async function connectToRoom(rId) {
         }
 
         isConnecting = true;
+
+        // ✅ ИСПРАВЛЕНИЕ: Удаляем себя из очереди при входе в комнату
+        if (uid) {
+            remove(ref(rtdb, `waiting/${uid}`)).catch(() => {});
+        }
 
         if (currentRoomRefPath) off(ref(rtdb, currentRoomRefPath));
         if (messagesRefPath) off(ref(rtdb, messagesRefPath));
@@ -768,19 +742,23 @@ async function clearAllListenersAndState() {
     
     stopWaitingHeartbeat();
 
-    if (uid) {
-        const myWaitingRef = ref(rtdb, `waiting/${uid}`);
+    // ✅ ИСПРАВЛЕНИЕ: Используем текущий UID из auth
+    const currentUid = auth.currentUser?.uid;
+    if (currentUid) {
+        const myWaitingRef = ref(rtdb, `waiting/${currentUid}`);
         try {
             const snap = await get(myWaitingRef);
             if (snap.exists()) {
                 await remove(myWaitingRef);
             }
-        } catch (e) { }
+        } catch (e) { 
+            console.warn("Ошибка удаления waiting узла:", e);
+        }
     }
     
-    if (roomId && uid) {
+    if (roomId && currentUid) {
         try {
-            await remove(ref(rtdb, `rooms/${roomId}/presence/${uid}`));
+            await remove(ref(rtdb, `rooms/${roomId}/presence/${currentUid}`));
         } catch (e) { }
     }
 
