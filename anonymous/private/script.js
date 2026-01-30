@@ -42,63 +42,221 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const rtdb = getDatabase(app);
 
-const searchScreen = document.getElementById('searchScreen');
-const chatWindow = document.getElementById('chatWindow');
-const endScreen = document.getElementById('endScreen');
-const messagesEl = document.getElementById('messages');
-const textInput = document.getElementById('textInput');
-const sendBtn = document.getElementById('sendBtn');
-const finishBtn = document.getElementById('finishBtn');
-const modal = document.getElementById('modal');
-const modalCancel = document.getElementById('modalCancel');
-const modalFinish = document.getElementById('modalFinish');
-const newChatBtn = document.getElementById('newChatBtn');
-const emojiBtn = document.getElementById('emojiBtn');
-const emojiPanel = document.getElementById('emojiPanel');
-const photoBtn = document.getElementById('photoBtn');
-const photoInput = document.getElementById('photoInput');
-const cancelSearch = document.getElementById('cancelSearch');
-const exitBtn = document.getElementById('exitBtn');
+let searchScreen, chatWindow, endScreen, messagesEl, textInput, sendBtn;
+let finishBtn, modal, modalCancel, modalFinish, newChatBtn;
+let emojiBtn, emojiPanel, photoBtn, photoInput, cancelSearch, exitBtn;
+let regBtn, avatar, avatarLetter, userMenu, logoutBtn;
 
-const regBtn = document.querySelector(".register-btn");
-const avatar = document.querySelector(".user-avatar");
-const avatarLetter = document.querySelector(".user-avatar span");
-const userMenu = document.querySelector(".user-menu");
-const logoutBtn = document.getElementById("logoutBtn");
+function initializeDOM() {
+    searchScreen = document.getElementById('searchScreen');
+    chatWindow = document.getElementById('chatWindow');
+    endScreen = document.getElementById('endScreen');
+    messagesEl = document.getElementById('messages');
+    textInput = document.getElementById('textInput');
+    sendBtn = document.getElementById('sendBtn');
+    finishBtn = document.getElementById('finishBtn');
+    modal = document.getElementById('modal');
+    modalCancel = document.getElementById('modalCancel');
+    modalFinish = document.getElementById('modalFinish');
+    newChatBtn = document.getElementById('newChatBtn');
+    emojiBtn = document.getElementById('emojiBtn');
+    emojiPanel = document.getElementById('emojiPanel');
+    photoBtn = document.getElementById('photoBtn');
+    photoInput = document.getElementById('photoInput');
+    cancelSearch = document.getElementById('cancelSearch');
+    exitBtn = document.getElementById('exitBtn');
 
-const savedAvatar = localStorage.getItem('userAvatarLetter');
-if (savedAvatar) {
-  regBtn?.classList.add('hidden');
-  avatar?.classList.remove('hidden');
-  avatarLetter.textContent = savedAvatar;
+    regBtn = document.querySelector(".register-btn");
+    avatar = document.querySelector(".user-avatar");
+    avatarLetter = document.querySelector(".user-avatar span");
+    userMenu = document.querySelector(".user-menu");
+    logoutBtn = document.getElementById("logoutBtn");
+
+    // Проверка что все элементы найдены
+    if (!messagesEl || !textInput || !sendBtn) {
+        console.error('Критические DOM элементы не найдены!');
+        return false;
+    }
+
+    const savedAvatar = localStorage.getItem('userAvatarLetter');
+    if (savedAvatar) {
+        regBtn?.classList.add('hidden');
+        avatar?.classList.remove('hidden');
+        if (avatarLetter) avatarLetter.textContent = savedAvatar;
+    }
+
+    return true;
 }
 
+function initializeEventHandlers() {
+    // Обработчики меню навигации
+    document.addEventListener("click", e => {
+        const menu = document.querySelector(".nav-links");
+        const toggle = document.querySelector(".nav-toggle");
+
+        if (!menu || !menu.classList.contains("open")) return;
+        if (menu.contains(e.target) || toggle?.contains(e.target)) return;
+
+        menu.classList.remove("open");
+    });
+
+    // Обработчики пользовательского меню
+    document.addEventListener("click", e => {
+        if (!userMenu || !userMenu.classList.contains("open")) return;
+        if (userMenu.contains(e.target) || avatar?.contains(e.target)) return;
+        userMenu.classList.remove("open");
+    });
+
+    // Logout кнопка
+    logoutBtn?.addEventListener("click", async e => {
+        e.preventDefault();
+
+        if (roomId && !chatClosed) {
+            chatClosed = true;
+            try {
+                await update(ref(rtdb, `rooms/${roomId}`), { 
+                    closed: true,
+                    lastActivity: Date.now() 
+                });
+            } catch (err) {
+                console.error("Ошибка закрытия комнаты:", err);
+            }
+        }
+
+        await clearAllListenersAndState();
+        clearRoomStorage();
+
+        await auth.signOut();
+        localStorage.clear();
+
+        window.location.reload();
+    });
+
+    // Фото загрузка
+    photoBtn?.addEventListener('click', () => photoInput?.click());
+    photoInput?.addEventListener('change', (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function (ev) {
+            const dataUrl = ev.target.result;
+            sendMessageToRoom(dataUrl, 'image').catch(() => {});
+        };
+        reader.readAsDataURL(file);
+        photoInput.value = '';
+    });
+
+    // Отправка сообщения
+    sendBtn?.addEventListener('click', () => {
+        const txt = textInput?.value.trim();
+        if (!txt) return;
+
+        textInput.value = '';
+        textInput.style.display = 'none';
+        textInput.offsetHeight;
+        textInput.style.display = '';
+
+        sendMessageToRoom(txt, 'text').catch(() => {});
+    });
+
+    textInput?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            const txt = textInput?.value.trim();
+            if (!txt) return;
+            textInput.value = '';
+            sendMessageToRoom(txt, 'text').catch(() => {});
+        }
+    });
+
+    // Эмодзи панель
+    emojiBtn?.addEventListener('click', (e) => {
+        emojiPanel?.classList.toggle('hidden');
+        emojiPanel?.setAttribute('aria-hidden', emojiPanel.classList.contains('hidden'));
+    });
+
+    document.querySelectorAll('.emoji').forEach(b => {
+        b.addEventListener('click', () => {
+            if (textInput) textInput.value += b.textContent;
+            textInput?.focus();
+        });
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!emojiPanel || emojiPanel.classList.contains('hidden')) return;
+        if (e.target === emojiBtn || emojiPanel.contains(e.target)) return;
+        emojiPanel.classList.add('hidden');
+    });
+
+    // Модальные окна и кнопки
+    finishBtn?.addEventListener('click', () => { modal?.classList.remove('hidden'); });
+    modalCancel?.addEventListener('click', () => { modal?.classList.add('hidden'); });
+    modalFinish?.addEventListener('click', async () => { 
+        modal?.classList.add('hidden'); 
+        await finishChat(); 
+    });
+
+    newChatBtn?.addEventListener('click', async () => {
+        searchCancelled = false;
+        
+        await clearAllListenersAndState();
+        clearRoomStorage();
+        
+        startSearch();
+    });
+
+    cancelSearch?.addEventListener('click', cancelSearchHandler);
+
+    exitBtn?.addEventListener('click', async function (e) {
+        e.preventDefault();
+        
+        await stopAllActivity();
+        clearRoomStorage();
+
+        const target = '/anonymous/';
+        window.location.replace(target);
+    });
+
+    // beforeunload
+    window.addEventListener('beforeunload', async (ev) => {
+        try {
+            if (waitingHeartbeatInterval) {
+                clearInterval(waitingHeartbeatInterval);
+                waitingHeartbeatInterval = null;
+            }
+            
+            const currentUid = auth.currentUser?.uid;
+            if (currentUid) {
+                await remove(ref(rtdb, `waiting/${currentUid}`)).catch(() => { });
+            }
+            
+            if (roomId && auth.currentUser) {
+                await remove(ref(rtdb, `rooms/${roomId}/presence/${auth.currentUser.uid}`)).catch(() => { });
+            }
+        } catch (e) { }
+    });
+
+    // Смена вкладок
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'hidden') {
+            console.log('Вкладка неактивна, но поиск продолжается');
+        } else {
+            console.log('Вкладка активна');
+        }
+    });
+}
+
+// Функции для window
 function toggleMenu() {
     const menu = document.querySelector(".nav-links");
-    menu.classList.toggle("open");
+    menu?.classList.toggle("open");
 }
 window.toggleMenu = toggleMenu;
 
-document.addEventListener("click", e => {
-    const menu = document.querySelector(".nav-links");
-    const toggle = document.querySelector(".nav-toggle");
-
-    if (!menu.classList.contains("open")) return;
-    if (menu.contains(e.target) || toggle.contains(e.target)) return;
-
-    menu.classList.remove("open");
-});
-
 function toggleUserMenu() {
-    userMenu.classList.toggle("open");
+    userMenu?.classList.toggle("open");
 }
 window.toggleUserMenu = toggleUserMenu;
-
-document.addEventListener("click", e => {
-    if (!userMenu.classList.contains("open")) return;
-    if (userMenu.contains(e.target) || avatar.contains(e.target)) return;
-    userMenu.classList.remove("open");
-});
 
 let uid = null;
 let isRealUser = false;
@@ -204,7 +362,7 @@ async function stopAllActivity() {
     await Promise.all(cleanupPromises);
     
     // Очищаем UI
-    messagesEl.innerHTML = '';
+    if (messagesEl) messagesEl.innerHTML = '';
 }
 
 async function clearAllListenersAndState() {
@@ -217,30 +375,19 @@ async function clearAllListenersAndState() {
     matchmakingInProgress = false;
 }
 
-window.addEventListener("DOMContentLoaded", () => {
-    logoutBtn?.addEventListener("click", async e => {
-        e.preventDefault();
-
-        if (roomId && !chatClosed) {
-            chatClosed = true;
-            try {
-                await update(ref(rtdb, `rooms/${roomId}`), { 
-                    closed: true,
-                    lastActivity: Date.now() 
-                });
-            } catch (err) {
-                console.error("Ошибка закрытия комнаты:", err);
-            }
-        }
-
-        await clearAllListenersAndState();
-        clearRoomStorage();
-
-        await auth.signOut();
-        localStorage.clear();
-
-        window.location.reload();
-    });
+document.addEventListener("DOMContentLoaded", () => {
+    console.log('DOM загружен, инициализация приложения...');
+    
+    // Инициализируем DOM элементы
+    if (!initializeDOM()) {
+        console.error('Не удалось инициализировать DOM элементы!');
+        return;
+    }
+    
+    // Инициализируем обработчики событий
+    initializeEventHandlers();
+    
+    console.log('Приложение готово к работе');
 });
 
 let currentUserUid = null;
@@ -366,58 +513,7 @@ async function sendMessageToRoom(text, type = 'text') {
     }
 }
 
-photoBtn.addEventListener('click', () => photoInput.click());
-photoInput.addEventListener('change', (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = function (ev) {
-        const dataUrl = ev.target.result;
-        sendMessageToRoom(dataUrl, 'image').catch(() => {});
-    };
-    reader.readAsDataURL(file);
-    photoInput.value = '';
-});
-
-sendBtn.addEventListener('click', () => {
-    const txt = textInput.value.trim();
-    if (!txt) return;
-
-    textInput.value = '';
-    textInput.style.display = 'none';
-    textInput.offsetHeight;
-    textInput.style.display = '';
-
-    sendMessageToRoom(txt, 'text').catch(() => {});
-});
-
-textInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        const txt = textInput.value.trim();
-        if (!txt) return;
-        textInput.value = '';
-        sendMessageToRoom(txt, 'text').catch(() => {});
-    }
-});
-
-emojiBtn.addEventListener('click', (e) => {
-    emojiPanel.classList.toggle('hidden');
-    emojiPanel.setAttribute('aria-hidden', emojiPanel.classList.contains('hidden'));
-});
-
-document.querySelectorAll('.emoji').forEach(b => {
-    b.addEventListener('click', () => {
-        textInput.value += b.textContent;
-        textInput.focus();
-    });
-});
-
-document.addEventListener('click', (e) => {
-    if (emojiPanel.classList.contains('hidden')) return;
-    if (e.target === emojiBtn || emojiPanel.contains(e.target)) return;
-    emojiPanel.classList.add('hidden');
-});
+// Обработчики событий теперь инициализируются в initializeEventHandlers()
 
 async function startWaitingHeartbeat(userUid) {
     if (!userUid) return;
@@ -742,8 +838,7 @@ async function setMyPresence() {
         }
         
         try {
-            // УБРАЛИ get() - просто обновляем presence
-            // Если комната удалена, update выдаст permission_denied и мы остановим интервал
+
             await update(presRef, { lastSeen: Date.now() });
         } catch (e) { 
             console.error("Presence heartbeat error:", e);
@@ -791,7 +886,6 @@ function endChatUI() {
     hide(chatWindow);
     show(endScreen);
 }
-
 async function cancelSearchHandler() {
     searchCancelled = true;
     
@@ -824,61 +918,3 @@ async function cancelSearchHandler() {
     hide(searchScreen);
     show(endScreen);
 }
-
-
-document.addEventListener('visibilitychange', () => {
-    // Просто логируем для отладки
-    if (document.visibilityState === 'hidden') {
-        console.log('Вкладка неактивна, но поиск продолжается');
-    } else {
-        console.log('Вкладка активна');
-    }
-    // НЕ вмешиваемся в процесс поиска или чата
-});
-
-finishBtn.addEventListener('click', () => { modal.classList.remove('hidden'); });
-modalCancel.addEventListener('click', () => { modal.classList.add('hidden'); });
-modalFinish.addEventListener('click', async () => { 
-    modal.classList.add('hidden'); 
-    await finishChat(); 
-});
-
-newChatBtn.addEventListener('click', async () => {
-    searchCancelled = false;
-    
-    // Просто очищаем все и начинаем новый поиск
-    await clearAllListenersAndState();
-    clearRoomStorage();
-    
-    startSearch();
-});
-
-cancelSearch.addEventListener('click', cancelSearchHandler);
-
-exitBtn.addEventListener('click', async function (e) {
-    e.preventDefault();
-    
-    await stopAllActivity();
-    clearRoomStorage();
-
-    const target = '/anonymous/';
-    window.location.replace(target);
-});
-
-window.addEventListener('beforeunload', async (ev) => {
-    try {
-        if (waitingHeartbeatInterval) {
-            clearInterval(waitingHeartbeatInterval);
-            waitingHeartbeatInterval = null;
-        }
-        
-        const currentUid = auth.currentUser?.uid;
-        if (currentUid) {
-            await remove(ref(rtdb, `waiting/${currentUid}`)).catch(() => { });
-        }
-        
-        if (roomId && auth.currentUser) {
-            await remove(ref(rtdb, `rooms/${roomId}/presence/${auth.currentUser.uid}`)).catch(() => { });
-        }
-    } catch (e) { }
-});
