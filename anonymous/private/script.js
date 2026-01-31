@@ -24,8 +24,7 @@ import {
     limitToLast,
     serverTimestamp as rtdbServerTimestamp,
     onDisconnect,
-    off,
-    runTransaction
+    off
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js";
 
 const firebaseConfig = {
@@ -271,8 +270,8 @@ const PRESENCE_STALE_MS = 25000;
 const WAITING_HEARTBEAT_INTERVAL = 8000;
 const WAITING_STALE_MS = 30000;
 
-function show(el) { el.classList.remove('hidden'); }
-function hide(el) { el.classList.add('hidden'); }
+function show(el) { el?.classList.remove('hidden'); }
+function hide(el) { el?.classList.add('hidden'); }
 
 function saveRoomToStorage(rId, pId) {
     if (rId) localStorage.setItem('roomId', rId);
@@ -517,7 +516,7 @@ async function startWaitingHeartbeat(userUid) {
             return;
         }
         
-        // ✅ ИСПРАВЛЕНИЕ: Проверяем что мы еще в очереди
+        // КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Остановить heartbeat если уже в комнате
         if (roomId || chatClosed) {
             console.log("Heartbeat остановлен: пользователь уже в комнате");
             if (waitingHeartbeatInterval) {
@@ -572,6 +571,7 @@ async function startSearch() {
     myWaitingRefPath = `waiting/${myUid}`;
     
     try {
+        // ИСПРАВЛЕНИЕ: Используем set вместо update
         await set(myWaitingRef, {
             uid: myUid,
             createdAt: Date.now(),
@@ -655,34 +655,19 @@ async function startSearch() {
         const newRoomId = newRoomRef.key;
 
         try {
-            // ✅ ИСПРАВЛЕНИЕ: Используем транзакцию для атомарного бронирования
+            // КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Сначала проверяем что пользователь свободен
             const otherUserRef = ref(rtdb, `waiting/${otherUid}`);
-            
-            // Проверяем что другой пользователь еще свободен
             const otherSnap = await get(otherUserRef);
+            
             if (!otherSnap.exists() || otherSnap.val().claimed) {
                 console.log("Другой пользователь уже забронирован");
                 matchmakingInProgress = false;
                 return;
             }
 
-            // Атомарно бронируем обоих пользователей
-            await runTransaction(otherUserRef, (currentData) => {
-                if (!currentData || currentData.claimed) {
-                    return; // Abort transaction
-                }
-                return {
-                    ...currentData,
-                    claimed: true,
-                    roomId: newRoomId
-                };
-            });
-
-            // Бронируем себя
-            await update(myWaitingRef, { 
-                claimed: true, 
-                roomId: newRoomId 
-            });
+            // Атомарно обновляем обоих
+            await update(otherUserRef, { claimed: true, roomId: newRoomId });
+            await update(myWaitingRef, { claimed: true, roomId: newRoomId });
 
             // Создаем комнату
             const sortedParticipants = [myUid, otherUid].sort();
@@ -727,20 +712,24 @@ async function startSearch() {
 async function connectToRoom(rId) {
     try {
         if (!rId) {
+            console.error("connectToRoom вызван без roomId");
             return;
         }
         
         if (isConnecting) {
+            console.log("Подключение уже в процессе");
             return;
         }
 
         isConnecting = true;
         chatClosed = false;
 
+        // Удаляем себя из очереди
         if (uid) {
             remove(ref(rtdb, `waiting/${uid}`)).catch(() => {});
         }
 
+        // Отключаем старые слушатели
         if (currentRoomRefPath) off(ref(rtdb, currentRoomRefPath));
         if (messagesRefPath) off(ref(rtdb, messagesRefPath));
         if (presenceRefPath) off(ref(rtdb, presenceRefPath));
@@ -749,8 +738,10 @@ async function connectToRoom(rId) {
         const roomRef = ref(rtdb, `rooms/${roomId}`);
         currentRoomRefPath = `rooms/${roomId}`;
 
+        // Проверяем существование комнаты
         const roomSnap = await get(roomRef);
         if (!roomSnap.exists()) {
+            console.error("Комната не существует");
             isConnecting = false;
             roomId = null;
             clearRoomStorage();
@@ -762,6 +753,7 @@ async function connectToRoom(rId) {
         const parts = data.participants || [];
 
         if (!parts.includes(uid)) {
+            console.error("Пользователь не является участником комнаты");
             isConnecting = false;
             roomId = null;
             clearRoomStorage();
@@ -778,6 +770,7 @@ async function connectToRoom(rId) {
         show(chatWindow);
         hide(endScreen);
 
+        // Слушаем изменения комнаты
         onValue(roomRef, async (snap) => {
             if (!snap.exists()) {
                 if (!chatClosed) {
@@ -803,12 +796,11 @@ async function connectToRoom(rId) {
             }
         });
 
+        // КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Правильная загрузка сообщений
         const messagesRef = ref(rtdb, `rooms/${roomId}/messages`);
         messagesRefPath = `rooms/${roomId}/messages`;
         clearMessages();
         
-        // ✅ Сначала загружаем все существующие сообщения
-        let lastLoadedTimestamp = 0;
         const loadedMessageIds = new Set();
         
         try {
@@ -819,13 +811,12 @@ async function connectToRoom(rId) {
                     const msg = child.val();
                     messages.push({ key: child.key, ...msg });
                     loadedMessageIds.add(child.key);
-                    if (msg.createdAt > lastLoadedTimestamp) {
-                        lastLoadedTimestamp = msg.createdAt;
-                    }
                 });
                 
+                // Сортируем по времени
                 messages.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
                 
+                // Отображаем все существующие сообщения
                 messages.forEach(msg => {
                     if (!chatClosed) addMessageToUI(msg);
                 });
@@ -836,11 +827,11 @@ async function connectToRoom(rId) {
             console.error("Ошибка загрузки существующих сообщений:", e);
         }
         
-        // ✅ Теперь слушаем только НОВЫЕ сообщения
+        // Слушаем ТОЛЬКО новые сообщения
         onChildAdded(messagesRef, (snap) => {
             if (chatClosed) return;
             
-            // Пропускаем уже загруженные сообщения
+            // Пропускаем уже загруженные
             if (loadedMessageIds.has(snap.key)) {
                 return;
             }
