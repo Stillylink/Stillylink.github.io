@@ -646,7 +646,7 @@ async function startSearch() {
     }
 
     // ✅ ДОБАВЛЕНО: Таймаут для поиска - если не нашли за 60 секунд, перезапускаем
-    const searchTimeout = setTimeout(async () => {
+    searchTimeout = setTimeout(async () => {
         if (!roomId && !chatClosed && !searchCancelled) {
             console.log("Таймаут поиска (60 сек), перезапуск...");
             await remove(myWaitingRef).catch(() => {});
