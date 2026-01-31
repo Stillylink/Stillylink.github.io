@@ -770,7 +770,16 @@ async function startSearch() {
                 return;
             }
 
-            // Атомарно бронируем обоих
+            // ✅ СНАЧАЛА создаём комнату
+            const sortedParticipants = [myUid, otherUid].sort();
+            await set(newRoomRef, {
+                participants: sortedParticipants,
+                createdAt: Date.now(),
+                lastActivity: Date.now(),
+                closed: false
+            });
+
+            // ✅ ПОТОМ бронируем обоих (теперь комната уже существует!)
             await Promise.all([
                 update(ref(rtdb, `waiting/${otherUid}`), { claimed: true, roomId: newRoomId }),
                 update(ref(rtdb, `waiting/${myUid}`), { claimed: true, roomId: newRoomId })
@@ -784,19 +793,12 @@ async function startSearch() {
             
             if (!myVerify.exists() || !otherVerify.exists() ||
                 myVerify.val().roomId !== newRoomId || otherVerify.val().roomId !== newRoomId) {
-                console.log("Бронирование не подтвердилось, отмена");
+                console.log("Бронирование не подтвердилось, удаляем комнату");
                 matchmakingInProgress = false;
+                // Откатываем - удаляем комнату
+                await remove(newRoomRef).catch(() => {});
                 return;
             }
-
-            // Если бронь прошла, создаем комнату
-            const sortedParticipants = [myUid, otherUid].sort();
-            await set(newRoomRef, {
-                participants: sortedParticipants,
-                createdAt: Date.now(),
-                lastActivity: Date.now(),
-                closed: false
-            });
 
             console.log("Комната создана нами (Лидер):", newRoomId);
             
