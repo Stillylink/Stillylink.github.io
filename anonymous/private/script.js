@@ -24,7 +24,8 @@ import {
     limitToLast,
     serverTimestamp as rtdbServerTimestamp,
     onDisconnect,
-    off
+    off,
+    runTransaction
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js";
 
 const firebaseConfig = {
@@ -72,7 +73,6 @@ function initializeDOM() {
     userMenu = document.querySelector(".user-menu");
     logoutBtn = document.getElementById("logoutBtn");
 
-    // Проверка что все элементы найдены
     if (!messagesEl || !textInput || !sendBtn) {
         console.error('Критические DOM элементы не найдены!');
         return false;
@@ -89,7 +89,6 @@ function initializeDOM() {
 }
 
 function initializeEventHandlers() {
-    // Обработчики меню навигации
     document.addEventListener("click", e => {
         const menu = document.querySelector(".nav-links");
         const toggle = document.querySelector(".nav-toggle");
@@ -100,14 +99,12 @@ function initializeEventHandlers() {
         menu.classList.remove("open");
     });
 
-    // Обработчики пользовательского меню
     document.addEventListener("click", e => {
         if (!userMenu || !userMenu.classList.contains("open")) return;
         if (userMenu.contains(e.target) || avatar?.contains(e.target)) return;
         userMenu.classList.remove("open");
     });
 
-    // Logout кнопка
     logoutBtn?.addEventListener("click", async e => {
         e.preventDefault();
 
@@ -132,7 +129,6 @@ function initializeEventHandlers() {
         window.location.reload();
     });
 
-    // Фото загрузка
     photoBtn?.addEventListener('click', () => photoInput?.click());
     photoInput?.addEventListener('change', (e) => {
         const file = e.target.files?.[0];
@@ -146,7 +142,6 @@ function initializeEventHandlers() {
         photoInput.value = '';
     });
 
-    // Отправка сообщения
     sendBtn?.addEventListener('click', () => {
         const txt = textInput?.value.trim();
         if (!txt) return;
@@ -169,7 +164,6 @@ function initializeEventHandlers() {
         }
     });
 
-    // Эмодзи панель
     emojiBtn?.addEventListener('click', (e) => {
         emojiPanel?.classList.toggle('hidden');
         emojiPanel?.setAttribute('aria-hidden', emojiPanel.classList.contains('hidden'));
@@ -188,7 +182,6 @@ function initializeEventHandlers() {
         emojiPanel.classList.add('hidden');
     });
 
-    // Модальные окна и кнопки
     finishBtn?.addEventListener('click', () => { modal?.classList.remove('hidden'); });
     modalCancel?.addEventListener('click', () => { modal?.classList.add('hidden'); });
     modalFinish?.addEventListener('click', async () => { 
@@ -217,7 +210,6 @@ function initializeEventHandlers() {
         window.location.replace(target);
     });
 
-    // beforeunload
     window.addEventListener('beforeunload', async (ev) => {
         try {
             if (waitingHeartbeatInterval) {
@@ -236,7 +228,6 @@ function initializeEventHandlers() {
         } catch (e) { }
     });
 
-    // Смена вкладок
     document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'hidden') {
             console.log('Вкладка неактивна, но поиск продолжается');
@@ -246,7 +237,6 @@ function initializeEventHandlers() {
     });
 }
 
-// Функции для window
 function toggleMenu() {
     const menu = document.querySelector(".nav-links");
     menu?.classList.toggle("open");
@@ -304,7 +294,6 @@ function clearRoomStorage() {
 }
 
 async function stopAllActivity() {
-    // Останавливаем все интервалы
     if (presenceHeartbeatInterval) {
         clearInterval(presenceHeartbeatInterval);
         presenceHeartbeatInterval = null;
@@ -314,7 +303,6 @@ async function stopAllActivity() {
         waitingHeartbeatInterval = null;
     }
     
-    // Отключаем все слушатели
     if (messagesRefPath) {
         off(ref(rtdb, messagesRefPath));
         messagesRefPath = null;
@@ -340,19 +328,15 @@ async function stopAllActivity() {
         presenceRefPath = null;
     }
     
-    // Используем актуальный UID из auth
     const currentUid = auth.currentUser?.uid;
     if (!currentUid) return;
     
-    // Удаляем свои данные
     const cleanupPromises = [];
     
-    // Удаляем из очереди
     cleanupPromises.push(
         remove(ref(rtdb, `waiting/${currentUid}`)).catch(() => {})
     );
     
-    // Удаляем presence если в комнате
     if (roomId) {
         cleanupPromises.push(
             remove(ref(rtdb, `rooms/${roomId}/presence/${currentUid}`)).catch(() => {})
@@ -361,14 +345,12 @@ async function stopAllActivity() {
     
     await Promise.all(cleanupPromises);
     
-    // Очищаем UI
     if (messagesEl) messagesEl.innerHTML = '';
 }
 
 async function clearAllListenersAndState() {
     await stopAllActivity();
     
-    // Сбрасываем состояние
     roomId = null;
     partnerId = null;
     isConnecting = false;
@@ -378,13 +360,11 @@ async function clearAllListenersAndState() {
 document.addEventListener("DOMContentLoaded", () => {
     console.log('DOM загружен, инициализация приложения...');
     
-    // Инициализируем DOM элементы
     if (!initializeDOM()) {
         console.error('Не удалось инициализировать DOM элементы!');
         return;
     }
     
-    // Инициализируем обработчики событий
     initializeEventHandlers();
     
     console.log('Приложение готово к работе');
@@ -497,7 +477,7 @@ function addMessageToUI(data) {
 }
 
 async function sendMessageToRoom(text, type = 'text') {
-    if (!roomId) return;
+    if (!roomId || chatClosed) return;
     
     try {
         const messagesRef = ref(rtdb, `rooms/${roomId}/messages`);
@@ -520,8 +500,6 @@ async function sendMessageToRoom(text, type = 'text') {
     }
 }
 
-// Обработчики событий теперь инициализируются в initializeEventHandlers()
-
 async function startWaitingHeartbeat(userUid) {
     if (!userUid) return;
     
@@ -532,6 +510,16 @@ async function startWaitingHeartbeat(userUid) {
     waitingHeartbeatInterval = setInterval(async () => {
         if (!auth.currentUser || auth.currentUser.uid !== userUid) {
             console.warn("Heartbeat остановлен: UID изменился");
+            if (waitingHeartbeatInterval) {
+                clearInterval(waitingHeartbeatInterval);
+                waitingHeartbeatInterval = null;
+            }
+            return;
+        }
+        
+        // ✅ ИСПРАВЛЕНИЕ: Проверяем что мы еще в очереди
+        if (roomId || chatClosed) {
+            console.log("Heartbeat остановлен: пользователь уже в комнате");
             if (waitingHeartbeatInterval) {
                 clearInterval(waitingHeartbeatInterval);
                 waitingHeartbeatInterval = null;
@@ -564,7 +552,6 @@ async function startSearch() {
     const myUid = auth.currentUser.uid;
     uid = myUid;
     
-    // Проверка на существующую комнату
     const saved = loadRoomFromStorage();
     if (roomId || saved.roomId) {
         console.log("Поиск отменен: уже в комнате");
@@ -585,7 +572,7 @@ async function startSearch() {
     myWaitingRefPath = `waiting/${myUid}`;
     
     try {
-        await update(myWaitingRef, {
+        await set(myWaitingRef, {
             uid: myUid,
             createdAt: Date.now(),
             claimed: false,
@@ -598,19 +585,16 @@ async function startSearch() {
         return;
     }
 
-    // --- СЛУШАТЕЛЬ СЕБЯ (для роли Ведомого) ---
+    // СЛУШАТЕЛЬ СЕБЯ (для роли Ведомого)
     onValue(myWaitingRef, (snap) => {
         const data = snap.val();
         if (!data) return;
         
-        // Если Лидер нас уже выбрал
         if (data.claimed === true && data.roomId && !roomId) {
             console.log("Нас нашли! Переход в комнату:", data.roomId);
             
-            // НЕМЕДЛЕННО блокируем повторные входы
             roomId = data.roomId; 
             
-            // Гасим все слушатели очереди
             off(myWaitingRef); 
             if (waitingRefPath) {
                 off(ref(rtdb, waitingRefPath));
@@ -624,7 +608,6 @@ async function startSearch() {
                 waitingHeartbeatInterval = null;
             }
             
-            // Гарантируем смену экранов
             hide(searchScreen);
             show(chatWindow);
 
@@ -638,12 +621,11 @@ async function startSearch() {
 
     startWaitingHeartbeat(myUid);
 
-    // --- ПОИСК КАНДИДАТОВ (для роли Лидера) ---
+    // ПОИСК КАНДИДАТОВ (для роли Лидера)
     const waitingRef = ref(rtdb, 'waiting');
     waitingRefPath = 'waiting';
     
     onValue(waitingRef, async (snap) => {
-        // Если нас уже "забрали" (roomId заполнен) или идет процесс — выходим
         if (roomId || !snap.exists() || searchCancelled || matchmakingInProgress) return;
         
         const now = Date.now();
@@ -673,13 +655,36 @@ async function startSearch() {
         const newRoomId = newRoomRef.key;
 
         try {
-            // Атомарно бронируем обоих
-            await Promise.all([
-                update(ref(rtdb, `waiting/${otherUid}`), { claimed: true, roomId: newRoomId }),
-                update(myWaitingRef, { claimed: true, roomId: newRoomId })
-            ]);
+            // ✅ ИСПРАВЛЕНИЕ: Используем транзакцию для атомарного бронирования
+            const otherUserRef = ref(rtdb, `waiting/${otherUid}`);
+            
+            // Проверяем что другой пользователь еще свободен
+            const otherSnap = await get(otherUserRef);
+            if (!otherSnap.exists() || otherSnap.val().claimed) {
+                console.log("Другой пользователь уже забронирован");
+                matchmakingInProgress = false;
+                return;
+            }
 
-            // Если бронь прошла, создаем комнату
+            // Атомарно бронируем обоих пользователей
+            await runTransaction(otherUserRef, (currentData) => {
+                if (!currentData || currentData.claimed) {
+                    return; // Abort transaction
+                }
+                return {
+                    ...currentData,
+                    claimed: true,
+                    roomId: newRoomId
+                };
+            });
+
+            // Бронируем себя
+            await update(myWaitingRef, { 
+                claimed: true, 
+                roomId: newRoomId 
+            });
+
+            // Создаем комнату
             const sortedParticipants = [myUid, otherUid].sort();
             await set(newRoomRef, {
                 participants: sortedParticipants,
@@ -692,7 +697,6 @@ async function startSearch() {
             
             roomId = newRoomId; 
             
-            // Выключаем поиск
             off(myWaitingRef);
             if (waitingRefPath) {
                 off(ref(rtdb, waitingRefPath));
@@ -704,7 +708,6 @@ async function startSearch() {
                 waitingHeartbeatInterval = null;
             }
             
-            // Принудительный UI переход
             hide(searchScreen);
             show(chatWindow);
             
@@ -715,7 +718,7 @@ async function startSearch() {
             }, 1500);
 
         } catch (err) {
-            console.log("Конфликт бронирования, откат.");
+            console.log("Конфликт бронирования, откат:", err);
             matchmakingInProgress = false;
         }
     });
@@ -734,7 +737,6 @@ async function connectToRoom(rId) {
         isConnecting = true;
         chatClosed = false;
 
-        // Удаляем себя из очереди при входе в комнату
         if (uid) {
             remove(ref(rtdb, `waiting/${uid}`)).catch(() => {});
         }
@@ -782,7 +784,6 @@ async function connectToRoom(rId) {
                     console.log("Комната удалена, закрываем чат");
                     chatClosed = true;
                     endChatUI();
-                    // Отложенная очистка чтобы не прервать обработку события
                     setTimeout(async () => {
                         await clearAllListenersAndState();
                         clearRoomStorage();
@@ -795,7 +796,6 @@ async function connectToRoom(rId) {
                 console.log("Собеседник завершил чат, закрываем у себя");
                 chatClosed = true;
                 endChatUI();
-                // Отложенная очистка чтобы не прервать обработку события
                 setTimeout(async () => {
                     await clearAllListenersAndState();
                     clearRoomStorage();
@@ -807,8 +807,10 @@ async function connectToRoom(rId) {
         messagesRefPath = `rooms/${roomId}/messages`;
         clearMessages();
         
-        // ✅ ИСПРАВЛЕНИЕ: Сначала загружаем все существующие сообщения
+        // ✅ Сначала загружаем все существующие сообщения
         let lastLoadedTimestamp = 0;
+        const loadedMessageIds = new Set();
+        
         try {
             const existingMessagesSnap = await get(messagesRef);
             if (existingMessagesSnap.exists()) {
@@ -816,16 +818,14 @@ async function connectToRoom(rId) {
                 existingMessagesSnap.forEach(child => {
                     const msg = child.val();
                     messages.push({ key: child.key, ...msg });
-                    // Запоминаем timestamp последнего сообщения
+                    loadedMessageIds.add(child.key);
                     if (msg.createdAt > lastLoadedTimestamp) {
                         lastLoadedTimestamp = msg.createdAt;
                     }
                 });
                 
-                // Сортируем по времени создания
                 messages.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
                 
-                // Отображаем все существующие сообщения
                 messages.forEach(msg => {
                     if (!chatClosed) addMessageToUI(msg);
                 });
@@ -836,14 +836,17 @@ async function connectToRoom(rId) {
             console.error("Ошибка загрузки существующих сообщений:", e);
         }
         
+        // ✅ Теперь слушаем только НОВЫЕ сообщения
         onChildAdded(messagesRef, (snap) => {
             if (chatClosed) return;
             
-            const msg = snap.val();
-            // Отображаем только сообщения новее последнего загруженного
-            if (msg.createdAt > lastLoadedTimestamp) {
-                addMessageToUI(msg);
+            // Пропускаем уже загруженные сообщения
+            if (loadedMessageIds.has(snap.key)) {
+                return;
             }
+            
+            const msg = snap.val();
+            addMessageToUI(msg);
         });
 
         await setMyPresence();
@@ -851,6 +854,7 @@ async function connectToRoom(rId) {
         isConnecting = false;
 
     } catch (err) {
+        console.error("Ошибка connectToRoom:", err);
         isConnecting = false;
     }
 }
@@ -873,20 +877,16 @@ async function setMyPresence() {
     if (presenceHeartbeatInterval) clearInterval(presenceHeartbeatInterval);
     
     presenceHeartbeatInterval = setInterval(async () => {
-        // Просто проверяем наличие roomId и auth
-        if (!auth.currentUser || !roomId) {
+        if (!auth.currentUser || !roomId || chatClosed) {
             clearInterval(presenceHeartbeatInterval);
             presenceHeartbeatInterval = null;
             return;
         }
         
         try {
-            // УБРАЛИ get() - просто обновляем presence
-            // Если комната удалена, update выдаст permission_denied и мы остановим интервал
             await update(presRef, { lastSeen: Date.now() });
         } catch (e) { 
             console.error("Presence heartbeat error:", e);
-            // Если комната удалена/закрыта, permission_denied остановит интервал
             clearInterval(presenceHeartbeatInterval);
             presenceHeartbeatInterval = null;
         }
@@ -899,11 +899,9 @@ async function finishChat() {
     if (currentRoomId && !chatClosed) {
         chatClosed = true;
         
-        // Сначала показываем UI пользователю
         endChatUI();
         
         try {
-            // Помечаем комнату закрытой (это триггернет слушатель у собеседника)
             await update(ref(rtdb, `rooms/${currentRoomId}`), { 
                 closed: true,
                 lastActivity: Date.now()
@@ -912,13 +910,11 @@ async function finishChat() {
             console.error("Ошибка закрытия комнаты:", err);
         }
         
-        // Даём время собеседнику получить событие, потом очищаем
         setTimeout(async () => {
             await clearAllListenersAndState();
             clearRoomStorage();
         }, 500);
     } else {
-        // Если комната уже закрыта или её нет
         endChatUI();
         await clearAllListenersAndState();
         clearRoomStorage();
@@ -934,7 +930,6 @@ function endChatUI() {
 async function cancelSearchHandler() {
     searchCancelled = true;
     
-    // Формируем путь динамически из актуального UID
     const currentUid = auth.currentUser?.uid;
     if (currentUid) {
         try {
@@ -944,7 +939,6 @@ async function cancelSearchHandler() {
         }
     }
     
-    // Отключаем слушатели
     if (myWaitingRefPath) {
         off(ref(rtdb, myWaitingRefPath));
         myWaitingRefPath = null;
