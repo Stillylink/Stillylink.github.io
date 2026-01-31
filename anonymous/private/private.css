@@ -92,6 +92,34 @@ body.private-page .site-wrapper {
 }
 @keyframes spin{to{transform:rotate(360deg)}}
 
+/* Подсказка о долгом поиске */
+.search-hint {
+    margin-top: 20px;
+    padding: 12px 20px;
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    color: #ffffff;
+    text-align: center;
+    font-size: 14px;
+    opacity: 0;
+    transform: translateY(-10px);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.search-hint:not(.hidden) {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.search-hint.hidden {
+    display: none;
+}
+
+.search-hint p {
+    margin: 0;
+    color: var(--text-secondary, #b0b0b0);
+}
+
 /* ======== ОБЩИЙ БЛОК: ШАПКА + ЧАТ ======== */
 .chat-shell {
   flex: 1;
