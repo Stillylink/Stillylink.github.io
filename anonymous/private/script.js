@@ -497,27 +497,20 @@ function addMessageToUI(data) {
 }
 
 async function sendMessageToRoom(text, type = 'text') {
-    if (!roomId) return;
-    
-    try {
-        const messagesRef = ref(rtdb, `rooms/${roomId}/messages`);
-        const newMsgRef = push(messagesRef);
+  if (!roomId) return;
 
-        await set(newMsgRef, {
-            sender: uid,
-            text: text,
-            type: type,
-            createdAt: Date.now()
-        });
+  const messagesRef = ref(rtdb, `rooms/${roomId}/messages`);
+  const newMsgRef = push(messagesRef);
 
-        const roomRef = ref(rtdb, `rooms/${roomId}`);
-        await update(roomRef, {
-            lastActivity: Date.now()
-        });
+  await set(newMsgRef, {
+    sender: uid,
+    text,
+    type,
+    createdAt: Date.now()
+  });
 
-    } catch (err) {
-        console.error("Ошибка в sendMessageToRoom:", err);
-    }
+  const roomRef = ref(rtdb, `rooms/${roomId}`);
+  update(roomRef, { lastActivity: Date.now() }).catch(() => {});
 }
 
 // Обработчики событий теперь инициализируются в initializeEventHandlers()
@@ -541,8 +534,8 @@ async function startWaitingHeartbeat(userUid) {
         
         try {
             await update(waitingRef, {
-                lastSeen: Date.now()
-            });
+  lastSeen: Date.now()
+});
         } catch (e) {
             console.error("Ошибка heartbeat:", e);
             if (e.message?.includes('permission_denied')) {
@@ -585,13 +578,13 @@ async function startSearch() {
     myWaitingRefPath = `waiting/${myUid}`;
     
     try {
-        await update(myWaitingRef, {
-            uid: myUid,
-            createdAt: Date.now(),
-            claimed: false,
-            roomId: null,
-            lastSeen: Date.now()
-        });
+        await set(waitingRef, {
+  uid,
+  createdAt: Date.now(),
+  claimed: false,
+  roomId: null,
+  lastSeen: Date.now()
+});
         onDisconnect(myWaitingRef).remove().catch(() => {});
     } catch (e) {
         console.error("Ошибка входа в очередь:", e);
@@ -674,10 +667,11 @@ async function startSearch() {
 
         try {
             // Атомарно бронируем обоих
-            await Promise.all([
-                update(ref(rtdb, `waiting/${otherUid}`), { claimed: true, roomId: newRoomId }),
-                update(myWaitingRef, { claimed: true, roomId: newRoomId })
-            ]);
+            await update(ref(rtdb, `waiting/${otherUid}`), {
+  claimed: true,
+  roomId: newRoomId
+});
+            await remove(ref(rtdb, `waiting/${myUid}`));
 
             // Если бронь прошла, создаем комнату
             const sortedParticipants = [myUid, otherUid].sort();
