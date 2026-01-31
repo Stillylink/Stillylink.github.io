@@ -278,6 +278,7 @@ let matchmakingInProgress = false;
 
 let waitingHeartbeatInterval = null;
 let presenceHeartbeatInterval = null;
+let searchTimeout = null; // ✅ Глобальный таймаут для поиска
 
 let myWaitingRefPath = null;
 let waitingRefPath = null;
@@ -316,7 +317,7 @@ function clearRoomStorage() {
 // ЕДИНАЯ ФУНКЦИЯ ОСТАНОВКИ ВСЕЙ АКТИВНОСТИ
 // ============================================
 async function stopAllActivity() {
-    // Останавливаем все интервалы
+    // Останавливаем все интервалы и таймауты
     if (presenceHeartbeatInterval) {
         clearInterval(presenceHeartbeatInterval);
         presenceHeartbeatInterval = null;
@@ -324,6 +325,10 @@ async function stopAllActivity() {
     if (waitingHeartbeatInterval) {
         clearInterval(waitingHeartbeatInterval);
         waitingHeartbeatInterval = null;
+    }
+    if (searchTimeout) {
+        clearTimeout(searchTimeout);
+        searchTimeout = null;
     }
     
     // Отключаем все слушатели
@@ -554,7 +559,28 @@ async function startWaitingHeartbeat(userUid) {
             return;
         }
         
+        // ✅ Если уже в комнате - останавливаем heartbeat
+        if (roomId) {
+            console.log("Heartbeat остановлен: уже в комнате");
+            if (waitingHeartbeatInterval) {
+                clearInterval(waitingHeartbeatInterval);
+                waitingHeartbeatInterval = null;
+            }
+            return;
+        }
+        
         try {
+            // ✅ Проверяем что мы не забронированы перед обновлением
+            const snap = await get(waitingRef);
+            if (!snap.exists() || snap.val().claimed === true) {
+                console.log("Heartbeat остановлен: пользователь забронирован или удалён");
+                if (waitingHeartbeatInterval) {
+                    clearInterval(waitingHeartbeatInterval);
+                    waitingHeartbeatInterval = null;
+                }
+                return;
+            }
+            
             await update(waitingRef, {
                 lastSeen: Date.now()
             });
@@ -590,6 +616,12 @@ async function startSearch() {
     matchmakingInProgress = false;
     searchCancelled = false;
 
+    // ✅ Очищаем старый таймаут если был
+    if (searchTimeout) {
+        clearTimeout(searchTimeout);
+        searchTimeout = null;
+    }
+
     await clearAllListenersAndState();
     clearMessages();
     show(searchScreen);
@@ -613,14 +645,32 @@ async function startSearch() {
         return;
     }
 
+    // ✅ ДОБАВЛЕНО: Таймаут для поиска - если не нашли за 60 секунд, перезапускаем
+    searchTimeout = setTimeout(async () => {
+        if (!roomId && !chatClosed && !searchCancelled) {
+            console.log("Таймаут поиска (60 сек), перезапуск...");
+            await remove(myWaitingRef).catch(() => {});
+            if (waitingHeartbeatInterval) {
+                clearInterval(waitingHeartbeatInterval);
+                waitingHeartbeatInterval = null;
+            }
+            // Перезапускаем поиск через 2 секунды
+            setTimeout(() => {
+                if (!roomId) startSearch();
+            }, 2000);
+        }
+    }, 60000);
+
     // --- СЛУШАТЕЛЬ СЕБЯ (для роли Ведомого) ---
-    onValue(myWaitingRef, (snap) => {
+    onValue(myWaitingRef, async (snap) => {
         const data = snap.val();
         if (!data) return;
         
         // Если Лидер нас уже выбрал
         if (data.claimed === true && data.roomId && !roomId) {
             console.log("Нас нашли! Переход в комнату:", data.roomId);
+            
+            clearTimeout(searchTimeout); // ✅ Отменяем таймаут
             
             // НЕМЕДЛЕННО блокируем повторные входы
             roomId = data.roomId; 
@@ -643,7 +693,25 @@ async function startSearch() {
             hide(searchScreen);
             show(chatWindow);
 
-            connectToRoom(data.roomId).catch(console.error);
+            // ✅ Проверяем что комната существует перед подключением
+            try {
+                const roomCheck = await get(ref(rtdb, `rooms/${data.roomId}`));
+                if (!roomCheck.exists()) {
+                    console.error("Комната не существует! Перезапуск поиска");
+                    roomId = null;
+                    clearRoomStorage();
+                    setTimeout(() => startSearch(), 1000);
+                    return;
+                }
+                
+                await connectToRoom(data.roomId);
+            } catch (err) {
+                console.error("Ошибка при подключении к комнате:", err);
+                roomId = null;
+                clearRoomStorage();
+                setTimeout(() => startSearch(), 1000);
+                return;
+            }
 
             setTimeout(() => {
                 remove(myWaitingRef).catch(() => {});
@@ -688,13 +756,21 @@ async function startSearch() {
         const newRoomId = newRoomRef.key;
 
         try {
-            // Атомарно бронируем обоих
-            await Promise.all([
-                update(ref(rtdb, `waiting/${otherUid}`), { claimed: true, roomId: newRoomId }),
-                update(myWaitingRef, { claimed: true, roomId: newRoomId })
+            // ✅ ИСПРАВЛЕНИЕ: Сначала проверяем что оба пользователя всё ещё доступны
+            const [myCheck, otherCheck] = await Promise.all([
+                get(ref(rtdb, `waiting/${myUid}`)),
+                get(ref(rtdb, `waiting/${otherUid}`))
             ]);
+            
+            // Если кто-то уже забронирован или не существует - отмена
+            if (!myCheck.exists() || !otherCheck.exists() || 
+                myCheck.val().claimed || otherCheck.val().claimed) {
+                console.log("Один из пользователей уже забронирован, отмена");
+                matchmakingInProgress = false;
+                return;
+            }
 
-            // Если бронь прошла, создаем комнату
+            // ✅ СНАЧАЛА создаём комнату
             const sortedParticipants = [myUid, otherUid].sort();
             await set(newRoomRef, {
                 participants: sortedParticipants,
@@ -703,7 +779,31 @@ async function startSearch() {
                 closed: false
             });
 
+            // ✅ ПОТОМ бронируем обоих (теперь комната уже существует!)
+            await Promise.all([
+                update(ref(rtdb, `waiting/${otherUid}`), { claimed: true, roomId: newRoomId }),
+                update(ref(rtdb, `waiting/${myUid}`), { claimed: true, roomId: newRoomId })
+            ]);
+
+            // ✅ Проверяем что бронирование прошло успешно
+            const [myVerify, otherVerify] = await Promise.all([
+                get(ref(rtdb, `waiting/${myUid}`)),
+                get(ref(rtdb, `waiting/${otherUid}`))
+            ]);
+            
+            if (!myVerify.exists() || !otherVerify.exists() ||
+                myVerify.val().roomId !== newRoomId || otherVerify.val().roomId !== newRoomId) {
+                console.log("Бронирование не подтвердилось, удаляем комнату");
+                matchmakingInProgress = false;
+                // Откатываем - удаляем комнату
+                await remove(newRoomRef).catch(() => {});
+                return;
+            }
+
             console.log("Комната создана нами (Лидер):", newRoomId);
+            
+            clearTimeout(searchTimeout); // ✅ Отменяем таймаут
+            searchTimeout = null;
             
             roomId = newRoomId; 
             
@@ -730,8 +830,16 @@ async function startSearch() {
             }, 1500);
 
         } catch (err) {
-            console.log("Конфликт бронирования, откат.");
+            console.log("Конфликт бронирования, откат:", err);
             matchmakingInProgress = false;
+            
+            // ✅ Откатываем ТОЛЬКО СВОЕ бронирование
+            // Другой пользователь откатится сам через heartbeat или timeout
+            try {
+                await update(ref(rtdb, `waiting/${myUid}`), { claimed: false, roomId: null });
+            } catch (rollbackErr) {
+                console.error("Ошибка отката бронирования:", rollbackErr);
+            }
         }
     });
 }
@@ -775,6 +883,25 @@ async function connectToRoom(rId) {
         const parts = data.participants || [];
 
         if (!parts.includes(uid)) {
+            console.error("Мы не являемся участником комнаты! UID:", uid, "Participants:", parts);
+            isConnecting = false;
+            roomId = null;
+            clearRoomStorage();
+            
+            // ✅ Показываем ошибку пользователю и перезапускаем поиск
+            hide(chatWindow);
+            hide(searchScreen);
+            show(endScreen);
+            
+            setTimeout(async () => {
+                await startSearch();
+            }, 2000);
+            return;
+        }
+
+        // ✅ Проверяем что комната не закрыта
+        if (data.closed === true) {
+            console.error("Комната уже закрыта!");
             isConnecting = false;
             roomId = null;
             clearRoomStorage();
@@ -882,12 +1009,28 @@ async function setMyPresence() {
     const presRef = ref(rtdb, `rooms/${roomId}/presence/${currentUid}`);
     presenceRefPath = `rooms/${roomId}/presence/${currentUid}`;
     
-    try {
-        await update(presRef, { lastSeen: Date.now() });
-        onDisconnect(presRef).remove();
-    } catch (e) { 
-        console.error("Presence set error:", e);
-        return;
+    // ✅ ИСПРАВЛЕНИЕ: Повторные попытки с задержкой
+    let attempts = 0;
+    const maxAttempts = 5;
+    
+    while (attempts < maxAttempts) {
+        try {
+            await update(presRef, { lastSeen: Date.now() });
+            onDisconnect(presRef).remove();
+            console.log('Presence создан успешно');
+            break; // Успех!
+        } catch (e) { 
+            attempts++;
+            console.warn(`Presence set error (попытка ${attempts}/${maxAttempts}):`, e);
+            
+            if (attempts >= maxAttempts) {
+                console.error('Не удалось создать presence после всех попыток');
+                return;
+            }
+            
+            // Ждём 500ms перед следующей попыткой
+            await new Promise(resolve => setTimeout(resolve, 500));
+        }
     }
     
     if (presenceHeartbeatInterval) clearInterval(presenceHeartbeatInterval);
@@ -992,3 +1135,7 @@ async function cancelSearchHandler() {
     hide(searchScreen);
     show(endScreen);
 }
+
+// ============================================
+// ВСЕ ОБРАБОТЧИКИ СОБЫТИЙ ТЕПЕРЬ В initializeEventHandlers()
+// ============================================
