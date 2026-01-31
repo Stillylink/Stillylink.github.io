@@ -831,12 +831,10 @@ async function startSearch() {
             console.log("Конфликт бронирования, откат:", err);
             matchmakingInProgress = false;
             
-            // ✅ Откатываем бронирование если что-то пошло не так
+            // ✅ Откатываем ТОЛЬКО СВОЕ бронирование
+            // Другой пользователь откатится сам через heartbeat или timeout
             try {
-                await Promise.all([
-                    update(ref(rtdb, `waiting/${myUid}`), { claimed: false, roomId: null }),
-                    update(ref(rtdb, `waiting/${otherUid}`), { claimed: false, roomId: null })
-                ]);
+                await update(ref(rtdb, `waiting/${myUid}`), { claimed: false, roomId: null });
             } catch (rollbackErr) {
                 console.error("Ошибка отката бронирования:", rollbackErr);
             }
