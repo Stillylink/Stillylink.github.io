@@ -42,11 +42,17 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const rtdb = getDatabase(app);
 
+// ============================================
+// ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ДЛЯ DOM ЭЛЕМЕНТОВ
+// ============================================
 let searchScreen, chatWindow, endScreen, messagesEl, textInput, sendBtn;
 let finishBtn, modal, modalCancel, modalFinish, newChatBtn;
 let emojiBtn, emojiPanel, photoBtn, photoInput, cancelSearch, exitBtn;
 let regBtn, avatar, avatarLetter, userMenu, logoutBtn;
 
+// ============================================
+// ИНИЦИАЛИЗАЦИЯ DOM ПОСЛЕ ЗАГРУЗКИ СТРАНИЦЫ
+// ============================================
 function initializeDOM() {
     searchScreen = document.getElementById('searchScreen');
     chatWindow = document.getElementById('chatWindow');
@@ -88,6 +94,9 @@ function initializeDOM() {
     return true;
 }
 
+// ============================================
+// ОБРАБОТЧИКИ МЕНЮ И UI
+// ============================================
 function initializeEventHandlers() {
     // Обработчики меню навигации
     document.addEventListener("click", e => {
@@ -303,6 +312,9 @@ function clearRoomStorage() {
     localStorage.removeItem('partnerId');
 }
 
+// ============================================
+// ЕДИНАЯ ФУНКЦИЯ ОСТАНОВКИ ВСЕЙ АКТИВНОСТИ
+// ============================================
 async function stopAllActivity() {
     // Останавливаем все интервалы
     if (presenceHeartbeatInterval) {
@@ -375,6 +387,9 @@ async function clearAllListenersAndState() {
     matchmakingInProgress = false;
 }
 
+// ============================================
+// ГЛАВНАЯ ТОЧКА ВХОДА - ИНИЦИАЛИЗАЦИЯ ПРИЛОЖЕНИЯ
+// ============================================
 document.addEventListener("DOMContentLoaded", () => {
     console.log('DOM загружен, инициализация приложения...');
     
@@ -497,20 +512,27 @@ function addMessageToUI(data) {
 }
 
 async function sendMessageToRoom(text, type = 'text') {
-  if (!roomId) return;
+    if (!roomId) return;
+    
+    try {
+        const messagesRef = ref(rtdb, `rooms/${roomId}/messages`);
+        const newMsgRef = push(messagesRef);
 
-  const messagesRef = ref(rtdb, `rooms/${roomId}/messages`);
-  const newMsgRef = push(messagesRef);
+        await set(newMsgRef, {
+            sender: uid,
+            text: text,
+            type: type,
+            createdAt: Date.now()
+        });
 
-  await set(newMsgRef, {
-    sender: uid,
-    text,
-    type,
-    createdAt: Date.now()
-  });
+        const roomRef = ref(rtdb, `rooms/${roomId}`);
+        await update(roomRef, {
+            lastActivity: Date.now()
+        });
 
-  const roomRef = ref(rtdb, `rooms/${roomId}`);
-  update(roomRef, { lastActivity: Date.now() }).catch(() => {});
+    } catch (err) {
+        console.error("Ошибка в sendMessageToRoom:", err);
+    }
 }
 
 // Обработчики событий теперь инициализируются в initializeEventHandlers()
@@ -534,8 +556,8 @@ async function startWaitingHeartbeat(userUid) {
         
         try {
             await update(waitingRef, {
-  lastSeen: Date.now()
-});
+                lastSeen: Date.now()
+            });
         } catch (e) {
             console.error("Ошибка heartbeat:", e);
             if (e.message?.includes('permission_denied')) {
@@ -578,13 +600,13 @@ async function startSearch() {
     myWaitingRefPath = `waiting/${myUid}`;
     
     try {
-        await set(waitingRef, {
-  uid,
-  createdAt: Date.now(),
-  claimed: false,
-  roomId: null,
-  lastSeen: Date.now()
-});
+        await update(myWaitingRef, {
+            uid: myUid,
+            createdAt: Date.now(),
+            claimed: false,
+            roomId: null,
+            lastSeen: Date.now()
+        });
         onDisconnect(myWaitingRef).remove().catch(() => {});
     } catch (e) {
         console.error("Ошибка входа в очередь:", e);
@@ -667,11 +689,10 @@ async function startSearch() {
 
         try {
             // Атомарно бронируем обоих
-            await update(ref(rtdb, `waiting/${otherUid}`), {
-  claimed: true,
-  roomId: newRoomId
-});
-            await remove(ref(rtdb, `waiting/${myUid}`));
+            await Promise.all([
+                update(ref(rtdb, `waiting/${otherUid}`), { claimed: true, roomId: newRoomId }),
+                update(myWaitingRef, { claimed: true, roomId: newRoomId })
+            ]);
 
             // Если бронь прошла, создаем комнату
             const sortedParticipants = [myUid, otherUid].sort();
@@ -726,7 +747,7 @@ async function connectToRoom(rId) {
         }
 
         isConnecting = true;
-        chatClosed = false;
+        chatClosed = false; // ✅ Сбрасываем флаг при входе в новую комнату
 
         // Удаляем себя из очереди при входе в комнату
         if (uid) {
@@ -830,6 +851,8 @@ async function connectToRoom(rId) {
             console.error("Ошибка загрузки существующих сообщений:", e);
         }
         
+        // ✅ Теперь устанавливаем слушатель для НОВЫХ сообщений
+        // Слушатель будет получать ВСЕ сообщения, но мы фильтруем уже отображённые
         onChildAdded(messagesRef, (snap) => {
             if (chatClosed) return;
             
@@ -849,6 +872,9 @@ async function connectToRoom(rId) {
     }
 }
 
+// ============================================
+// ИСПРАВЛЕННАЯ setMyPresence БЕЗ ЛИШНЕГО get()
+// ============================================
 async function setMyPresence() {
     if (!roomId || !auth.currentUser) return;
     
@@ -887,6 +913,9 @@ async function setMyPresence() {
     }, PRESENCE_PING_INTERVAL);
 }
 
+// ============================================
+// УПРОЩЕННАЯ finishChat
+// ============================================
 async function finishChat() {
     const currentRoomId = roomId;
     
@@ -919,12 +948,18 @@ async function finishChat() {
     }
 }
 
+// ============================================
+// УПРОЩЕННАЯ endChatUI - только UI
+// ============================================
 function endChatUI() {
     hide(searchScreen);
     hide(chatWindow);
     show(endScreen);
 }
 
+// ============================================
+// ИСПРАВЛЕННАЯ cancelSearchHandler
+// ============================================
 async function cancelSearchHandler() {
     searchCancelled = true;
     
