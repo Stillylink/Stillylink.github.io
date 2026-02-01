@@ -91,7 +91,6 @@ onAuthStateChanged(auth, user => {
   
   uid = user.uid;
   
-  // Проверяем, является ли пользователь гостем
   if (user.email) {
     isGuest = false;
     const cachedLetter = localStorage.getItem('userAvatarLetter');
@@ -105,7 +104,6 @@ onAuthStateChanged(auth, user => {
     regBtn?.classList.add('hidden');
     avatar?.classList.remove('hidden');
     
-    // Загружаем ответы только для зарегистрированных пользователей
     loadReplies();
   } else {
     isGuest = true;
@@ -113,7 +111,6 @@ onAuthStateChanged(auth, user => {
     avatar?.classList.add('hidden');
     localStorage.removeItem('userAvatarLetter');
     
-    // Показываем экран для гостей
     showGuestScreen();
   }
 });
@@ -130,19 +127,29 @@ function showGuestScreen() {
 /*  ===============  Загрузка ответов  =============== */
 async function loadReplies() {
   try {
-    // Показываем индикатор загрузки
     show(loadingBox);
     hide(noMessageBox);
     hide(noRepliesBox);
     hide(guestBox);
     hide(repliesContent);
     
-    // Проверяем, есть ли у пользователя послание
-    const messageRef = ref(rtdb, `anonymous/messages/${uid}`);
-    const messageSnap = await get(messageRef);
+    // 1. Читаем pushId из приватного маппинга userMessages
+    const userMsgSnap = await get(ref(rtdb, `anonymous/userMessages/${uid}`));
+    
+    if (!userMsgSnap.exists()) {
+      // У пользователя нет послания
+      hide(loadingBox);
+      show(noMessageBox);
+      return;
+    }
+    
+    const pushId = userMsgSnap.val();
+    
+    // 2. Читаем само послание по pushId
+    const messageSnap = await get(ref(rtdb, `anonymous/messages/${pushId}`));
     
     if (!messageSnap.exists()) {
-      // У пользователя нет послания
+      // pushId есть, но послание удалено
       hide(loadingBox);
       show(noMessageBox);
       return;
@@ -171,12 +178,10 @@ async function loadReplies() {
       messageDate.textContent = 'Отправлено недавно';
     }
     
-    // Загружаем ответы на это послание
-    const repliesRef = ref(rtdb, `replies/${uid}`);
-    const repliesSnap = await get(repliesRef);
+    // 3. Читаем ответы по тому же pushId
+    const repliesSnap = await get(ref(rtdb, `replies/${pushId}`));
     
     if (!repliesSnap.exists()) {
-      // Нет ответов
       const count = messageData.repliesCount || 0;
       repliesCount.textContent = formatRepliesCount(count);
       
@@ -185,7 +190,7 @@ async function loadReplies() {
       return;
     }
     
-    // Есть ответы - отображаем их
+    // Есть ответы — отображаем
     const replies = [];
     repliesSnap.forEach(child => {
       replies.push({
@@ -197,13 +202,9 @@ async function loadReplies() {
     // Сортируем по дате (новые первыми)
     replies.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
     
-    // Обновляем счётчик ответов
     repliesCount.textContent = formatRepliesCount(replies.length);
-    
-    // Отображаем ответы
     displayReplies(replies);
     
-    // Показываем контент
     hide(loadingBox);
     show(repliesContent);
     
@@ -218,11 +219,10 @@ async function loadReplies() {
 function displayReplies(replies) {
   repliesList.innerHTML = '';
   
-  replies.forEach((reply, index) => {
+  replies.forEach((reply) => {
     const replyCard = document.createElement('div');
     replyCard.className = 'reply-card';
     
-    // Форматируем дату
     let dateStr = 'Недавно';
     if (reply.createdAt && !isNaN(reply.createdAt)) {
       const date = new Date(reply.createdAt);
