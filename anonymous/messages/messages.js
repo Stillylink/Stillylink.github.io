@@ -185,9 +185,11 @@ submitMessageBtn.addEventListener('click', async () => {
     // Проверяем, существует ли уже послание
     const snap = await get(messageRef);
     
-    if (snap.exists()) {
-      // Если существует - удаляем старое
-      await remove(messageRef);
+if (snap.exists()) {
+      await Promise.all([
+        remove(ref(rtdb, `replies/${uid}`)),
+        remove(messageRef)
+      ]);
     }
     
     // Создаём новое послание
