@@ -68,9 +68,9 @@ const navToggle = document.querySelector('.nav-toggle');
 
 /*  ===============  Переменные  =============== */
 let uid = null;
-let isGuest = true; // По умолчанию считаем гостем
-let currentMessageId = null; // ID послания, которое пользователь читает
-let authReady = false; // ← НОВОЕ: флаг готовности авторизации
+let isGuest = true;
+let currentMessageId = null; // pushId послания, которое пользователь читает
+let authReady = false;
 
 /*  ===============  Utils  =============== */
 const show = el => el.classList.remove('hidden');
@@ -148,10 +148,8 @@ onAuthStateChanged(auth, user => {
 
 /*  ===============  Функция ожидания авторизации  =============== */
 async function waitForAuth() {
-  // Если уже авторизованы, возвращаем сразу
   if (authReady) return true;
   
-  // Ждём максимум 5 секунд
   let attempts = 0;
   while (!authReady && attempts < 50) {
     await new Promise(resolve => setTimeout(resolve, 100));
@@ -162,75 +160,52 @@ async function waitForAuth() {
 }
 
 /*  ===============  Навигация между экранами  =============== */
-/*  ===============  Отправка послания  =============== */
-submitMessageBtn.addEventListener('click', async () => {
-  const text = messageTextarea.value.trim();
-  
-  if (text.length < 10) {
-    showWriteError('Послание должно содержать минимум 10 символов');
+
+// Открытие экрана написания
+writeMsgBtn.addEventListener('click', async () => {
+  if (isGuest) {
+    show(guestModal);
     return;
   }
   
-  if (text.length > 1000) {
-    showWriteError('Послание не может быть длиннее 1000 символов');
-    return;
-  }
+  hide(choiceScreen);
+  show(writeScreen);
   
-  try {
-    submitMessageBtn.disabled = true;
-    submitMessageBtn.textContent = 'Отправляем...';
+  // Читаем pushId из userMessages, затем само послание
+  const userMsgSnap = await get(ref(rtdb, `anonymous/userMessages/${uid}`));
+  
+  if (userMsgSnap.exists()) {
+    const pushId = userMsgSnap.val();
+    const messageSnap = await get(ref(rtdb, `anonymous/messages/${pushId}`));
     
-    const messageRef = ref(rtdb, `anonymous/messages/${uid}`);
-    
-    // Проверяем, существует ли уже послание
-    const snap = await get(messageRef);
-    
-if (snap.exists()) {
-      await Promise.all([
-        remove(ref(rtdb, `replies/${uid}`)),
-        remove(messageRef)
-      ]);
+    if (messageSnap.exists()) {
+      const data = messageSnap.val();
+      messageTextarea.value = data.text || '';
+      charCount.textContent = messageTextarea.value.length;
+      show(hasMessageInfo);
+    } else {
+      // pushId есть, но послание уже удалено — сбрасываем
+      messageTextarea.value = '';
+      charCount.textContent = '0';
+      hide(hasMessageInfo);
     }
-    
-    // Создаём новое послание
-    await set(messageRef, {
-      text,
-      authorId: uid,
-      createdAt: Date.now(),
-      repliesCount: 0
-    });
-    
-    // Успешно отправлено
+  } else {
     messageTextarea.value = '';
     charCount.textContent = '0';
     hide(hasMessageInfo);
-    
-    alert('✓ Ваше послание отправлено в небытие!');
-    
-    hide(writeScreen);
-    show(choiceScreen);
-    
-  } catch (error) {
-    console.error('Ошибка отправки:', error);
-    showWriteError('Не удалось отправить послание. Попробуйте позже.');
-  } finally {
-    submitMessageBtn.disabled = false;
-    submitMessageBtn.textContent = 'Отправить в небытие';
   }
 });
 
+// Открытие экрана получения
 receiveMsgBtn.addEventListener('click', async () => {
-  // ← Сразу переходим на экран получения
   hide(choiceScreen);
   show(receiveScreen);
   
-  // Показываем индикатор загрузки
   show(loadingMessage);
   hide(noMessagesBox);
   hide(messageBox);
   hide(replySentBox);
   
-  // ← Ждём завершения авторизации
   const ready = await waitForAuth();
   if (!ready) {
     hide(loadingMessage);
@@ -240,7 +215,6 @@ receiveMsgBtn.addEventListener('click', async () => {
     return;
   }
   
-  // Загружаем послание
   loadRandomMessage();
 });
 
@@ -269,38 +243,79 @@ replyTextarea.addEventListener('input', () => {
   hideReplyError();
 });
 
-writeMsgBtn.addEventListener('click', async () => {
-  if (isGuest) {
-    show(guestModal);
+/*  ===============  Отправка послания  =============== */
+submitMessageBtn.addEventListener('click', async () => {
+  const text = messageTextarea.value.trim();
+  
+  if (text.length < 10) {
+    showWriteError('Послание должно содержать минимум 10 символов');
     return;
   }
   
-  hide(choiceScreen);
-  show(writeScreen);
+  if (text.length > 1000) {
+    showWriteError('Послание не может быть длиннее 1000 символов');
+    return;
+  }
   
-  const messageRef = ref(rtdb, `anonymous/messages/${uid}`);
-  const snap = await get(messageRef);
-  
-  if (snap.exists()) {
-    const data = snap.val();
-    messageTextarea.value = data.text || '';
-    charCount.textContent = messageTextarea.value.length;
-    show(hasMessageInfo);
-  } else {
+  try {
+    submitMessageBtn.disabled = true;
+    submitMessageBtn.textContent = 'Отправляем...';
+    
+    // 1. Читаем, есть ли уже послание (старый pushId)
+    const userMsgSnap = await get(ref(rtdb, `anonymous/userMessages/${uid}`));
+    const oldPushId = userMsgSnap.exists() ? userMsgSnap.val() : null;
+    
+    // 2. Генерируем новый pushId
+    const newPushId = push(ref(rtdb, 'anonymous/messages')).key;
+    
+    // 3. Атомарный update: новое послание + обновление маппинга
+    const atomicUpdate = {
+      [`anonymous/messages/${newPushId}`]: {
+        text,
+        createdAt: Date.now(),
+        repliesCount: 0
+      },
+      [`anonymous/userMessages/${uid}`]: newPushId
+    };
+    
+    // Если было старое послание — удаляем его и его ответы в том же update
+    if (oldPushId) {
+      atomicUpdate[`anonymous/messages/${oldPushId}`] = null;
+      atomicUpdate[`replies/${oldPushId}`] = null;
+    }
+    
+    await update(ref(rtdb), atomicUpdate);
+    
+    // Успешно отправлено
     messageTextarea.value = '';
     charCount.textContent = '0';
     hide(hasMessageInfo);
+    
+    alert('✓ Ваше послание отправлено в небытие!');
+    
+    hide(writeScreen);
+    show(choiceScreen);
+    
+  } catch (error) {
+    console.error('Ошибка отправки:', error);
+    showWriteError('Не удалось отправить послание. Попробуйте позже.');
+  } finally {
+    submitMessageBtn.disabled = false;
+    submitMessageBtn.textContent = 'Отправить в небытие';
   }
 });
 
 /*  ===============  Загрузка случайного послания  =============== */
 async function loadRandomMessage() {
-  // Скрываем другие блоки (loadingMessage уже показан)
   hide(noMessagesBox);
   hide(messageBox);
   hide(replySentBox);
   
   try {
+    // Читаем свой pushId, чтобы не показывать себе своё послание
+    const userMsgSnap = await get(ref(rtdb, `anonymous/userMessages/${uid}`));
+    const myPushId = userMsgSnap.exists() ? userMsgSnap.val() : null;
+    
     const messagesRef = ref(rtdb, 'anonymous/messages');
     const snapshot = await get(messagesRef);
     
@@ -312,12 +327,11 @@ async function loadRandomMessage() {
     
     const allMessages = [];
     snapshot.forEach(child => {
-      const data = child.val();
-      // Не показываем своё собственное послание
-      if (!uid || child.key !== uid) {
+      // Пропускаем своё послание по pushId
+      if (child.key !== myPushId) {
         allMessages.push({
           id: child.key,
-          ...data
+          ...child.val()
         });
       }
     });
@@ -389,17 +403,15 @@ sendReplyBtn.addEventListener('click', async () => {
     sendReplyBtn.disabled = true;
     sendReplyBtn.textContent = 'Отправляем...';
     
-    // 1. Сначала увеличиваем счетчик
-    const messageRef = ref(rtdb, `anonymous/messages/${currentMessageId}`);
-    await update(messageRef, {
-      repliesCount: increment(1)
-    });
+    // Атомарно: увеличиваем счётчик и добавляем ответ
+    const newReplyId = push(ref(rtdb, `replies/${currentMessageId}`)).key;
     
-    // 2. Потом сохраняем ответ
-    const newReplyRef = push(ref(rtdb, `replies/${currentMessageId}`));
-    await set(newReplyRef, {
-      text: text,
-      createdAt: Date.now()
+    await update(ref(rtdb), {
+      [`anonymous/messages/${currentMessageId}/repliesCount`]: increment(1),
+      [`replies/${currentMessageId}/${newReplyId}`]: {
+        text: text,
+        createdAt: Date.now()
+      }
     });
     
     hide(messageBox);
@@ -422,7 +434,7 @@ sendReplyBtn.addEventListener('click', async () => {
 /*  ===============  Получить ещё послание  =============== */
 getAnotherBtn.addEventListener('click', () => {
   resetReceiveScreen();
-  show(loadingMessage); // ← Показываем индикатор загрузки
+  show(loadingMessage);
   loadRandomMessage();
 });
 
@@ -467,7 +479,6 @@ modalCancelBtn.addEventListener('click', () => {
   hide(guestModal);
 });
 
-// Закрытие модального окна по клику вне его
 guestModal.addEventListener('click', (e) => {
   if (e.target === guestModal) {
     hide(guestModal);
