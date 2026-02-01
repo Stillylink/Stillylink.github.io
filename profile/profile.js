@@ -21,6 +21,7 @@ import {
     set,
     onValue,
     remove,
+    update,
     query,
     orderByChild,
     equalTo,
@@ -142,7 +143,6 @@ function renderStatus(status) {
             <span style="opacity: 0.5; font-style: italic; color: var(--text-secondary);">Нажмите, чтобы добавить статус</span>
         `;
     } else {
-        // Используем textContent вместо innerHTML, чтобы избежать <br>
         statusText.innerHTML = `
             <div style="position: relative;">
                 <div class="status-content" style="white-space: pre-wrap; word-break: break-word;"></div>
@@ -150,7 +150,6 @@ function renderStatus(status) {
             </div>
         `;
         
-        // Используем textContent для безопасного отображения текста с сохранением переносов
         const contentDiv = statusText.querySelector('.status-content');
         contentDiv.textContent = status;
         
@@ -212,12 +211,10 @@ function openStatusEditor(currentStatus) {
     const saveBtn = modal.querySelector('#saveStatusBtn');
     const deleteBtn = modal.querySelector('#deleteStatusBtn');
     
-    // Устанавливаем текущий статус (если есть)
     if (currentStatus) {
         statusInput.value = currentStatus;
     }
     
-    // Обновление счетчиков символов и строк
     function updateCounts() {
         const text = statusInput.value;
         const lines = text.split('\n');
@@ -225,7 +222,6 @@ function openStatusEditor(currentStatus) {
         charCount.textContent = text.length;
         lineCount.textContent = lines.length;
         
-        // Подсветка превышения лимитов
         if (text.length > 100) {
             charCount.style.color = '#ff3b30';
         } else {
@@ -239,19 +235,16 @@ function openStatusEditor(currentStatus) {
         }
     }
     
-    // Ограничение на ввод
     statusInput.addEventListener('input', () => {
         let text = statusInput.value;
         let lines = text.split('\n');
         
-        // Ограничение на 10 строк
         if (lines.length > 10) {
             text = lines.slice(0, 10).join('\n');
             statusInput.value = text;
             lines = text.split('\n');
         }
         
-        // Ограничение на 100 символов
         if (text.length > 100) {
             statusInput.value = text.slice(0, 100);
         }
@@ -261,7 +254,6 @@ function openStatusEditor(currentStatus) {
     
     updateCounts();
     
-    // Закрытие
     const closeModal = () => {
         modal.remove();
     };
@@ -272,7 +264,6 @@ function openStatusEditor(currentStatus) {
         if (e.target === modal) closeModal();
     });
     
-    // Сохранение
     saveBtn.addEventListener('click', async () => {
         const newStatus = statusInput.value.trim();
         
@@ -296,7 +287,6 @@ function openStatusEditor(currentStatus) {
         }
     });
     
-    // Удаление
     if (deleteBtn) {
         deleteBtn.addEventListener('click', async () => {
             if (confirm('Удалить статус?')) {
@@ -323,7 +313,6 @@ async function saveStatus(status) {
             status: status || ""
         }, { merge: true });
         
-        // Обновляем кэш
         currentUserData.status = status || "";
         localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(currentUserData));
         
@@ -340,24 +329,20 @@ function extractVideoId(url) {
     
     url = url.trim();
     
-    // Проверка на shorts (исключаем)
     if (url.includes('/shorts/')) {
         return null;
     }
     
-    // youtube.com/watch?v=VIDEO_ID
     const watchMatch = url.match(/[?&]v=([a-zA-Z0-9_-]{11})/);
     if (watchMatch) {
         return watchMatch[1];
     }
     
-    // youtu.be/VIDEO_ID
     const shortMatch = url.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/);
     if (shortMatch) {
         return shortMatch[1];
     }
     
-    // Если это просто VIDEO_ID (11 символов)
     if (/^[a-zA-Z0-9_-]{11}$/.test(url)) {
         return url;
     }
@@ -387,7 +372,6 @@ async function saveYoutubeVideo(videoId) {
             youtubeVideoId: videoId || null
         }, { merge: true });
         
-        // Обновляем кэш
         currentUserData.youtubeVideoId = videoId || null;
         localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(currentUserData));
         
@@ -398,7 +382,6 @@ async function saveYoutubeVideo(videoId) {
     }
 }
 
-// Обработчик добавления видео
 addVideoBtn?.addEventListener("click", async () => {
     const url = prompt("Вставьте ссылку на YouTube видео:\n\nПоддерживаемые форматы:\n• youtube.com/watch?v=...\n• youtu.be/...\n\n⚠️ Shorts не поддерживаются!");
     
@@ -427,24 +410,20 @@ onAuthStateChanged(auth, async (user) => {
         return;
     }
 
-    // Проверяем, совпадает ли UID с сохраненным
     const cachedUID = localStorage.getItem("currentUserUID");
     
     if (cachedUID && cachedUID !== user.uid) {
-        // Пользователь сменился - очищаем кэш предыдущего пользователя
         console.log("Обнаружена смена пользователя, очистка кэша...");
         localStorage.removeItem(PROFILE_CACHE_KEY);
         localStorage.removeItem("userAvatarLetter");
     }
     
-    // Сохраняем текущий UID
     localStorage.setItem("currentUserUID", user.uid);
 
     currentUser = user;
 
     const userDocRef = doc(db, "users", user.uid);
 
-    // Пытаемся взять профиль из localStorage
     const cachedProfile = localStorage.getItem(PROFILE_CACHE_KEY);
 
     if (cachedProfile) {
@@ -459,7 +438,6 @@ onAuthStateChanged(auth, async (user) => {
     }
     
     if (!currentUserData) {
-        // Если кэша нет — читаем Firestore
         const userSnap = await getDoc(userDocRef);
 
         if (!userSnap.exists()) {
@@ -480,26 +458,17 @@ onAuthStateChanged(auth, async (user) => {
             currentUserData = userSnap.data();
         }
 
-        // Сохраняем в кэш
         localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(currentUserData));
         console.log("Профиль загружен из Firestore и закэширован");
     }
 
-    // Навигация
     const letter = currentUserData.name.charAt(0).toUpperCase();
     avatarLetter.textContent = letter;
     localStorage.setItem("userAvatarLetter", letter);
 
-    // Профиль
     renderProfile(currentUserData);
-    
-    // 📝 Загружаем статус
     renderStatus(currentUserData.status || "");
-    
-    // 🎬 Загружаем YouTube видео
     loadYoutubeVideo(currentUserData.youtubeVideoId);
-
-    // Посты
     loadUserPosts();
 });
 
@@ -521,18 +490,18 @@ logoutBtn?.addEventListener("click", async (e) => {
 function renderProfile(userData) {
     profileName.textContent = userData.name;
 
-const hasBio = userData.bio && 
-               userData.bio.trim() !== "" && 
-               userData.bio !== "Расскажите о себе..." &&
-               userData.bio !== "Расскажите о себе…";
+    const hasBio = userData.bio && 
+                   userData.bio.trim() !== "" && 
+                   userData.bio !== "Расскажите о себе..." &&
+                   userData.bio !== "Расскажите о себе…";
 
-if (hasBio) {
-    profileBio.textContent = userData.bio;
-    profileBio.classList.remove("empty");
-} else {
-    profileBio.textContent = "Расскажите о себе…";
-    profileBio.classList.add("empty");
-}
+    if (hasBio) {
+        profileBio.textContent = userData.bio;
+        profileBio.classList.remove("empty");
+    } else {
+        profileBio.textContent = "Расскажите о себе…";
+        profileBio.classList.add("empty");
+    }
 
     if (userData.avatarUrl) {
         avatarLetterProfile.style.display = "none";
@@ -594,14 +563,14 @@ avatarUpload.addEventListener("change", async (e) => {
 editProfileBtn.addEventListener("click", () => {
     if (!currentUserData) return;
 
-editName.value = currentUserData.name || "";
+    editName.value = currentUserData.name || "";
 
-const hasBio = currentUserData.bio && 
-               currentUserData.bio.trim() !== "" && 
-               currentUserData.bio !== "Расскажите о себе..." &&
-               currentUserData.bio !== "Расскажите о себе…";
+    const hasBio = currentUserData.bio && 
+                   currentUserData.bio.trim() !== "" && 
+                   currentUserData.bio !== "Расскажите о себе..." &&
+                   currentUserData.bio !== "Расскажите о себе…";
 
-editBio.value = hasBio ? currentUserData.bio : "";
+    editBio.value = hasBio ? currentUserData.bio : "";
 
     editModal.classList.remove("hidden");
 });
@@ -613,8 +582,6 @@ closeEditModal.addEventListener("click", () => {
 cancelEditBtn.addEventListener("click", () => {
     editModal.classList.add("hidden");
 });
-
-const bioTextarea = document.getElementById("editBio");
 
 editBio.addEventListener("input", () => {
   editBio.value = normalizeBio(editBio.value);
@@ -645,12 +612,12 @@ saveProfileBtn.addEventListener("click", async () => {
 
         profileName.textContent = name;
         if (bio) {
-        profileBio.textContent = bio;
-        profileBio.classList.remove("empty");
+            profileBio.textContent = bio;
+            profileBio.classList.remove("empty");
         } else {
-       profileBio.textContent = "Расскажите о себе…";
-       profileBio.classList.add("empty");
-       }
+            profileBio.textContent = "Расскажите о себе…";
+            profileBio.classList.add("empty");
+        }
         
         const newLetter = name.charAt(0).toUpperCase();
         avatarLetterProfile.textContent = newLetter;
@@ -726,17 +693,19 @@ publishPostBtn.addEventListener("click", async () => {
             photoUrl = await getDownloadURL(photoRef);
         }
 
-        const postsRef = dbRef(rtdb, 'posts');
-        const newPostRef = push(postsRef);
-        
-        await set(newPostRef, {
-            userId: currentUser.uid,
-            userName: currentUserData.name,
-            userAvatar: currentUserData.avatarUrl || null,
-            userEmail: currentUser.email,
-            text: text || "",
-            photoUrl: photoUrl,
-            createdAt: Date.now()
+        // Генерируем pushId
+        const newPostId = push(dbRef(rtdb, 'posts')).key;
+
+        // Атомарный update: пост без uid + owner в отдельную ветку
+        await update(dbRef(rtdb), {
+            [`posts/${newPostId}`]: {
+                userName: currentUserData.name,
+                userAvatar: currentUserData.avatarUrl || null,
+                text: text || "",
+                photoUrl: photoUrl,
+                createdAt: Date.now()
+            },
+            [`postOwners/${newPostId}`]: currentUser.uid
         });
 
         postInput.value = "";
@@ -745,7 +714,7 @@ publishPostBtn.addEventListener("click", async () => {
         attachPhotoBtn.textContent = "📷 Фото";
         attachPhotoBtn.style.color = "";
 
-        console.log("Запись опубликована в Realtime Database!");
+        console.log("Запись опубликована!");
     } catch (error) {
         console.error("Ошибка публикации записи:", error);
         alert("Не удалось опубликовать запись");
@@ -755,7 +724,9 @@ publishPostBtn.addEventListener("click", async () => {
     }
 });
 
-// Загрузка записей пользователя
+// ============================================
+// ЗАГРУЗКА ПОСТОВ — читаем все посты, фильтруем свои через postOwners
+// ============================================
 function loadUserPosts() {
     if (!currentUser) return;
 
@@ -764,60 +735,78 @@ function loadUserPosts() {
     }
 
     const postsRef = dbRef(rtdb, 'posts');
-    const userPostsQuery = query(
-        postsRef,
-        orderByChild('userId'),
-        equalTo(currentUser.uid)
-    );
 
-    postsListener = onValue(userPostsQuery, (snapshot) => {
+    postsListener = onValue(postsRef, async (snapshot) => {
         postsList.innerHTML = "";
 
         if (!snapshot.exists()) {
-            postsList.innerHTML = `
-                <div class="posts-empty">
-                    <div class="posts-empty-icon">📝</div>
-                    <div class="posts-empty-text">
-                        Здесь пока нет записей. Создайте первую!
-                    </div>
-                </div>
-            `;
-
-            if (postsCount) {
-                postsCount.textContent = "0";
-            }
+            showEmptyPosts();
             return;
         }
 
-        const posts = [];
+        // Собираем все посты
+        const allPosts = [];
         snapshot.forEach(childSnapshot => {
-            posts.push({
+            allPosts.push({
                 id: childSnapshot.key,
                 data: childSnapshot.val()
             });
         });
 
-        posts.sort((a, b) => b.data.createdAt - a.data.createdAt);
+        // Для каждого поста проверяем, наш ли он через postOwners
+        const myPosts = [];
+        const ownerChecks = allPosts.map(async (post) => {
+            try {
+                const ownerSnap = await get(dbRef(rtdb, `postOwners/${post.id}`));
 
-        posts.forEach(post => {
+                if (ownerSnap.exists() && ownerSnap.val() === currentUser.uid) {
+                    myPosts.push(post);
+                }
+            } catch (e) {
+            }
+        });
+
+        await Promise.all(ownerChecks);
+
+        if (myPosts.length === 0) {
+            showEmptyPosts();
+            return;
+        }
+
+        myPosts.sort((a, b) => b.data.createdAt - a.data.createdAt);
+
+        myPosts.forEach(post => {
             addPostToUI(post.id, post.data);
         });
 
         if (postsCount) {
-            postsCount.textContent = posts.length.toString();
+            postsCount.textContent = myPosts.length.toString();
         }
     }, (error) => {
         console.error("Ошибка загрузки постов:", error);
     });
 }
 
-// Добавление записи в UI
+function showEmptyPosts() {
+    postsList.innerHTML = `
+        <div class="posts-empty">
+            <div class="posts-empty-icon">📝</div>
+            <div class="posts-empty-text">
+                Здесь пока нет записей. Создайте первую!
+            </div>
+        </div>
+    `;
+    if (postsCount) {
+        postsCount.textContent = "0";
+    }
+}
+
 function addPostToUI(postId, post) {
     const postItem = document.createElement("div");
     postItem.className = "post-item";
     postItem.dataset.postId = postId;
 
-    const userName = post.userName || post.userEmail.split('@')[0];
+    const userName = post.userName || 'Пользователь';
     const userAvatar = post.userAvatar;
     const letter = userName.charAt(0).toUpperCase();
     
@@ -870,9 +859,11 @@ function addPostToUI(postId, post) {
     deleteBtn.addEventListener("click", async () => {
         if (confirm("Удалить эту запись?")) {
             try {
-                const postRef = dbRef(rtdb, `posts/${postId}`);
-                await remove(postRef);
-                console.log("Запись удалена из Realtime Database");
+                await update(dbRef(rtdb), {
+                    [`posts/${postId}`]: null,
+                    [`postOwners/${postId}`]: null
+                });
+                console.log("Запись удалена!");
             } catch (error) {
                 console.error("Ошибка удаления записи:", error);
                 alert("Не удалось удалить запись");
@@ -889,7 +880,6 @@ function addPostToUI(postId, post) {
     }
 }
 
-// Закрытие модалки с фото
 closePhotoModal.addEventListener("click", () => {
     photoModal.classList.add("hidden");
 });
