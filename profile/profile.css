@@ -185,15 +185,100 @@ body.profile-page .site-wrapper {
   padding: 18px 20px;
 }
 
+.info-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.edit-info-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.edit-info-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.info-content {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.info-empty {
+  text-align: center;
+  padding: 20px;
+  color: var(--text-secondary);
+  opacity: 0.6;
+  font-style: italic;
+  font-size: 14px;
+}
+
+.info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.info-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+}
+
+.info-value {
+  color: var(--text-main);
+  font-size: 14px;
+  word-break: break-word;
+}
+
+.info-link {
+  color: var(--accent);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s;
+}
+
+.info-link:hover {
+  filter: brightness(1.2);
+  text-decoration: underline;
+}
+
+.info-link::before {
+  content: "🔗";
+  font-size: 14px;
+}
+
+.info-links {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
 .info-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
   font-size: 14px;
-}
-
-.info-label {
-  color: var(--text-secondary);
 }
 
 .memberSince {
@@ -358,7 +443,7 @@ body.profile-page .site-wrapper {
 
 .posts-counter {
   font-size: 0.9rem;
-  color: #888; /* тот же серый, что и «Регистрация: …» */
+  color: #888;
   white-space: nowrap;
 }
 
@@ -519,6 +604,14 @@ body.profile-page .site-wrapper {
   overflow-y: auto;
 }
 
+.modal-info-edit {
+  max-width: 600px;
+}
+
+.modal-rename {
+  max-width: 400px;
+}
+
 .modal-header {
   padding: 20px;
   border-bottom: 1px solid var(--border);
@@ -577,7 +670,8 @@ body.profile-page .site-wrapper {
 }
 
 .form-input,
-.form-textarea {
+.form-textarea,
+.form-select {
   width: 100%;
   padding: 12px 14px;
   border-radius: 8px;
@@ -591,13 +685,18 @@ body.profile-page .site-wrapper {
 }
 
 .form-input:focus,
-.form-textarea:focus {
+.form-textarea:focus,
+.form-select:focus {
   border-color: var(--accent);
 }
 
 .form-textarea {
   resize: none;
   min-height: 100px;
+}
+
+.form-select {
+  cursor: pointer;
 }
 
 .modal-footer {
@@ -638,6 +737,123 @@ body.profile-page .site-wrapper {
 .modal-btn.save:hover {
   filter: brightness(1.1);
   transform: translateY(-1px);
+}
+
+/* ======== ССЫЛКИ В МОДАЛЬНОМ ОКНЕ ======== */
+.links-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.link-item {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.link-item input {
+  padding: 10px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: #0b0b0b;
+  color: var(--text-main);
+  font-size: 14px;
+  outline: none;
+  font-family: inherit;
+}
+
+.link-item input:focus {
+  border-color: var(--accent);
+}
+
+.remove-link-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.remove-link-btn:hover {
+  background: rgba(255, 59, 48, 0.1);
+  border-color: #ff3b30;
+  color: #ff3b30;
+}
+
+.add-link-btn {
+  padding: 10px 16px;
+  background: transparent;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.add-link-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.add-link-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.add-link-btn:disabled:hover {
+  background: transparent;
+  color: var(--text-secondary);
+  border-color: var(--border);
+}
+
+/* ======== ПЕРЕИМЕНОВАНИЕ ПОЛЯ ======== */
+.nickname-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.rename-field-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.rename-field-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+/* ======== СЧЁТЧИК СИМВОЛОВ ======== */
+.char-counter {
+  margin-top: 6px;
+  text-align: right;
+  font-size: 12px;
+  color: var(--text-secondary);
 }
 
 /* Модальное окно с фото */
@@ -733,11 +949,20 @@ body.profile-page .site-wrapper {
   .posts-list {
     max-height: 400px;
   }
-}
-  .form-textarea,
-  .form-input {
-    font-size: 16px !important;
+  
+  .link-item {
+    grid-template-columns: 1fr;
   }
+  
+  .link-item input {
+    width: 100%;
+  }
+}
+
+.form-textarea,
+.form-input {
+  font-size: 16px !important;
+}
 
 @media (max-width: 480px) {
   .profile-avatar {
