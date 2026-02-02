@@ -178,7 +178,48 @@ function renderInfo(infoData) {
     
     let html = '';
     
-    // Ссылки
+    // 1) Местоположение
+    if (hasCountry) {
+        html += `
+            <div class="info-item">
+                <div class="info-label">Местоположение</div>
+                <div class="info-value">${escapeHtml(infoData.country)}</div>
+            </div>
+        `;
+    }
+    
+    // 2) Прозвище (с кастомным названием)
+    if (hasNickname) {
+        const nicknameLabel = infoData.nicknameLabel || "Прозвище";
+        html += `
+            <div class="info-item">
+                <div class="info-label">${escapeHtml(nicknameLabel)}</div>
+                <div class="info-value">${escapeHtml(infoData.nickname)}</div>
+            </div>
+        `;
+    }
+    
+    // 3) Электронная почта
+    if (hasEmail) {
+        html += `
+            <div class="info-item">
+                <div class="info-label">Связь</div>
+                <div class="info-value">${escapeHtml(infoData.email)}</div>
+            </div>
+        `;
+    }
+    
+    // 4) Род деятельности
+    if (hasOccupation) {
+        html += `
+            <div class="info-item">
+                <div class="info-label">Род деятельности</div>
+                <div class="info-value">${escapeHtml(infoData.occupation)}</div>
+            </div>
+        `;
+    }
+    
+    // 5) Ссылки
     if (hasLinks) {
         html += `
             <div class="info-item">
@@ -190,47 +231,6 @@ function renderInfo(infoData) {
                         </a>
                     `).join('')}
                 </div>
-            </div>
-        `;
-    }
-    
-    // Электронная почта
-    if (hasEmail) {
-        html += `
-            <div class="info-item">
-                <div class="info-label">Связь</div>
-                <div class="info-value">${escapeHtml(infoData.email)}</div>
-            </div>
-        `;
-    }
-    
-    // Местоположение
-    if (hasCountry) {
-        html += `
-            <div class="info-item">
-                <div class="info-label">Местоположение</div>
-                <div class="info-value">${escapeHtml(infoData.country)}</div>
-            </div>
-        `;
-    }
-    
-    // Прозвище (с кастомным названием)
-    if (hasNickname) {
-        const nicknameLabel = infoData.nicknameLabel || "Прозвище";
-        html += `
-            <div class="info-item">
-                <div class="info-label">${escapeHtml(nicknameLabel)}</div>
-                <div class="info-value">${escapeHtml(infoData.nickname)}</div>
-            </div>
-        `;
-    }
-    
-    // Род деятельности
-    if (hasOccupation) {
-        html += `
-            <div class="info-item">
-                <div class="info-label">Род деятельности</div>
-                <div class="info-value">${escapeHtml(infoData.occupation)}</div>
             </div>
         `;
     }
@@ -1248,9 +1248,6 @@ photoModal.addEventListener("click", (e) => {
     }
 });
 
-// ========================
-// УТИЛИТЫ
-// ========================
 function pluralize(num, one, few, many) {
     const mod10 = num % 10;
     const mod100 = num % 100;
