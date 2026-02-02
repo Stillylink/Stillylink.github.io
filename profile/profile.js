@@ -94,6 +94,27 @@ const addVideoBtn = document.getElementById("addVideoBtn");
 // Статус элементы
 const statusText = document.querySelector(".status-text");
 
+// Информация элементы
+const editInfoBtn = document.getElementById("editInfoBtn");
+const infoContent = document.getElementById("infoContent");
+const editInfoModal = document.getElementById("editInfoModal");
+const closeInfoModal = document.getElementById("closeInfoModal");
+const cancelInfoBtn = document.getElementById("cancelInfoBtn");
+const saveInfoBtn = document.getElementById("saveInfoBtn");
+const linksContainer = document.getElementById("linksContainer");
+const addLinkBtn = document.getElementById("addLinkBtn");
+const editEmail = document.getElementById("editEmail");
+const editCountry = document.getElementById("editCountry");
+const editNickname = document.getElementById("editNickname");
+const editOccupation = document.getElementById("editOccupation");
+const occupationCounter = document.getElementById("occupationCounter");
+const renameNicknameBtn = document.getElementById("renameNicknameBtn");
+const renameFieldModal = document.getElementById("renameFieldModal");
+const closeRenameModal = document.getElementById("closeRenameModal");
+const cancelRenameBtn = document.getElementById("cancelRenameBtn");
+const saveRenameBtn = document.getElementById("saveRenameBtn");
+const newFieldName = document.getElementById("newFieldName");
+
 let currentUser = null;
 let currentUserData = null; 
 let currentPhotoFile = null;
@@ -134,7 +155,309 @@ document.addEventListener("click", e => {
     userMenu.classList.remove("open");
 });
 
+// ========================
+// 📝 ИНФОРМАЦИЯ ФУНКЦИИ
+// ========================
+
+// Рендер блока информации
+function renderInfo(infoData) {
+    if (!infoContent) return;
+    
+    const hasLinks = infoData?.links && infoData.links.length > 0;
+    const hasEmail = infoData?.email && infoData.email.trim() !== "";
+    const hasCountry = infoData?.country && infoData.country.trim() !== "";
+    const hasNickname = infoData?.nickname && infoData.nickname.trim() !== "";
+    const hasOccupation = infoData?.occupation && infoData.occupation.trim() !== "";
+    
+    const hasAnyInfo = hasLinks || hasEmail || hasCountry || hasNickname || hasOccupation;
+    
+    if (!hasAnyInfo) {
+        infoContent.innerHTML = '<div class="info-empty">Информация отсутствует</div>';
+        return;
+    }
+    
+    let html = '';
+    
+    // Ссылки
+    if (hasLinks) {
+        html += `
+            <div class="info-item">
+                <div class="info-label">Ссылки</div>
+                <div class="info-links">
+                    ${infoData.links.map(link => `
+                        <a href="${escapeHtml(link.url)}" target="_blank" rel="noopener noreferrer" class="info-link">
+                            ${escapeHtml(link.name)}
+                        </a>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    }
+    
+    // Электронная почта
+    if (hasEmail) {
+        html += `
+            <div class="info-item">
+                <div class="info-label">Связь</div>
+                <div class="info-value">${escapeHtml(infoData.email)}</div>
+            </div>
+        `;
+    }
+    
+    // Местоположение
+    if (hasCountry) {
+        html += `
+            <div class="info-item">
+                <div class="info-label">Местоположение</div>
+                <div class="info-value">${escapeHtml(infoData.country)}</div>
+            </div>
+        `;
+    }
+    
+    // Прозвище (с кастомным названием)
+    if (hasNickname) {
+        const nicknameLabel = infoData.nicknameLabel || "Прозвище";
+        html += `
+            <div class="info-item">
+                <div class="info-label">${escapeHtml(nicknameLabel)}</div>
+                <div class="info-value">${escapeHtml(infoData.nickname)}</div>
+            </div>
+        `;
+    }
+    
+    // Род деятельности
+    if (hasOccupation) {
+        html += `
+            <div class="info-item">
+                <div class="info-label">Род деятельности</div>
+                <div class="info-value">${escapeHtml(infoData.occupation)}</div>
+            </div>
+        `;
+    }
+    
+    infoContent.innerHTML = html;
+}
+
+// Открыть модальное окно редактирования информации
+editInfoBtn?.addEventListener('click', () => {
+    if (!currentUserData) return;
+    
+    const infoData = currentUserData.info || {};
+    
+    // Заполняем ссылки
+    renderLinkInputs(infoData.links || []);
+    
+    // Заполняем остальные поля
+    editEmail.value = infoData.email || '';
+    editCountry.value = infoData.country || '';
+    editNickname.value = infoData.nickname || '';
+    editOccupation.value = infoData.occupation || '';
+    
+    // Обновляем label прозвища
+    updateNicknameLabel(infoData.nicknameLabel || 'Прозвище');
+    
+    // Обновляем счётчик символов
+    updateOccupationCounter();
+    
+    editInfoModal.classList.remove('hidden');
+});
+
+// Рендер полей ввода ссылок
+function renderLinkInputs(links = []) {
+    linksContainer.innerHTML = '';
+    
+    links.forEach((link, index) => {
+        addLinkInput(link.name, link.url);
+    });
+    
+    updateAddLinkButton();
+}
+
+// Добавить поле ввода ссылки
+function addLinkInput(name = '', url = '') {
+    const linkItem = document.createElement('div');
+    linkItem.className = 'link-item';
+    
+    linkItem.innerHTML = `
+        <input type="text" placeholder="Название" value="${escapeHtml(name)}" class="link-name" maxlength="50">
+        <input type="url" placeholder="https://example.com" value="${escapeHtml(url)}" class="link-url">
+        <button type="button" class="remove-link-btn">×</button>
+    `;
+    
+    const removeBtn = linkItem.querySelector('.remove-link-btn');
+    removeBtn.addEventListener('click', () => {
+        linkItem.remove();
+        updateAddLinkButton();
+    });
+    
+    linksContainer.appendChild(linkItem);
+}
+
+// Кнопка добавления ссылки
+addLinkBtn?.addEventListener('click', () => {
+    const currentLinks = linksContainer.querySelectorAll('.link-item');
+    if (currentLinks.length >= 3) return;
+    
+    addLinkInput();
+    updateAddLinkButton();
+});
+
+// Обновление состояния кнопки "Добавить ссылку"
+function updateAddLinkButton() {
+    const currentLinks = linksContainer.querySelectorAll('.link-item');
+    if (currentLinks.length >= 3) {
+        addLinkBtn.disabled = true;
+        addLinkBtn.textContent = '+ Максимум 3 ссылки';
+    } else {
+        addLinkBtn.disabled = false;
+        addLinkBtn.textContent = '+ Добавить ссылку';
+    }
+}
+
+// Счётчик символов для рода деятельности
+editOccupation?.addEventListener('input', updateOccupationCounter);
+
+function updateOccupationCounter() {
+    if (!editOccupation || !occupationCounter) return;
+    
+    const length = editOccupation.value.length;
+    occupationCounter.textContent = length;
+    
+    if (length > 200) {
+        occupationCounter.style.color = '#ff3b30';
+    } else {
+        occupationCounter.style.color = 'var(--text-secondary)';
+    }
+}
+
+// Сохранение информации
+saveInfoBtn?.addEventListener('click', async () => {
+    if (!currentUser) return;
+    
+    // Собираем ссылки
+    const linkItems = linksContainer.querySelectorAll('.link-item');
+    const links = [];
+    
+    linkItems.forEach(item => {
+        const nameInput = item.querySelector('.link-name');
+        const urlInput = item.querySelector('.link-url');
+        
+        const name = nameInput.value.trim();
+        const url = urlInput.value.trim();
+        
+        if (name && url) {
+            // Проверяем валидность URL
+            try {
+                new URL(url);
+                links.push({ name, url });
+            } catch (e) {
+                // Игнорируем невалидные URL
+            }
+        }
+    });
+    
+    // Собираем остальные данные
+    const infoData = {
+        links: links,
+        email: editEmail.value.trim(),
+        country: editCountry.value,
+        nickname: editNickname.value.trim(),
+        nicknameLabel: currentUserData.info?.nicknameLabel || 'Прозвище',
+        occupation: editOccupation.value.trim().slice(0, 200) // Ограничение 200 символов
+    };
+    
+    try {
+        const userDocRef = doc(db, "users", currentUser.uid);
+        await setDoc(userDocRef, {
+            info: infoData
+        }, { merge: true });
+        
+        currentUserData.info = infoData;
+        localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(currentUserData));
+        
+        renderInfo(infoData);
+        editInfoModal.classList.add('hidden');
+        
+        console.log("Информация сохранена!");
+    } catch (error) {
+        console.error("Ошибка сохранения информации:", error);
+        alert("Не удалось сохранить информацию");
+    }
+});
+
+// Закрытие модального окна информации
+closeInfoModal?.addEventListener('click', () => {
+    editInfoModal.classList.add('hidden');
+});
+
+cancelInfoBtn?.addEventListener('click', () => {
+    editInfoModal.classList.add('hidden');
+});
+
+editInfoModal?.addEventListener('click', (e) => {
+    if (e.target === editInfoModal) {
+        editInfoModal.classList.add('hidden');
+    }
+});
+
+// ========================
+// ПЕРЕИМЕНОВАНИЕ ПОЛЯ "ПРОЗВИЩЕ"
+// ========================
+
+function updateNicknameLabel(label) {
+    const nicknameLabel = document.querySelector('label[for="editNickname"]');
+    if (nicknameLabel) {
+        nicknameLabel.textContent = label;
+    }
+}
+
+renameNicknameBtn?.addEventListener('click', () => {
+    const currentLabel = currentUserData.info?.nicknameLabel || 'Прозвище';
+    newFieldName.value = currentLabel;
+    renameFieldModal.classList.remove('hidden');
+    newFieldName.focus();
+});
+
+saveRenameBtn?.addEventListener('click', () => {
+    const label = newFieldName.value.trim();
+    
+    if (!label) {
+        alert('Введите название поля');
+        return;
+    }
+    
+    if (label.length > 30) {
+        alert('Название не может быть длиннее 30 символов');
+        return;
+    }
+    
+    if (!currentUserData.info) {
+        currentUserData.info = {};
+    }
+    
+    currentUserData.info.nicknameLabel = label;
+    updateNicknameLabel(label);
+    
+    renameFieldModal.classList.add('hidden');
+});
+
+closeRenameModal?.addEventListener('click', () => {
+    renameFieldModal.classList.add('hidden');
+});
+
+cancelRenameBtn?.addEventListener('click', () => {
+    renameFieldModal.classList.add('hidden');
+});
+
+renameFieldModal?.addEventListener('click', (e) => {
+    if (e.target === renameFieldModal) {
+        renameFieldModal.classList.add('hidden');
+    }
+});
+
+// ========================
 // 📝 СТАТУС ФУНКЦИИ
+// ========================
 function renderStatus(status) {
     if (!statusText) return;
     
@@ -323,7 +646,9 @@ async function saveStatus(status) {
     }
 }
 
+// ========================
 // 🎬 YOUTUBE ФУНКЦИИ
+// ========================
 function extractVideoId(url) {
     if (!url) return null;
     
@@ -403,7 +728,9 @@ addVideoBtn?.addEventListener("click", async () => {
     }
 });
 
-// Проверка авторизации
+// ========================
+// ПРОВЕРКА АВТОРИЗАЦИИ
+// ========================
 onAuthStateChanged(auth, async (user) => {
     if (!user || !user.email) {
         window.location.href = "/login/";
@@ -449,13 +776,33 @@ onAuthStateChanged(auth, async (user) => {
                 bio: "",
                 avatarUrl: null,
                 youtubeVideoId: null,
-                status: ""
+                status: "",
+                info: {
+                    links: [],
+                    email: "",
+                    country: "",
+                    nickname: "",
+                    nicknameLabel: "Прозвище",
+                    occupation: ""
+                }
             };
 
             await setDoc(userDocRef, newProfile);
             currentUserData = newProfile;
         } else {
             currentUserData = userSnap.data();
+            
+            // Инициализация info, если его нет
+            if (!currentUserData.info) {
+                currentUserData.info = {
+                    links: [],
+                    email: "",
+                    country: "",
+                    nickname: "",
+                    nicknameLabel: "Прозвище",
+                    occupation: ""
+                };
+            }
         }
 
         localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(currentUserData));
@@ -468,11 +815,14 @@ onAuthStateChanged(auth, async (user) => {
 
     renderProfile(currentUserData);
     renderStatus(currentUserData.status || "");
+    renderInfo(currentUserData.info || {});
     loadYoutubeVideo(currentUserData.youtubeVideoId);
     loadUserPosts();
 });
 
-// Выход
+// ========================
+// ВЫХОД
+// ========================
 logoutBtn?.addEventListener("click", async (e) => {
     e.preventDefault();
     
@@ -486,7 +836,9 @@ logoutBtn?.addEventListener("click", async (e) => {
     window.location.href = "/login/";
 });
 
-// Загрузка профиля пользователя
+// ========================
+// ЗАГРУЗКА ПРОФИЛЯ ПОЛЬЗОВАТЕЛЯ
+// ========================
 function renderProfile(userData) {
     profileName.textContent = userData.name;
 
@@ -522,7 +874,9 @@ function renderProfile(userData) {
     }
 }
 
-// Загрузка аватарки
+// ========================
+// ЗАГРУЗКА АВАТАРКИ
+// ========================
 avatarUpload.addEventListener("change", async (e) => {
     const file = e.target.files?.[0];
     if (!file || !currentUser) return;
@@ -559,7 +913,9 @@ avatarUpload.addEventListener("change", async (e) => {
     avatarUpload.value = "";
 });
 
-// Редактирование профиля
+// ========================
+// РЕДАКТИРОВАНИЕ ПРОФИЛЯ
+// ========================
 editProfileBtn.addEventListener("click", () => {
     if (!currentUserData) return;
 
@@ -651,7 +1007,9 @@ function normalizeBio(text) {
   return text;
 }
 
-// Публикация записи
+// ========================
+// ПУБЛИКАЦИЯ ЗАПИСИ
+// ========================
 attachPhotoBtn.addEventListener("click", () => {
     postPhotoInput.click();
 });
@@ -724,9 +1082,9 @@ publishPostBtn.addEventListener("click", async () => {
     }
 });
 
-// ============================================
-// ЗАГРУЗКА ПОСТОВ — читаем все посты, фильтруем свои через postOwners
-// ============================================
+// ========================
+// ЗАГРУЗКА ПОСТОВ
+// ========================
 function loadUserPosts() {
     if (!currentUser) return;
 
@@ -890,7 +1248,9 @@ photoModal.addEventListener("click", (e) => {
     }
 });
 
-// Утилиты
+// ========================
+// УТИЛИТЫ
+// ========================
 function pluralize(num, one, few, many) {
     const mod10 = num % 10;
     const mod100 = num % 100;
