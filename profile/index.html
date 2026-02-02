@@ -176,21 +176,6 @@
         </div>
         <div class="modal-body">
           
-          <!-- Ссылки -->
-          <div class="form-group">
-            <label>Ссылки (максимум 3)</label>
-            <div class="links-container" id="linksContainer">
-              <!-- Динамически добавляемые поля ссылок -->
-            </div>
-            <button class="add-link-btn" id="addLinkBtn">+ Добавить ссылку</button>
-          </div>
-
-          <!-- Электронная почта -->
-          <div class="form-group">
-            <label for="editEmail">Электронная почта</label>
-            <input type="email" id="editEmail" class="form-input" placeholder="example@email.com">
-          </div>
-
           <!-- Местоположение -->
           <div class="form-group">
             <label for="editCountry">Местоположение (страна)</label>
@@ -223,6 +208,12 @@
             <input type="text" id="editNickname" class="form-input" placeholder="Ваше прозвище" maxlength="50">
           </div>
 
+          <!-- Электронная почта -->
+          <div class="form-group">
+            <label for="editEmail">Электронная почта</label>
+            <input type="email" id="editEmail" class="form-input" placeholder="example@email.com">
+          </div>
+
           <!-- Род деятельности -->
           <div class="form-group">
             <label for="editOccupation">Род деятельности</label>
@@ -230,6 +221,15 @@
             <div class="char-counter">
               <span id="occupationCounter">0</span>/200
             </div>
+          </div>
+
+          <!-- Ссылки -->
+          <div class="form-group">
+            <label>Ссылки (максимум 3)</label>
+            <div class="links-container" id="linksContainer">
+              <!-- Динамически добавляемые поля ссылок -->
+            </div>
+            <button class="add-link-btn" id="addLinkBtn">+ Добавить ссылку</button>
           </div>
 
         </div>
