@@ -462,27 +462,7 @@ body.profile-page .site-wrapper {
 
 /* Список записей */
 .posts-list {
-  max-height: 600px;
-  overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255,255,255,.25) transparent;
-}
-
-.posts-list::-webkit-scrollbar {
-  width: 6px;
-}
-
-.posts-list::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.posts-list::-webkit-scrollbar-thumb {
-  background: rgba(255,255,255,.18);
-  border-radius: 6px;
-}
-
-.posts-list::-webkit-scrollbar-thumb:hover {
-  background: rgba(255,255,255,.32);
+  /* Скролл убран, записи идут вниз по странице */
 }
 
 .post-item {
@@ -957,10 +937,6 @@ body.profile-page .site-wrapper {
 
   .post-btn {
     width: 100%;
-  }
-
-  .posts-list {
-    max-height: 400px;
   }
   
   .link-item {
