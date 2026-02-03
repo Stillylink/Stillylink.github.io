@@ -155,11 +155,34 @@ body.profile-page .site-wrapper {
   align-items: start;
 }
 
-/* ======== левый БЛОК (слева, увеличен) ======== */
+/* ======== левый БЛОК (слева, увеличен) + STICKY ======== */
 .left-column {
+  position: sticky;
+  top: 24px;
   display: flex;
   flex-direction: column;
   gap: 24px;
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,.15) transparent;
+}
+
+.left-column::-webkit-scrollbar {
+  width: 5px;
+}
+
+.left-column::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.left-column::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,.15);
+  border-radius: 6px;
+}
+
+.left-column::-webkit-scrollbar-thumb:hover {
+  background: rgba(255,255,255,.25);
 }
 
 /* ======== Цитата ======== */
@@ -888,6 +911,12 @@ body.profile-page .site-wrapper {
   .content-grid {
     grid-template-columns: 1fr;
     gap: 20px;
+  }
+  
+  .left-column {
+    position: static;
+    max-height: none;
+    overflow-y: visible;
   }
 }
 
