@@ -152,36 +152,14 @@ body.profile-page .site-wrapper {
   display: grid;
   grid-template-columns: 320px 1fr;
   gap: 24px;
-  align-items: start; /* КРИТИЧЕСКИ ВАЖНО */
+  align-items: start;
 }
 
 /* ======== левый БЛОК (слева, увеличен) ======== */
 .left-column {
-    display: flex;
-    flex-direction: column;
-    gap: 24px;
-    will-change: position, top;
-}
-
-/* Когда прилипает к верху (при скролле вверх) */
-.left-column {
   display: flex;
   flex-direction: column;
   gap: 24px;
-  position: relative; /* Начальное состояние */
-  will-change: transform, top;
-}
-
-/* Когда прилипает к низу (при скролле вниз) */
-.left-column.sticky-bottom {
-    position: sticky;
-    top: auto;
-    bottom: 24px;
-}
-
-/* Вспомогательный класс, если колонка стоит на месте между переключениями */
-.left-column.is-static {
-    position: relative;
 }
 
 /* ======== Цитата ======== */
