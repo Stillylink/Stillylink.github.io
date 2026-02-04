@@ -152,7 +152,7 @@ body.profile-page .site-wrapper {
   display: grid;
   grid-template-columns: 320px 1fr;
   gap: 24px;
-  align-items: start;
+  align-items: start; 
 }
 
 /* ======== левый БЛОК (слева, увеличен) ======== */
@@ -160,6 +160,8 @@ body.profile-page .site-wrapper {
   display: flex;
   flex-direction: column;
   gap: 24px;
+  position: sticky;
+  top: calc(100vh - 100% - 24px); 
 }
 
 /* ======== Цитата ======== */
