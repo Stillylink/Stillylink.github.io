@@ -160,6 +160,29 @@ body.profile-page .site-wrapper {
   display: flex;
   flex-direction: column;
   gap: 24px;
+  position: relative;
+  min-height: 100px;
+}
+
+/* ======== УМНАЯ БОКОВАЯ ПАНЕЛЬ ======== */
+.sidebar-sticky-wrapper {
+  position: relative;
+  width: 100%;
+  transition: none;
+  will-change: transform;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.sidebar-sticky-wrapper[style*="position: fixed"] {
+  z-index: 100;
+}
+
+.sidebar-sticky-wrapper.scrolling {
+  transition: none;
 }
 
 /* ======== Цитата ======== */
@@ -888,6 +911,15 @@ body.profile-page .site-wrapper {
   .content-grid {
     grid-template-columns: 1fr;
     gap: 20px;
+  }
+  
+  /* Отключаем умную панель на планшетах и мобильных */
+  .sidebar-sticky-wrapper {
+    position: static !important;
+    top: auto !important;
+    bottom: auto !important;
+    width: auto !important;
+    left: auto !important;
   }
 }
 
