@@ -156,22 +156,31 @@ body.profile-page .site-wrapper {
 }
 
 /* ======== левый БЛОК (слева, увеличен) ======== */
+/* Базовое состояние колонки */
 .left-column {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    will-change: position, top;
 }
 
-/* Состояние когда колонка "прилипла" к верху экрана */
+/* Когда прилипает к верху (при скролле вверх) */
 .left-column.sticky-top {
-  position: sticky;
-  top: 24px;
+    position: sticky;
+    top: 24px;
+    bottom: auto;
 }
 
-/* Состояние когда колонка "прилипла" к низу экрана */
+/* Когда прилипает к низу (при скролле вниз) */
 .left-column.sticky-bottom {
-  position: sticky;
-  bottom: 24px;
+    position: sticky;
+    top: auto;
+    bottom: 24px;
+}
+
+/* Вспомогательный класс, если колонка стоит на месте между переключениями */
+.left-column.is-static {
+    position: relative;
 }
 
 /* ======== Цитата ======== */
