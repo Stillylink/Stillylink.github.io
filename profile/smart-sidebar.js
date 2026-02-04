@@ -135,6 +135,7 @@ class SmartSidebar {
         const navbarHeight = 60;
         const gap = 24;
         const topOffset = navbarHeight + gap;
+        const bottomGap = 24; // Отступ снизу
 
         // Получаем текущие координаты
         const wrapperTop = wrapperRect.top;
@@ -144,15 +145,15 @@ class SmartSidebar {
 
         // СКРОЛЛ ВНИЗ
         if (this.scrollDirection === 'down') {
-            // Если мы в static режиме и низ панели достиг низа экрана
-            if (this.currentPosition === 'static' && wrapperBottom <= viewportHeight) {
+            // Если мы в static режиме и низ панели достиг низа экрана (с учётом отступа)
+            if (this.currentPosition === 'static' && wrapperBottom <= viewportHeight - bottomGap) {
                 // Запоминаем текущий offset и фиксируем низ
                 this.offsetWhenFixed = this.wrapper.getBoundingClientRect().top - containerRect.top;
                 
                 this.setPosition('fixed-bottom', {
                     position: 'fixed',
                     top: 'auto',
-                    bottom: '0',
+                    bottom: `${bottomGap}px`,
                     width: `${this.sidebar.offsetWidth}px`,
                     left: `${this.sidebar.getBoundingClientRect().left}px`
                 });
@@ -169,8 +170,8 @@ class SmartSidebar {
                     left: '0'
                 });
             }
-            // Если зафиксированы по низу и низ контейнера поднялся выше низа экрана
-            else if (this.currentPosition === 'fixed-bottom' && containerBottom <= viewportHeight) {
+            // Если зафиксированы по низу и низ контейнера поднялся выше низа экрана (с учётом отступа)
+            else if (this.currentPosition === 'fixed-bottom' && containerBottom <= viewportHeight - bottomGap) {
                 // Прижимаем к низу контейнера
                 this.setPosition('absolute-bottom', {
                     position: 'absolute',
@@ -198,7 +199,7 @@ class SmartSidebar {
                 });
             }
             // Если зафиксированы по низу, снимаем фиксацию когда низ доходит до низа экрана
-            else if (this.currentPosition === 'fixed-bottom' && wrapperBottom >= viewportHeight) {
+            else if (this.currentPosition === 'fixed-bottom' && wrapperBottom >= viewportHeight - bottomGap) {
                 // Переходим в static с сохранением позиции
                 const currentOffset = this.wrapper.getBoundingClientRect().top - containerRect.top;
                 this.setPosition('static', {
@@ -221,7 +222,7 @@ class SmartSidebar {
                 });
             }
             // Если в absolute-bottom и можем вернуться к скроллу
-            else if (this.currentPosition === 'absolute-bottom' && containerBottom > viewportHeight) {
+            else if (this.currentPosition === 'absolute-bottom' && containerBottom > viewportHeight - bottomGap) {
                 // Возвращаем в static с позицией у низа контейнера
                 this.setPosition('static', {
                     position: 'absolute',
@@ -246,7 +247,7 @@ class SmartSidebar {
         }
 
         // Если панель вышла за нижнюю границу контейнера
-        if ((this.currentPosition === 'fixed-top' || this.currentPosition === 'fixed-bottom') && containerBottom < viewportHeight) {
+        if ((this.currentPosition === 'fixed-top' || this.currentPosition === 'fixed-bottom') && containerBottom < viewportHeight - bottomGap) {
             this.setPosition('absolute-bottom', {
                 position: 'absolute',
                 top: `${containerRect.height - sidebarHeight}px`,
