@@ -58,37 +58,52 @@ class SmartSidebar {
         this.update();
     }
 
-    update() {
-        const currentScroll = window.pageYOffset || document.documentElement.scrollTop;
-        
-        // Определяем направление скролла
-        const previousDirection = this.scrollDirection;
-        if (currentScroll > this.lastScrollTop && currentScroll > 0) {
-            this.scrollDirection = 'down';
-        } else if (currentScroll < this.lastScrollTop) {
-            this.scrollDirection = 'up';
-        }
+update() {
+    const currentScroll = window.pageYOffset || document.documentElement.scrollTop;
+    const viewportHeight = window.innerHeight;
+    const sidebarHeight = this.wrapper.offsetHeight;
+    
+    // 1. Находим правую колонку (стену), чтобы сравнить высоту
+    const rightColumn = this.container.querySelector('.wall-section');
+    const rightColumnHeight = rightColumn ? rightColumn.offsetHeight : 0;
 
-        // Запоминаем текущую позицию wrapper'а при смене направления
-        if (previousDirection !== this.scrollDirection && this.currentPosition === 'static') {
-            this.offsetWhenFixed = this.wrapper.getBoundingClientRect().top - this.container.getBoundingClientRect().top;
-        }
-
-        this.lastScrollTop = currentScroll;
-
-        const viewportHeight = window.innerHeight;
-        const sidebarHeight = this.wrapper.offsetHeight;
-        const containerRect = this.container.getBoundingClientRect();
-        const wrapperRect = this.wrapper.getBoundingClientRect();
-
-        // Если панель помещается в экран
-        if (sidebarHeight <= viewportHeight - 84) { // 60px navbar + 24px gap
-            this.handleShortSidebar(containerRect, wrapperRect, sidebarHeight);
-        } else {
-            // Если панель длиннее экрана
-            this.handleLongSidebar(containerRect, wrapperRect, viewportHeight, sidebarHeight);
-        }
+    // 2. БАГФИКС: Если левая панель длиннее или равна правой, 
+    // нам НЕЛЬЗЯ включать sticky, иначе будет "прыжок" у футера.
+    if (sidebarHeight >= rightColumnHeight) {
+        this.setPosition('static', {
+            position: '',
+            top: '',
+            bottom: '',
+            width: '',
+            left: ''
+        });
+        return; // Просто выходим, ничего не фиксируем
     }
+
+    // --- Дальше идет твой стандартный код определения направления ---
+    const previousDirection = this.scrollDirection;
+    if (currentScroll > this.lastScrollTop && currentScroll > 0) {
+        this.scrollDirection = 'down';
+    } else if (currentScroll < this.lastScrollTop) {
+        this.scrollDirection = 'up';
+    }
+
+    if (previousDirection !== this.scrollDirection && this.currentPosition === 'static') {
+        this.offsetWhenFixed = this.wrapper.getBoundingClientRect().top - this.container.getBoundingClientRect().top;
+    }
+
+    this.lastScrollTop = currentScroll;
+
+    const containerRect = this.container.getBoundingClientRect();
+    const wrapperRect = this.wrapper.getBoundingClientRect();
+
+    // Логика фиксации
+    if (sidebarHeight <= viewportHeight - 84) {
+        this.handleShortSidebar(containerRect, wrapperRect, sidebarHeight);
+    } else {
+        this.handleLongSidebar(containerRect, wrapperRect, viewportHeight, sidebarHeight);
+    }
+}
 
     handleShortSidebar(containerRect, wrapperRect, sidebarHeight) {
         const navbarHeight = 60;
