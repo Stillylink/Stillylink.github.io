@@ -1,67 +1,76 @@
-document.addEventListener('DOMContentLoaded', function() {
-    const leftColumn = document.querySelector('.left-column');
-    if (!leftColumn) return;
+document.addEventListener('DOMContentLoaded', () => {
+    const sidebar = document.querySelector('.left-column');
+    if (!sidebar) return;
 
-    let lastScrollTop = window.pageYOffset;
-    
+    let lastScrollY = window.pageYOffset;
+    let sidebarMode = 'static'; // 'top', 'bottom', 'static'
+
     function updateSticky() {
-        const scrollTop = window.pageYOffset;
         const viewportHeight = window.innerHeight;
-        const columnHeight = leftColumn.offsetHeight;
-        const containerRect = leftColumn.parentElement.getBoundingClientRect();
-        
-        // Направление скролла
-        const scrollingDown = scrollTop > lastScrollTop;
-        
-        // Если колонка меньше экрана — просто вешаем обычный sticky top
-        if (columnHeight <= viewportHeight - 48) {
-            leftColumn.classList.add('sticky-top');
-            leftColumn.classList.remove('sticky-bottom');
-        } else {
-            // ЛОГИКА ДЛЯ ВЫСОКОЙ КОЛОНКИ
-            const rect = leftColumn.getBoundingClientRect();
+        const sidebarRect = sidebar.getBoundingClientRect();
+        const sidebarHeight = sidebarRect.height;
+        const scrollY = window.pageYOffset;
+        const scrollingDown = scrollY > lastScrollY;
 
-            if (scrollingDown) {
-                // Если скроллим вниз и достигли низа колонки
-                if (rect.bottom <= viewportHeight - 24) {
-                    leftColumn.classList.add('sticky-bottom');
-                    leftColumn.classList.remove('sticky-top');
-                    leftColumn.style.top = 'auto';
-                } else {
-                    // Пока не дошли до низа, колонка должна скроллиться как обычно
-                    // Для этого фиксируем её текущее положение относительно родителя
-                    if (leftColumn.classList.contains('sticky-top')) {
-                        const topOffset = rect.top - containerRect.top;
-                        leftColumn.classList.remove('sticky-top');
-                        leftColumn.style.position = 'relative';
-                        leftColumn.style.top = topOffset + 'px';
-                    }
-                }
-            } else {
-                // Если скроллим вверх и достигли верха колонки
-                if (rect.top >= 24) {
-                    leftColumn.classList.add('sticky-top');
-                    leftColumn.classList.remove('sticky-bottom');
-                    leftColumn.style.top = '24px';
-                } else {
-                    // Пока не дошли до верха, фиксируем положение
-                    if (leftColumn.classList.contains('sticky-bottom')) {
-                        const topOffset = rect.top - containerRect.top;
-                        leftColumn.classList.remove('sticky-bottom');
-                        leftColumn.style.position = 'relative';
-                        leftColumn.style.top = topOffset + 'px';
-                    }
-                }
+        // Если колонка целиком влезает в экран
+        if (sidebarHeight <= viewportHeight - 48) {
+            sidebar.style.position = 'sticky';
+            sidebar.style.top = '24px';
+            sidebar.style.bottom = 'auto';
+            lastScrollY = scrollY;
+            return;
+        }
+
+        // Если колонка БОЛЬШЕ экрана
+        if (scrollingDown) {
+            // СКРОЛЛИМ ВНИЗ
+            if (sidebarMode === 'top') {
+                // Если мы были приклеены к верху и начали скроллить вниз — "отлипаем"
+                const topOffset = sidebarRect.top + scrollY - sidebar.parentElement.offsetTop;
+                sidebar.style.position = 'relative';
+                sidebar.style.top = `${topOffset}px`;
+                sidebar.style.bottom = 'auto';
+                sidebarMode = 'static';
+            } else if (sidebarRect.bottom <= viewportHeight - 24) {
+                // Если низ колонки показался внизу экрана — "прилипаем" к низу
+                sidebar.style.position = 'sticky';
+                sidebar.style.top = 'auto';
+                sidebar.style.bottom = '24px';
+                sidebarMode = 'bottom';
+            }
+        } else {
+            // СКРОЛЛИМ ВВЕРХ
+            if (sidebarMode === 'bottom') {
+                // Если мы были приклеены к низу и начали скроллить вверх — "отлипаем"
+                const topOffset = sidebarRect.top + scrollY - sidebar.parentElement.offsetTop;
+                sidebar.style.position = 'relative';
+                sidebar.style.top = `${topOffset}px`;
+                sidebar.style.bottom = 'auto';
+                sidebarMode = 'static';
+            } else if (sidebarRect.top >= 24) {
+                // Если верх колонки показался вверху экрана — "прилипаем" к верху
+                sidebar.style.position = 'sticky';
+                sidebar.style.top = '24px';
+                sidebar.style.bottom = 'auto';
+                sidebarMode = 'top';
             }
         }
-        
-        lastScrollTop = scrollTop;
+
+        lastScrollY = scrollY;
     }
 
-    // Оптимизация скролла
+    // Слушаем скролл с пассивным режимом для плавности
     window.addEventListener('scroll', updateSticky, { passive: true });
-    window.addEventListener('resize', updateSticky);
-    
-    // Первичный запуск
-    setTimeout(updateSticky, 100);
+
+    // ЭТО РЕШИТ ПРОБЛЕМУ С FIREBASE:
+    // Следим за изменением высоты колонки и всей сетки
+    const ro = new ResizeObserver(() => {
+        updateSticky();
+    });
+
+    ro.observe(sidebar);
+    ro.observe(document.querySelector('.content-grid'));
+
+    // Первичный запуск после загрузки данных
+    setTimeout(updateSticky, 500);
 });
