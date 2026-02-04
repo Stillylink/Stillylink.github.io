@@ -162,6 +162,18 @@ body.profile-page .site-wrapper {
   gap: 24px;
 }
 
+/* Состояние когда колонка "прилипла" к верху экрана */
+.left-column.sticky-top {
+  position: sticky;
+  top: 24px;
+}
+
+/* Состояние когда колонка "прилипла" к низу экрана */
+.left-column.sticky-bottom {
+  position: sticky;
+  bottom: 24px;
+}
+
 /* ======== Цитата ======== */
 .sidebar-card.status-card {
   background: var(--bg-card);
