@@ -1,14 +1,20 @@
+/**
+ * Умное sticky-позиционирование для левой колонки профиля
+ */
 
-(function() {
+document.addEventListener('DOMContentLoaded', function() {
   'use strict';
 
   const leftColumn = document.querySelector('.left-column');
   
-  if (!leftColumn) return;
+  if (!leftColumn) {
+    console.warn('Left column not found');
+    return;
+  }
 
   let lastScrollTop = 0;
-  let scrollDirection = 'down'; // 'up' или 'down'
-  let stickyState = 'none'; // 'none', 'top', 'bottom'
+  let scrollDirection = 'down';
+  let stickyState = 'none';
 
   function updateStickyBehavior() {
     const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
@@ -102,7 +108,9 @@
   }, { passive: true });
 
   // Инициализация при загрузке
-  updateStickyBehavior();
+  setTimeout(() => {
+    updateStickyBehavior();
+  }, 100);
 
   // Отключаем на мобильных (когда grid становится одноколоночным)
   const mediaQuery = window.matchMedia('(max-width: 1024px)');
@@ -118,7 +126,12 @@
     }
   }
   
-  mediaQuery.addListener(handleMediaChange);
+  if (mediaQuery.addEventListener) {
+    mediaQuery.addEventListener('change', handleMediaChange);
+  } else {
+    mediaQuery.addListener(handleMediaChange);
+  }
   handleMediaChange(mediaQuery);
 
-})();
+  console.log('Sticky sidebar initialized');
+});
