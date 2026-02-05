@@ -1,0 +1,359 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Редактирование профиля — StillyLink</title>
+
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="edit.css">
+</head>
+
+<body class="edit-page">
+  <div class="site-wrapper">
+    <header class="navbar">
+      <div class="logo">StillyLink</div>
+
+      <nav class="nav-links">
+        <a href="/">Главная</a>
+        <a href="/#create-chat">Создать чат</a>
+        <a href="/anonymous/">Анонимное общение</a>
+        <a href="/login/" class="register-btn">Регистрация</a>
+      </nav>
+
+      <div class="user-avatar hidden" onclick="toggleUserMenu()">
+        <span>U</span>
+      </div>
+
+      <div class="user-menu">
+        <a href="/profile/">Профиль</a>
+        <a href="#" id="logoutBtn">Выйти</a>
+      </div>
+      
+      <div class="nav-toggle" onclick="toggleMenu()">☰</div>
+    </header>
+
+    <main class="edit-container">
+      <!-- Левая панель с табами -->
+      <aside class="edit-sidebar">
+        <div class="edit-tabs">
+          <button class="edit-tab active" data-tab="profile">
+            <span class="tab-icon">👤</span>
+            <span class="tab-label">Профиль</span>
+          </button>
+          <button class="edit-tab" data-tab="status">
+            <span class="tab-icon">💭</span>
+            <span class="tab-label">Статус</span>
+          </button>
+          <button class="edit-tab" data-tab="info">
+            <span class="tab-icon">📋</span>
+            <span class="tab-label">Информация</span>
+          </button>
+          <button class="edit-tab" data-tab="video">
+            <span class="tab-icon">🎬</span>
+            <span class="tab-label">Видео</span>
+          </button>
+        </div>
+
+        <a href="/profile/" class="back-link">
+          <span>←</span> Вернуться к профилю
+        </a>
+      </aside>
+
+      <!-- Правая панель с формами -->
+      <section class="edit-content">
+        
+        <!-- ПРОФИЛЬ -->
+        <div class="edit-section active" data-section="profile">
+          <div class="section-header">
+            <h2>Редактирование профиля</h2>
+            <p class="section-description">Настройте основную информацию вашего профиля</p>
+          </div>
+
+          <div class="edit-form">
+            <!-- Аватарка и никнейм -->
+            <div class="profile-top">
+              <div class="avatar-preview">
+                <div class="avatar-circle" id="editAvatarPreview">
+                  <span id="editAvatarLetter">U</span>
+                </div>
+                <div class="avatar-hint">Изменение аватара скоро</div>
+              </div>
+
+              <div class="profile-fields">
+                <div class="form-group">
+                  <label for="editProfileName">Никнейм</label>
+                  <input 
+                    type="text" 
+                    id="editProfileName" 
+                    class="form-input" 
+                    placeholder="Ваше имя"
+                    maxlength="50"
+                  >
+                </div>
+
+                <div class="form-group">
+                  <label for="editProfileId">ID пользователя</label>
+                  <input 
+                    type="text" 
+                    id="editProfileId" 
+                    class="form-input" 
+                    placeholder="Скоро будет доступно"
+                    disabled
+                  >
+                  <small class="field-hint">ID будет добавлен в следующем обновлении</small>
+                </div>
+              </div>
+            </div>
+
+            <!-- Биография -->
+            <div class="form-group">
+              <label for="editProfileBio">Биография</label>
+              <textarea 
+                id="editProfileBio" 
+                class="form-textarea" 
+                rows="5" 
+                placeholder="Расскажите о себе..."
+                maxlength="100"
+              ></textarea>
+              <div class="char-counter">
+                <span id="bioCharCount">0</span>/100 символов, <span id="bioLineCount">0</span>/10 строк
+              </div>
+            </div>
+
+            <!-- Ссылки на соц сети -->
+            <div class="form-group">
+              <label>Ссылки на социальные сети</label>
+              <div class="social-links-placeholder">
+                <div class="placeholder-icon">🔗</div>
+                <p>Добавление ссылок на соцсети будет доступно в следующем обновлении</p>
+              </div>
+            </div>
+
+            <!-- Кнопка сохранения -->
+            <div class="form-actions">
+              <button type="button" class="btn-save" id="saveProfileBtn">
+                Сохранить изменения
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- СТАТУС -->
+        <div class="edit-section" data-section="status">
+          <div class="section-header">
+            <h2>Редактирование статуса</h2>
+            <p class="section-description">Поделитесь своим настроением или цитатой</p>
+          </div>
+
+          <div class="edit-form">
+            <div class="form-group">
+              <label for="editStatusText">Ваш статус</label>
+              <textarea 
+                id="editStatusText" 
+                class="form-textarea status-textarea" 
+                rows="4" 
+                placeholder="Добавьте статус или цитату..."
+                maxlength="100"
+              ></textarea>
+              <div class="char-counter">
+                <span id="statusCharCount">0</span>/100 символов, <span id="statusLineCount">0</span>/10 строк
+              </div>
+            </div>
+
+            <div class="form-actions">
+              <button type="button" class="btn-cancel" id="cancelStatusBtn">
+                Отменить
+              </button>
+              <button type="button" class="btn-save" id="saveStatusBtn">
+                Сохранить
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ИНФОРМАЦИЯ -->
+        <div class="edit-section" data-section="info">
+          <div class="section-header">
+            <h2>Редактирование информации</h2>
+            <p class="section-description">Дополнительная информация о вас</p>
+          </div>
+
+          <div class="edit-form">
+            <!-- Местоположение -->
+            <div class="form-group">
+              <label for="editInfoCountry">Местоположение (страна)</label>
+              <select id="editInfoCountry" class="form-select">
+                <option value="">Не указано</option>
+                <option value="Россия">Россия</option>
+                <option value="Украина">Украина</option>
+                <option value="Беларусь">Беларусь</option>
+                <option value="Казахстан">Казахстан</option>
+                <option value="США">США</option>
+                <option value="Великобритания">Великобритания</option>
+                <option value="Германия">Германия</option>
+                <option value="Франция">Франция</option>
+                <option value="Италия">Италия</option>
+                <option value="Испания">Испания</option>
+                <option value="Канада">Канада</option>
+                <option value="Австралия">Австралия</option>
+                <option value="Япония">Япония</option>
+                <option value="Китай">Китай</option>
+                <option value="Другое">Другое</option>
+              </select>
+            </div>
+
+            <!-- Прозвище -->
+            <div class="form-group">
+              <div class="field-with-action">
+                <label for="editInfoNickname" id="nicknameLabel">Прозвище</label>
+                <button type="button" class="rename-btn" id="renameNicknameBtn" title="Переименовать поле">
+                  ✏️
+                </button>
+              </div>
+              <input 
+                type="text" 
+                id="editInfoNickname" 
+                class="form-input" 
+                placeholder="Ваше прозвище"
+                maxlength="50"
+              >
+            </div>
+
+            <!-- Email -->
+            <div class="form-group">
+              <label for="editInfoEmail">Электронная почта</label>
+              <input 
+                type="email" 
+                id="editInfoEmail" 
+                class="form-input" 
+                placeholder="example@email.com"
+              >
+            </div>
+
+            <!-- Род деятельности -->
+            <div class="form-group">
+              <label for="editInfoOccupation">Род деятельности</label>
+              <textarea 
+                id="editInfoOccupation" 
+                class="form-textarea" 
+                rows="3" 
+                placeholder="Чем вы занимаетесь?"
+                maxlength="200"
+              ></textarea>
+              <div class="char-counter">
+                <span id="occupationCharCount">0</span>/200 символов
+              </div>
+            </div>
+
+            <!-- Ссылки -->
+            <div class="form-group">
+              <label>Ссылки (максимум 3)</label>
+              <div class="links-container" id="infoLinksContainer">
+                <!-- Динамически добавляемые поля -->
+              </div>
+              <button type="button" class="add-link-btn" id="addInfoLinkBtn">
+                + Добавить ссылку
+              </button>
+            </div>
+
+            <div class="form-actions">
+              <button type="button" class="btn-cancel" id="cancelInfoBtn">
+                Отменить
+              </button>
+              <button type="button" class="btn-save" id="saveInfoBtn">
+                Сохранить
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ВИДЕО -->
+        <div class="edit-section" data-section="video">
+          <div class="section-header">
+            <h2>Любимое видео</h2>
+            <p class="section-description">Добавьте YouTube видео в свой профиль</p>
+          </div>
+
+          <div class="edit-form">
+            <!-- Превью видео -->
+            <div class="video-preview" id="videoPreview">
+              <div class="video-empty" id="videoEmpty">
+                <div class="video-empty-icon">🎬</div>
+                <p>Видео не добавлено</p>
+              </div>
+              <div class="video-player hidden" id="videoPlayer">
+                <div class="video-wrapper">
+                  <iframe
+                    id="videoIframe"
+                    loading="lazy"
+                    referrerpolicy="strict-origin-when-cross-origin"
+                    sandbox="allow-scripts allow-same-origin allow-presentation"
+                    allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowfullscreen>
+                  </iframe>
+                </div>
+              </div>
+            </div>
+
+            <!-- Ввод ссылки -->
+            <div class="form-group">
+              <label for="editVideoUrl">Ссылка на YouTube видео</label>
+              <input 
+                type="url" 
+                id="editVideoUrl" 
+                class="form-input" 
+                placeholder="https://www.youtube.com/watch?v=..."
+              >
+              <small class="field-hint">
+                Поддерживаемые форматы: youtube.com/watch?v=... или youtu.be/...<br>
+                ⚠️ Shorts не поддерживаются
+              </small>
+            </div>
+
+            <div class="form-actions">
+              <button type="button" class="btn-delete" id="deleteVideoBtn">
+                Удалить видео
+              </button>
+              <button type="button" class="btn-save" id="saveVideoBtn">
+                Сохранить
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </section>
+    </main>
+
+    <!-- Модальное окно переименования поля -->
+    <div id="renameModal" class="modal-overlay hidden">
+      <div class="modal-content modal-rename">
+        <div class="modal-header">
+          <h3>Переименовать поле</h3>
+          <button class="modal-close" id="closeRenameModal">×</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="newFieldName">Новое название</label>
+            <input 
+              type="text" 
+              id="newFieldName" 
+              class="form-input" 
+              placeholder="Например: Титул, Никнейм"
+              maxlength="30"
+            >
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="modal-btn cancel" id="cancelRenameBtn">Отмена</button>
+          <button class="modal-btn save" id="saveRenameBtn">Сохранить</button>
+        </div>
+      </div>
+    </div>
+
+    <footer class="footer">© 2026 StillyLink.</footer>
+  </div>
+
+  <script type="module" src="edit.js"></script>
+</body>
+</html>
