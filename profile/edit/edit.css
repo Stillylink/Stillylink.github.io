@@ -218,7 +218,6 @@ body.edit-page .site-wrapper {
 .form-select:focus {
   border-color: var(--accent);
   background: #0d0d0d;
-  box-shadow: 0 0 0 3px rgba(255, 215, 0, 0.1);
 }
 
 .form-input:disabled {
@@ -348,7 +347,6 @@ body.edit-page .site-wrapper {
 
 .link-item input:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(255, 215, 0, 0.1);
 }
 
 .remove-link-btn {
@@ -510,7 +508,6 @@ body.edit-page .site-wrapper {
 .btn-save:hover {
   filter: brightness(1.1);
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(255, 215, 0, 0.3);
 }
 
 .btn-cancel {
@@ -521,8 +518,8 @@ body.edit-page .site-wrapper {
 
 .btn-cancel:hover {
   background: rgba(255, 255, 255, 0.05);
-  color: var(--text-main);
-  border-color: var(--text-main);
+  color: var(--accent);
+  border-color: var(--accent);
 }
 
 .btn-delete {
