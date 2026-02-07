@@ -19,7 +19,7 @@ body.edit-page .site-wrapper {
 /* ======== ЛЕВАЯ ПАНЕЛЬ (ТАБЫ) ======== */
 .edit-sidebar {
   position: sticky;
-  top: 80px;
+  top: 60px;
   display: flex;
   flex-direction: column;
   gap: 24px;
