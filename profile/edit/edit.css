@@ -9,7 +9,7 @@ body.edit-page .site-wrapper {
   max-width: 1200px;
   width: 100%;
   margin: 0 auto;
-  padding: 24px 18px;
+  padding: 0 18px 24px 18px;
   display: grid;
   grid-template-columns: 280px 1fr;
   gap: 32px;
@@ -24,6 +24,7 @@ body.edit-page .site-wrapper {
   flex-direction: column;
   gap: 24px;
   align-self: start;
+  margin-top: 24px;
 }
 
 .edit-tabs {
@@ -134,6 +135,7 @@ body.edit-page .site-wrapper {
   border-radius: 16px;
   overflow: hidden;
   min-height: 600px;
+  margin-top: 24px;
 }
 
 .edit-section {
