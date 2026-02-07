@@ -9,7 +9,7 @@ body.edit-page .site-wrapper {
   max-width: 1200px;
   width: 100%;
   margin: 0 auto;
-  padding: 32px 24px;
+  padding: 24px 18px;
   display: grid;
   grid-template-columns: 280px 1fr;
   gap: 32px;
@@ -706,7 +706,7 @@ body.edit-page .site-wrapper {
 
 @media (max-width: 768px) {
   .edit-container {
-    padding: 20px 16px;
+    padding: 16px 12px;
   }
 
   .edit-section {
