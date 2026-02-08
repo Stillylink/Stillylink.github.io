@@ -40,7 +40,7 @@ body.edit-page .site-wrapper {
 .edit-tab {
   display: flex;
   align-items: center;
-  gap: 12px;
+  justify-content: center;
   padding: 14px 16px;
   background: transparent;
   border: none;
@@ -50,7 +50,7 @@ body.edit-page .site-wrapper {
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
-  text-align: left;
+  text-align: center;
   position: relative;
   overflow: hidden;
 }
@@ -80,16 +80,6 @@ body.edit-page .site-wrapper {
 
 .edit-tab.active::before {
   transform: scaleY(1);
-}
-
-.tab-icon {
-  font-size: 20px;
-  flex-shrink: 0;
-  transition: transform 0.2s ease;
-}
-
-.edit-tab:hover .tab-icon {
-  transform: scale(1.1);
 }
 
 .tab-label {
@@ -680,16 +670,12 @@ body.edit-page .site-wrapper {
   .edit-tab {
     flex-direction: column;
     gap: 6px;
-    padding: 12px;
-    min-width: 80px;
-  }
-
-  .tab-icon {
-    font-size: 24px;
+    padding: 12px 16px;
+    min-width: 100px;
   }
 
   .tab-label {
-    font-size: 13px;
+    font-size: 14px;
   }
 
   .edit-tab::before {
