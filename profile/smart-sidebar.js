@@ -70,36 +70,35 @@ class SmartSidebar {
     }
 
     handleContentResize() {
-        // При изменении высоты контента:
-        // 1. Сбрасываем состояние панели
-        // 2. Пересчитываем позицию
-        
-        const currentScroll = window.pageYOffset || document.documentElement.scrollTop;
-        const viewportHeight = window.innerHeight;
         const sidebarHeight = this.wrapper.offsetHeight;
-        
         const rightColumn = this.container.querySelector('.wall-section');
         const rightColumnHeight = rightColumn ? rightColumn.offsetHeight : 0;
-
-        // Если панель была в absolute-bottom, но контент стал короче
-        if (this.currentPosition === 'absolute-bottom' && sidebarHeight < rightColumnHeight) {
-            // Пересчитываем позицию
+        // 1. Если сайдбар стал длиннее или равен контенту — возвращаем в поток
+        // Но делаем это сразу, без лишних "рывков" через absolute
+        if (sidebarHeight >= rightColumnHeight) {
             this.currentPosition = 'static';
-            this.wrapper.style.cssText = '';
-            this.update();
-        } 
-        // Если панель была fixed, но контент резко укорился
-        else if ((this.currentPosition === 'fixed-top' || this.currentPosition === 'fixed-bottom') 
-                 && sidebarHeight >= rightColumnHeight) {
-            // Сбрасываем в static
-            this.currentPosition = 'static';
-            this.wrapper.style.cssText = '';
-            this.update();
+            Object.assign(this.wrapper.style, {
+                position: '',
+                top: '',
+                bottom: '',
+                width: '',
+                left: ''
+            });
+            return; 
         }
-        // В остальных случаях просто пересчитываем
-        else {
-            this.update();
+        // 2. Если мы были прижаты к низу (absolute-bottom)
+        if (this.currentPosition === 'absolute-bottom') {
+            const maxAbsoluteTop = this.container.offsetHeight - sidebarHeight;
+            const currentTopValue = parseInt(this.wrapper.style.top) || 0;
+            // Если из-за удаления поста контейнер стал короче, чем текущий top панели
+            if (currentTopValue > maxAbsoluteTop) {
+                // Просто подтягиваем панель выше, не меняя position
+                this.wrapper.style.top = `${Math.max(0, maxAbsoluteTop)}px`;
+            }
         }
+        // 3. Главное: просто вызываем обновление координат относительно текущего скролла.
+        // Это позволит панели остаться на месте, даже если контент сверху исчез.
+        this.update();
     }
 
     handleResize() {
