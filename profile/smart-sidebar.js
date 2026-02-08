@@ -17,6 +17,7 @@ class SmartSidebar {
         this.scrollDirection = 'down';
         this.currentPosition = 'static'; // 'static', 'fixed-top', 'fixed-bottom', 'absolute-bottom'
         this.offsetWhenFixed = 0; // Запоминаем offset когда становимся fixed
+        this.isResizing = false; // Флаг для предотвращения конфликтов
         
         this.init();
     }
@@ -70,11 +71,14 @@ class SmartSidebar {
     }
 
     handleContentResize() {
+        // Устанавливаем флаг, что идет resize
+        this.isResizing = true;
+        
         const sidebarHeight = this.wrapper.offsetHeight;
         const rightColumn = this.container.querySelector('.wall-section');
         const rightColumnHeight = rightColumn ? rightColumn.offsetHeight : 0;
+        
         // 1. Если сайдбар стал длиннее или равен контенту — возвращаем в поток
-        // Но делаем это сразу, без лишних "рывков" через absolute
         if (sidebarHeight >= rightColumnHeight) {
             this.currentPosition = 'static';
             Object.assign(this.wrapper.style, {
@@ -84,21 +88,26 @@ class SmartSidebar {
                 width: '',
                 left: ''
             });
+            this.isResizing = false;
             return; 
         }
+        
         // 2. Если мы были прижаты к низу (absolute-bottom)
         if (this.currentPosition === 'absolute-bottom') {
             const maxAbsoluteTop = this.container.offsetHeight - sidebarHeight;
             const currentTopValue = parseInt(this.wrapper.style.top) || 0;
-            // Если из-за удаления поста контейнер стал короче, чем текущий top панели
+            
+            // Если из-за удаления поста контейнер стал короче
             if (currentTopValue > maxAbsoluteTop) {
                 // Просто подтягиваем панель выше, не меняя position
                 this.wrapper.style.top = `${Math.max(0, maxAbsoluteTop)}px`;
             }
         }
-        // 3. Главное: просто вызываем обновление координат относительно текущего скролла.
-        // Это позволит панели остаться на месте, даже если контент сверху исчез.
-        this.update();
+        
+        // 3. Для fixed-top и fixed-bottom просто корректируем, если нужно
+        // НЕ вызываем update(), чтобы не было конфликта направления скролла
+        
+        this.isResizing = false;
     }
 
     handleResize() {
@@ -109,6 +118,9 @@ class SmartSidebar {
     }
 
     update() {
+        // Если сейчас идет обработка resize, пропускаем update
+        if (this.isResizing) return;
+        
         const currentScroll = window.pageYOffset || document.documentElement.scrollTop;
         const viewportHeight = window.innerHeight;
         const sidebarHeight = this.wrapper.offsetHeight;
