@@ -40,31 +40,19 @@ body.edit-page .site-wrapper {
 .edit-tab {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start; /* ИЗМЕНЕНО: было center, теперь flex-start */
   padding: 14px 16px;
   background: transparent;
   border: none;
   border-radius: 10px;
   color: var(--text-secondary);
   font-size: 15px;
-  font-weight: 500;
+  font-weight: 500; /* ИЗМЕНЕНО: всегда одинаковый вес шрифта */
   cursor: pointer;
   transition: all 0.2s ease;
-  text-align: center;
+  text-align: left; /* ИЗМЕНЕНО: было center, теперь left */
   position: relative;
   overflow: hidden;
-}
-
-.edit-tab::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 3px;
-  background: var(--accent);
-  transform: scaleY(0);
-  transition: transform 0.2s ease;
 }
 
 .edit-tab:hover {
@@ -75,11 +63,7 @@ body.edit-page .site-wrapper {
 .edit-tab.active {
   background: rgba(255, 255, 255, 0.05);
   color: var(--accent);
-  font-weight: 600;
-}
-
-.edit-tab.active::before {
-  transform: scaleY(1);
+  font-weight: 500; /* ИЗМЕНЕНО: было 600, теперь 500 (такой же как обычный) */
 }
 
 .tab-label {
@@ -672,22 +656,12 @@ body.edit-page .site-wrapper {
     gap: 6px;
     padding: 12px 16px;
     min-width: 100px;
+    justify-content: center; /* На мобильных по центру нормально */
+    text-align: center; /* На мобильных по центру нормально */
   }
 
   .tab-label {
     font-size: 14px;
-  }
-
-  .edit-tab::before {
-    width: 100%;
-    height: 3px;
-    bottom: 0;
-    top: auto;
-    transform: scaleX(0);
-  }
-
-  .edit-tab.active::before {
-    transform: scaleX(1);
   }
 }
 
