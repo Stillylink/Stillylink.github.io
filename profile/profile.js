@@ -65,12 +65,6 @@ const profileBio = document.getElementById("profileBio");
 const avatarUpload = document.getElementById("avatarUpload");
 
 const editProfileBtn = document.getElementById("editProfileBtn");
-const editModal = document.getElementById("editModal");
-const closeEditModal = document.getElementById("closeEditModal");
-const cancelEditBtn = document.getElementById("cancelEditBtn");
-const saveProfileBtn = document.getElementById("saveProfileBtn");
-const editName = document.getElementById("editName");
-const editBio = document.getElementById("editBio");
 
 const postInput = document.getElementById("postInput");
 const publishPostBtn = document.getElementById("publishPostBtn");
@@ -917,95 +911,8 @@ avatarUpload.addEventListener("change", async (e) => {
 // РЕДАКТИРОВАНИЕ ПРОФИЛЯ
 // ========================
 editProfileBtn.addEventListener("click", () => {
-    if (!currentUserData) return;
-
-    editName.value = currentUserData.name || "";
-
-    const hasBio = currentUserData.bio && 
-                   currentUserData.bio.trim() !== "" && 
-                   currentUserData.bio !== "Расскажите о себе..." &&
-                   currentUserData.bio !== "Расскажите о себе…";
-
-    editBio.value = hasBio ? currentUserData.bio : "";
-
-    editModal.classList.remove("hidden");
+    window.location.href = "/profile/edit/";
 });
-
-closeEditModal.addEventListener("click", () => {
-    editModal.classList.add("hidden");
-});
-
-cancelEditBtn.addEventListener("click", () => {
-    editModal.classList.add("hidden");
-});
-
-editBio.addEventListener("input", () => {
-  editBio.value = normalizeBio(editBio.value);
-});
-
-saveProfileBtn.addEventListener("click", async () => {
-    if (!currentUser) return;
-
-    const name = editName.value.trim();
-    const bio = editBio.value.trim();
-
-    if (!name) {
-        alert("Введите имя");
-        return;
-    }
-
-    try {
-        const userDocRef = doc(db, "users", currentUser.uid);
-        await updateDoc(userDocRef, {
-            name,
-            bio: bio || ""
-        });
-
-        currentUserData.name = name;
-        currentUserData.bio = bio || "";
-        
-        localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(currentUserData));
-
-        profileName.textContent = name;
-        if (bio) {
-            profileBio.textContent = bio;
-            profileBio.classList.remove("empty");
-        } else {
-            profileBio.textContent = "Расскажите о себе…";
-            profileBio.classList.add("empty");
-        }
-        
-        const newLetter = name.charAt(0).toUpperCase();
-        avatarLetterProfile.textContent = newLetter;
-        avatarLetter.textContent = newLetter;
-        localStorage.setItem("userAvatarLetter", newLetter);
-        
-        editModal.classList.add("hidden");
-        console.log("Профиль обновлен!");
-    } catch (error) {
-        console.error("Ошибка сохранения профиля:", error);
-        alert("Не удалось сохранить изменения");
-    }
-});
-
-editModal.addEventListener("click", (e) => {
-    if (e.target === editModal) {
-        editModal.classList.add("hidden");
-    }
-});
-
-function normalizeBio(text) {
-  const lines = text.split("\n");
-  if (lines.length > 10) {
-    text = lines.slice(0, 10).join("\n");
-  }
-
-  if (text.length > 100) {
-    text = text.slice(0, 100);
-  }
-
-  return text;
-}
 
 // ========================
 // ПУБЛИКАЦИЯ ЗАПИСИ
