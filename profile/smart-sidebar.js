@@ -2,6 +2,7 @@
  * Умная боковая панель с поведением как в Facebook
  * - Если панель короче экрана: фиксируется сверху
  * - Если панель длиннее экрана: прилипает к верху при скролле вверх и к низу при скролле вниз
+ * - ResizeObserver следит за изменением высоты правой колонки
  */
 
 class SmartSidebar {
@@ -49,6 +50,56 @@ class SmartSidebar {
         }, { passive: true });
 
         window.addEventListener('resize', this.handleResize.bind(this));
+
+        // 🔥 НОВОЕ: ResizeObserver для отслеживания изменений высоты правой колонки
+        this.setupResizeObserver();
+    }
+
+    setupResizeObserver() {
+        const rightColumn = this.container.querySelector('.wall-section');
+        if (!rightColumn) return;
+
+        // Создаем ResizeObserver для правой колонки
+        this.resizeObserver = new ResizeObserver(entries => {
+            // Когда высота правой колонки меняется, пересчитываем позицию
+            this.handleContentResize();
+        });
+
+        // Начинаем наблюдение за правой колонкой
+        this.resizeObserver.observe(rightColumn);
+    }
+
+    handleContentResize() {
+        // При изменении высоты контента:
+        // 1. Сбрасываем состояние панели
+        // 2. Пересчитываем позицию
+        
+        const currentScroll = window.pageYOffset || document.documentElement.scrollTop;
+        const viewportHeight = window.innerHeight;
+        const sidebarHeight = this.wrapper.offsetHeight;
+        
+        const rightColumn = this.container.querySelector('.wall-section');
+        const rightColumnHeight = rightColumn ? rightColumn.offsetHeight : 0;
+
+        // Если панель была в absolute-bottom, но контент стал короче
+        if (this.currentPosition === 'absolute-bottom' && sidebarHeight < rightColumnHeight) {
+            // Пересчитываем позицию
+            this.currentPosition = 'static';
+            this.wrapper.style.cssText = '';
+            this.update();
+        } 
+        // Если панель была fixed, но контент резко укорился
+        else if ((this.currentPosition === 'fixed-top' || this.currentPosition === 'fixed-bottom') 
+                 && sidebarHeight >= rightColumnHeight) {
+            // Сбрасываем в static
+            this.currentPosition = 'static';
+            this.wrapper.style.cssText = '';
+            this.update();
+        }
+        // В остальных случаях просто пересчитываем
+        else {
+            this.update();
+        }
     }
 
     handleResize() {
@@ -58,52 +109,52 @@ class SmartSidebar {
         this.update();
     }
 
-update() {
-    const currentScroll = window.pageYOffset || document.documentElement.scrollTop;
-    const viewportHeight = window.innerHeight;
-    const sidebarHeight = this.wrapper.offsetHeight;
-    
-    // 1. Находим правую колонку (стену), чтобы сравнить высоту
-    const rightColumn = this.container.querySelector('.wall-section');
-    const rightColumnHeight = rightColumn ? rightColumn.offsetHeight : 0;
+    update() {
+        const currentScroll = window.pageYOffset || document.documentElement.scrollTop;
+        const viewportHeight = window.innerHeight;
+        const sidebarHeight = this.wrapper.offsetHeight;
+        
+        // 1. Находим правую колонку (стену), чтобы сравнить высоту
+        const rightColumn = this.container.querySelector('.wall-section');
+        const rightColumnHeight = rightColumn ? rightColumn.offsetHeight : 0;
 
-    // 2. БАГФИКС: Если левая панель длиннее или равна правой, 
-    // нам НЕЛЬЗЯ включать sticky, иначе будет "прыжок" у футера.
-    if (sidebarHeight >= rightColumnHeight) {
-        this.setPosition('static', {
-            position: '',
-            top: '',
-            bottom: '',
-            width: '',
-            left: ''
-        });
-        return; // Просто выходим, ничего не фиксируем
+        // 2. БАГФИКС: Если левая панель длиннее или равна правой, 
+        // нам НЕЛЬЗЯ включать sticky, иначе будет "прыжок" у футера.
+        if (sidebarHeight >= rightColumnHeight) {
+            this.setPosition('static', {
+                position: '',
+                top: '',
+                bottom: '',
+                width: '',
+                left: ''
+            });
+            return; // Просто выходим, ничего не фиксируем
+        }
+
+        // --- Дальше идет стандартный код определения направления ---
+        const previousDirection = this.scrollDirection;
+        if (currentScroll > this.lastScrollTop && currentScroll > 0) {
+            this.scrollDirection = 'down';
+        } else if (currentScroll < this.lastScrollTop) {
+            this.scrollDirection = 'up';
+        }
+
+        if (previousDirection !== this.scrollDirection && this.currentPosition === 'static') {
+            this.offsetWhenFixed = this.wrapper.getBoundingClientRect().top - this.container.getBoundingClientRect().top;
+        }
+
+        this.lastScrollTop = currentScroll;
+
+        const containerRect = this.container.getBoundingClientRect();
+        const wrapperRect = this.wrapper.getBoundingClientRect();
+
+        // Логика фиксации
+        if (sidebarHeight <= viewportHeight - 84) {
+            this.handleShortSidebar(containerRect, wrapperRect, sidebarHeight);
+        } else {
+            this.handleLongSidebar(containerRect, wrapperRect, viewportHeight, sidebarHeight);
+        }
     }
-
-    // --- Дальше идет твой стандартный код определения направления ---
-    const previousDirection = this.scrollDirection;
-    if (currentScroll > this.lastScrollTop && currentScroll > 0) {
-        this.scrollDirection = 'down';
-    } else if (currentScroll < this.lastScrollTop) {
-        this.scrollDirection = 'up';
-    }
-
-    if (previousDirection !== this.scrollDirection && this.currentPosition === 'static') {
-        this.offsetWhenFixed = this.wrapper.getBoundingClientRect().top - this.container.getBoundingClientRect().top;
-    }
-
-    this.lastScrollTop = currentScroll;
-
-    const containerRect = this.container.getBoundingClientRect();
-    const wrapperRect = this.wrapper.getBoundingClientRect();
-
-    // Логика фиксации
-    if (sidebarHeight <= viewportHeight - 84) {
-        this.handleShortSidebar(containerRect, wrapperRect, sidebarHeight);
-    } else {
-        this.handleLongSidebar(containerRect, wrapperRect, viewportHeight, sidebarHeight);
-    }
-}
 
     handleShortSidebar(containerRect, wrapperRect, sidebarHeight) {
         const navbarHeight = 60;
@@ -146,92 +197,92 @@ update() {
         }
     }
 
-handleLongSidebar(containerRect, wrapperRect, viewportHeight, sidebarHeight) {
-    const navbarHeight = 60;
-    const gap = 24;
-    const topOffset = navbarHeight + gap;
-    const bottomGap = 24; 
+    handleLongSidebar(containerRect, wrapperRect, viewportHeight, sidebarHeight) {
+        const navbarHeight = 60;
+        const gap = 24;
+        const topOffset = navbarHeight + gap;
+        const bottomGap = 24; 
 
-    const wrapperTop = wrapperRect.top;
-    const wrapperBottom = wrapperRect.bottom;
-    const containerTop = containerRect.top;
-    const containerBottom = containerRect.bottom;
+        const wrapperTop = wrapperRect.top;
+        const wrapperBottom = wrapperRect.bottom;
+        const containerTop = containerRect.top;
+        const containerBottom = containerRect.bottom;
 
-    const maxAbsoluteTop = this.container.offsetHeight - sidebarHeight;
+        const maxAbsoluteTop = this.container.offsetHeight - sidebarHeight;
 
-    // СКРОЛЛ ВНИЗ
-    if (this.scrollDirection === 'down') {
-        // 1. Если мы были фиксированы сверху, при скролле вниз "отклеиваемся" в static (absolute)
-        if (this.currentPosition === 'fixed-top') {
-            const currentTop = wrapperTop + window.pageYOffset - containerRect.top - window.pageYOffset;
-            this.setPosition('static', {
-                position: 'absolute',
-                top: `${Math.max(0, currentTop)}px`,
-                bottom: 'auto',
-                width: `${this.sidebar.offsetWidth}px`,
-                left: '0'
-            });
-        } 
-        // 2. Фиксируемся по НИЖНЕМУ краю, только когда низ панели коснулся низа экрана
-        // НО при условии, что мы еще не доехали до конца контейнера
-        else if (this.currentPosition === 'static' && wrapperBottom <= viewportHeight - bottomGap) {
-            // Если до дна контейнера еще есть место
-            if (containerBottom > viewportHeight - bottomGap) {
-                this.setPosition('fixed-bottom', {
-                    position: 'fixed',
-                    top: 'auto',
-                    bottom: `${bottomGap}px`,
-                    width: `${this.sidebar.offsetWidth}px`,
-                    left: `${this.sidebar.getBoundingClientRect().left}px`
-                });
-            }
-        }
-        // 3. Если мы фиксированы по низу, но уперлись в футер (конец контейнера)
-        if (this.currentPosition === 'fixed-bottom' && containerBottom <= viewportHeight - bottomGap) {
-            this.setPosition('absolute-bottom', {
-                position: 'absolute',
-                top: `${maxAbsoluteTop}px`,
-                bottom: 'auto',
-                width: `${this.sidebar.offsetWidth}px`,
-                left: '0'
-            });
-        }
-    }
-
-    // СКРОЛЛ ВВЕРХ
-    if (this.scrollDirection === 'up') {
-        // 1. Если были фиксированы снизу или стояли у футера — "отклеиваемся" в static
-        if (this.currentPosition === 'fixed-bottom' || this.currentPosition === 'absolute-bottom') {
-            const currentTop = wrapperTop + window.pageYOffset - containerRect.top - window.pageYOffset;
-            this.setPosition('static', {
-                position: 'absolute',
-                top: `${Math.max(0, currentTop)}px`,
-                bottom: 'auto',
-                width: `${this.sidebar.offsetWidth}px`,
-                left: '0'
-            });
-        }
-        // 2. Фиксируемся по ВЕРХНЕМУ краю, когда верх панели коснулся верха экрана
-        else if (this.currentPosition === 'static' && wrapperTop >= topOffset) {
-            if (containerTop < topOffset) {
-                this.setPosition('fixed-top', {
-                    position: 'fixed',
-                    top: `${topOffset}px`,
+        // СКРОЛЛ ВНИЗ
+        if (this.scrollDirection === 'down') {
+            // 1. Если мы были фиксированы сверху, при скролле вниз "отклеиваемся" в static (absolute)
+            if (this.currentPosition === 'fixed-top') {
+                const currentTop = wrapperTop + window.pageYOffset - containerRect.top - window.pageYOffset;
+                this.setPosition('static', {
+                    position: 'absolute',
+                    top: `${Math.max(0, currentTop)}px`,
                     bottom: 'auto',
                     width: `${this.sidebar.offsetWidth}px`,
-                    left: `${this.sidebar.getBoundingClientRect().left}px`
+                    left: '0'
+                });
+            } 
+            // 2. Фиксируемся по НИЖНЕМУ краю, только когда низ панели коснулся низа экрана
+            // НО при условии, что мы еще не доехали до конца контейнера
+            else if (this.currentPosition === 'static' && wrapperBottom <= viewportHeight - bottomGap) {
+                // Если до дна контейнера еще есть место
+                if (containerBottom > viewportHeight - bottomGap) {
+                    this.setPosition('fixed-bottom', {
+                        position: 'fixed',
+                        top: 'auto',
+                        bottom: `${bottomGap}px`,
+                        width: `${this.sidebar.offsetWidth}px`,
+                        left: `${this.sidebar.getBoundingClientRect().left}px`
+                    });
+                }
+            }
+            // 3. Если мы фиксированы по низу, но уперлись в футер (конец контейнера)
+            if (this.currentPosition === 'fixed-bottom' && containerBottom <= viewportHeight - bottomGap) {
+                this.setPosition('absolute-bottom', {
+                    position: 'absolute',
+                    top: `${maxAbsoluteTop}px`,
+                    bottom: 'auto',
+                    width: `${this.sidebar.offsetWidth}px`,
+                    left: '0'
                 });
             }
         }
-    }
 
-    // Крайний случай: если скроллим очень быстро и пролетели момент статики
-    if (containerTop >= topOffset) {
-        this.setPosition('static', {
-            position: '', top: '', bottom: '', width: '', left: ''
-        });
+        // СКРОЛЛ ВВЕРХ
+        if (this.scrollDirection === 'up') {
+            // 1. Если были фиксированы снизу или стояли у футера — "отклеиваемся" в static
+            if (this.currentPosition === 'fixed-bottom' || this.currentPosition === 'absolute-bottom') {
+                const currentTop = wrapperTop + window.pageYOffset - containerRect.top - window.pageYOffset;
+                this.setPosition('static', {
+                    position: 'absolute',
+                    top: `${Math.max(0, currentTop)}px`,
+                    bottom: 'auto',
+                    width: `${this.sidebar.offsetWidth}px`,
+                    left: '0'
+                });
+            }
+            // 2. Фиксируемся по ВЕРХНЕМУ краю, когда верх панели коснулся верха экрана
+            else if (this.currentPosition === 'static' && wrapperTop >= topOffset) {
+                if (containerTop < topOffset) {
+                    this.setPosition('fixed-top', {
+                        position: 'fixed',
+                        top: `${topOffset}px`,
+                        bottom: 'auto',
+                        width: `${this.sidebar.offsetWidth}px`,
+                        left: `${this.sidebar.getBoundingClientRect().left}px`
+                    });
+                }
+            }
+        }
+
+        // Крайний случай: если скроллим очень быстро и пролетели момент статики
+        if (containerTop >= topOffset) {
+            this.setPosition('static', {
+                position: '', top: '', bottom: '', width: '', left: ''
+            });
+        }
     }
-}
 
     setPosition(newPosition, styles) {
         if (this.currentPosition === newPosition) return;
@@ -242,6 +293,13 @@ handleLongSidebar(containerRect, wrapperRect, viewportHeight, sidebarHeight) {
         Object.keys(styles).forEach(key => {
             this.wrapper.style[key] = styles[key];
         });
+    }
+
+    // Метод для очистки наблюдателя при уничтожении
+    destroy() {
+        if (this.resizeObserver) {
+            this.resizeObserver.disconnect();
+        }
     }
 }
 
