@@ -596,10 +596,10 @@ function loadUserPosts() {
     const postsRef = dbRef(rtdb, 'posts');
 
     postsListener = onValue(postsRef, async (snapshot) => {
-        postsList.innerHTML = "";
-
         if (!snapshot.exists()) {
-            showEmptyPosts();
+            if (postsList.children.length > 0 || !postsList.querySelector('.posts-empty')) {
+                showEmptyPosts();
+            }
             return;
         }
 
@@ -634,9 +634,43 @@ function loadUserPosts() {
 
         myPosts.sort((a, b) => b.data.createdAt - a.data.createdAt);
 
-        myPosts.forEach(post => {
-            addPostToUI(post.id, post.data);
+        // УМНЫЙ РЕНДЕР С DOCUMENTFRAGMENT
+        // 1. Создаем карту существующих элементов
+        const currentElements = {};
+        postsList.querySelectorAll('.post-item').forEach(el => {
+            currentElements[el.dataset.postId] = el;
         });
+
+        // 2. Собираем новый список в fragment
+        const fragment = document.createDocumentFragment();
+        
+        myPosts.forEach(post => {
+            if (currentElements[post.id]) {
+                // Пост уже существует - переиспользуем элемент
+                fragment.appendChild(currentElements[post.id]);
+                delete currentElements[post.id]; // Убираем из списка "на удаление"
+            } else {
+                // Новый пост - создаем элемент
+                const tempContainer = document.createElement('div');
+                tempContainer.innerHTML = createPostHTML(post.id, post.data);
+                const postElement = tempContainer.firstChild;
+                
+                // Навешиваем обработчики
+                attachPostHandlers(postElement, post.id, post.data);
+                
+                fragment.appendChild(postElement);
+            }
+        });
+
+        // 3. Удаляем элементы, которых больше нет
+        Object.values(currentElements).forEach(el => el.remove());
+
+        // 4. Обновляем список одним махом (без полного innerHTML = '')
+if (postsList.innerHTML !== "") {
+            postsList.replaceChildren(fragment);
+        } else {
+            postsList.appendChild(fragment);
+        }
 
         if (postsCount) {
             postsCount.textContent = myPosts.length.toString();
@@ -646,25 +680,8 @@ function loadUserPosts() {
     });
 }
 
-function showEmptyPosts() {
-    postsList.innerHTML = `
-        <div class="posts-empty">
-            <div class="posts-empty-icon">📝</div>
-            <div class="posts-empty-text">
-                Здесь пока нет записей. Создайте первую!
-            </div>
-        </div>
-    `;
-    if (postsCount) {
-        postsCount.textContent = "0";
-    }
-}
-
-function addPostToUI(postId, post) {
-    const postItem = document.createElement("div");
-    postItem.className = "post-item";
-    postItem.dataset.postId = postId;
-
+// Вспомогательная функция: создание HTML поста
+function createPostHTML(postId, post) {
     const userName = post.userName || 'Пользователь';
     const userAvatar = post.userAvatar;
     const letter = userName.charAt(0).toUpperCase();
@@ -699,43 +716,124 @@ function addPostToUI(postId, post) {
         ? `<img src="${userAvatar}" alt="${userName}" class="post-avatar-img">`
         : letter;
 
-    postItem.innerHTML = `
-        <div class="post-header">
-            <div class="post-avatar">${avatarHtml}</div>
-            <div class="post-info">
-                <div class="post-author">${escapeHtml(userName)}</div>
-                <div class="post-time">${timeStr}</div>
+    return `
+        <div class="post-item" data-post-id="${postId}">
+            <div class="post-header">
+                <div class="post-avatar">${avatarHtml}</div>
+                <div class="post-info">
+                    <div class="post-author">${escapeHtml(userName)}</div>
+                    <div class="post-time">${timeStr}</div>
+                </div>
+                <button class="post-delete" data-post-id="${postId}">Удалить</button>
             </div>
-            <button class="post-delete" data-post-id="${postId}">Удалить</button>
+            ${post.text ? `<div class="post-content">${escapeHtml(post.text)}</div>` : ''}
+            ${post.photoUrl ? `<img src="${post.photoUrl}" alt="Post photo" class="post-image" data-photo="${post.photoUrl}">` : ''}
         </div>
-        ${post.text ? `<div class="post-content">${escapeHtml(post.text)}</div>` : ''}
-        ${post.photoUrl ? `<img src="${post.photoUrl}" alt="Post photo" class="post-image" data-photo="${post.photoUrl}">` : ''}
     `;
+}
 
-    postsList.appendChild(postItem);
+// Вспомогательная функция: навешивание обработчиков
+function attachPostHandlers(postElement, postId, post) {
+    const deleteBtn = postElement.querySelector(".post-delete");
+    if (deleteBtn) {
+        deleteBtn.addEventListener("click", () => {
+            deletePostSafely(postId);
+        });
+    }
 
-    const deleteBtn = postItem.querySelector(".post-delete");
-    deleteBtn.addEventListener("click", async () => {
-        if (confirm("Удалить эту запись?")) {
-            try {
-                await update(dbRef(rtdb), {
-                    [`posts/${postId}`]: null,
-                    [`postOwners/${postId}`]: null
-                });
-                console.log("Запись удалена!");
-            } catch (error) {
-                console.error("Ошибка удаления записи:", error);
-                alert("Не удалось удалить запись");
-            }
-        }
-    });
-
-    const photoImg = postItem.querySelector(".post-image");
-    if (photoImg) {
+    const photoImg = postElement.querySelector(".post-image");
+    if (photoImg && post.photoUrl) {
         photoImg.addEventListener("click", () => {
-            modalPhoto.src = photoImg.dataset.photo;
+            modalPhoto.src = post.photoUrl;
             photoModal.classList.remove("hidden");
         });
+    }
+}
+
+function showEmptyPosts() {
+    postsList.innerHTML = `
+        <div class="posts-empty">
+            <div class="posts-empty-icon">📝</div>
+            <div class="posts-empty-text">
+                Здесь пока нет записей. Создайте первую!
+            </div>
+        </div>
+    `;
+    if (postsCount) {
+        postsCount.textContent = "0";
+    }
+}
+
+// ========================
+// БЕЗОПАСНОЕ УДАЛЕНИЕ ПОСТА
+// ========================
+async function deletePostSafely(postId) {
+    if (!confirm("Удалить эту запись?")) return;
+    
+    // Сохраняем текущую позицию скролла
+    const scrollPos = window.pageYOffset || document.documentElement.scrollTop;
+    
+    try {
+        // 1. МОЩНАЯ ЗАМОРОЗКА: Используем height вместо minHeight для надежности
+        const wallSection = document.querySelector('.wall-section');
+        const postsList = document.getElementById('postsList');
+        const contentGrid = document.querySelector('.content-grid');
+        
+        let savedHeights = {};
+        
+        if (wallSection && postsList) {
+            savedHeights = {
+                wall: wallSection.offsetHeight,
+                posts: postsList.offsetHeight,
+                grid: contentGrid ? contentGrid.offsetHeight : null
+            };
+            
+            // Фиксируем через height (жестче чем minHeight)
+            wallSection.style.height = `${savedHeights.wall}px`;
+            postsList.style.height = `${savedHeights.posts}px`;
+            if (contentGrid) {
+                contentGrid.style.height = `${savedHeights.grid}px`;
+            }
+        }
+        
+        // 2. Удаляем пост из Firebase
+        await update(dbRef(rtdb), {
+            [`posts/${postId}`]: null,
+            [`postOwners/${postId}`]: null
+        });
+        
+        console.log("Запись удалена!");
+        
+        // 3. Принудительно удерживаем скролл
+        window.scrollTo(0, scrollPos);
+        
+        // 4. РАЗМОРОЗКА: Снимаем фиксацию через 250ms
+        setTimeout(() => {
+            if (wallSection) wallSection.style.height = '';
+            if (postsList) postsList.style.height = '';
+            if (contentGrid) contentGrid.style.height = '';
+            
+            // Финальная проверка скролла
+            requestAnimationFrame(() => {
+                window.scrollTo(0, scrollPos);
+            });
+        }, 250);
+        
+    } catch (error) {
+        console.error("Ошибка удаления записи:", error);
+        alert("Не удалось удалить запись");
+        
+        // В случае ошибки снимаем все фиксации
+        const wallSection = document.querySelector('.wall-section');
+        const postsList = document.getElementById('postsList');
+        const contentGrid = document.querySelector('.content-grid');
+        
+        if (wallSection) wallSection.style.height = '';
+        if (postsList) postsList.style.height = '';
+        if (contentGrid) contentGrid.style.height = '';
+        
+        // Восстанавливаем скролл
+        window.scrollTo(0, scrollPos);
     }
 }
 
