@@ -653,7 +653,7 @@ function loadUserPosts() {
                 // Новый пост - создаем элемент
                 const tempContainer = document.createElement('div');
                 tempContainer.innerHTML = createPostHTML(post.id, post.data);
-                const postElement = tempContainer.firstChild;
+                const postElement = tempContainer.firstElementChild;
                 
                 // Навешиваем обработчики
                 attachPostHandlers(postElement, post.id, post.data);
