@@ -4,24 +4,6 @@ body.profile-page .site-wrapper {
   min-height: 100vh;
 }
 
-/* ======== КРИТИЧЕСКИЙ ФИКС ПРЫЖКОВ СКРОЛЛА ========= */
-/* Отключаем автоматическую корректировку скролла браузером */
-html {
-  overflow-anchor: none;
-}
-
-#postsList {
-  overflow-anchor: none;
-}
-
-.wall-section {
-  overflow-anchor: none;
-}
-
-.posts-list {
-  overflow-anchor: none;
-}
-
 /* ======== ОСНОВНОЙ КОНТЕЙНЕР ======== */
 .profile-container {
   max-width: 1000px;
