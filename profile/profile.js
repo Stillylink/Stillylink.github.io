@@ -11,22 +11,15 @@ import {
     setDoc,
     getDoc,
     serverTimestamp,
-    updateDoc
-} from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
-
-import {
-    getDatabase,
-    ref as dbRef,
-    push,
-    set,
-    onValue,
-    remove,
-    update,
+    updateDoc,
+    collection,
+    addDoc,
     query,
-    orderByChild,
-    equalTo,
-    get
-} from "https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js";
+    orderBy,
+    onSnapshot,
+    deleteDoc,
+    Timestamp
+} from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
 
 import {
     getStorage,
@@ -41,14 +34,12 @@ const firebaseConfig = {
     projectId: "stillylink-f1d0f",
     storageBucket: "stillylink-f1d0f.appspot.com",
     messagingSenderId: "772070114710",
-    appId: "1:772070114710:web:939bce83e4d3be14bdc9b7",
-    databaseURL: "https://stillylink-f1d0f-default-rtdb.europe-west1.firebasedatabase.app"
+    appId: "1:772070114710:web:939bce83e4d3be14bdc9b7"
 };
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-const rtdb = getDatabase(app);
 const storage = getStorage(app);
 
 // DOM элементы
@@ -352,49 +343,71 @@ onAuthStateChanged(auth, async (user) => {
         }
     }
     
-    if (!currentUserData) {
-        const userSnap = await getDoc(userDocRef);
+    // Всегда загружаем актуальные данные из Firestore
+    const userSnap = await getDoc(userDocRef);
 
-        if (!userSnap.exists()) {
-            const defaultName = user.email.split('@')[0];
+    if (!userSnap.exists()) {
+        // Новый пользователь - создаём профиль
+        const defaultName = user.email.split('@')[0];
 
-            const newProfile = {
-                name: defaultName,
-                email: user.email,
-                bio: "",
-                avatarUrl: null,
-                youtubeVideoId: null,
-                status: "",
-                info: {
-                    links: [],
-                    email: "",
-                    country: "",
-                    nickname: "",
-                    nicknameLabel: "Прозвище",
-                    occupation: ""
-                }
-            };
-
-            await setDoc(userDocRef, newProfile);
-            currentUserData = newProfile;
-        } else {
-            currentUserData = userSnap.data();
-            
-            // Инициализация info, если его нет
-            if (!currentUserData.info) {
-                currentUserData.info = {
-                    links: [],
-                    email: "",
-                    country: "",
-                    nickname: "",
-                    nicknameLabel: "Прозвище",
-                    occupation: ""
-                };
+        const newProfile = {
+            name: defaultName,
+            email: user.email,
+            bio: "",
+            avatarUrl: null,
+            youtubeVideoId: null,
+            status: "",
+            info: {
+                links: [],
+                email: "",
+                country: "",
+                nickname: "",
+                nicknameLabel: "Прозвище",
+                occupation: ""
             }
+        };
+
+        await setDoc(userDocRef, newProfile);
+        currentUserData = newProfile;
+        localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(currentUserData));
+        console.log("Создан новый профиль");
+    } else {
+        // Профиль существует - получаем актуальные данные
+        const freshData = userSnap.data();
+        
+        // Инициализация info, если его нет
+        if (!freshData.info) {
+            freshData.info = {
+                links: [],
+                email: "",
+                country: "",
+                nickname: "",
+                nicknameLabel: "Прозвище",
+                occupation: ""
+            };
         }
 
-        localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(currentUserData));
-        console.log("Профиль загружен из Firestore и закэширован");
+        // Проверяем, изменились ли данные
+        const cachedJSON = JSON.stringify(currentUserData);
+        const freshJSON = JSON.stringify(freshData);
+
+        if (cachedJSON !== freshJSON) {
+            console.log("Обнаружены обновления профиля, синхронизация...");
+            currentUserData = freshData;
+            localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(currentUserData));
+            
+            // Обновляем UI с актуальными данными
+            renderProfile(currentUserData);
+            renderStatus(currentUserData.status || "");
+            renderInfo(currentUserData.info || {});
+            loadYoutubeVideo(currentUserData.youtubeVideoId);
+        } else {
+            console.log("Профиль актуален");
+            // Если был загружен из кэша, используем свежие данные
+            if (currentUserData) {
+                currentUserData = freshData;
+            }
+        }
     }
 
     const letter = currentUserData.name.charAt(0).toUpperCase();
@@ -509,7 +522,7 @@ editProfileBtn.addEventListener("click", () => {
 });
 
 // ========================
-// ПУБЛИКАЦИЯ ЗАПИСИ
+// ПУБЛИКАЦИЯ ЗАПИСИ (FIRESTORE)
 // ========================
 attachPhotoBtn.addEventListener("click", () => {
     postPhotoInput.click();
@@ -552,19 +565,15 @@ publishPostBtn.addEventListener("click", async () => {
             photoUrl = await getDownloadURL(photoRef);
         }
 
-        // Генерируем pushId
-        const newPostId = push(dbRef(rtdb, 'posts')).key;
-
-        // Атомарный update: пост без uid + owner в отдельную ветку
-        await update(dbRef(rtdb), {
-            [`posts/${newPostId}`]: {
-                userName: currentUserData.name,
-                userAvatar: currentUserData.avatarUrl || null,
-                text: text || "",
-                photoUrl: photoUrl,
-                createdAt: Date.now()
-            },
-            [`postOwners/${newPostId}`]: currentUser.uid
+        // Добавляем пост в Firestore: users/{uid}/posts/{postId}
+        const postsCollectionRef = collection(db, "users", currentUser.uid, "posts");
+        
+        await addDoc(postsCollectionRef, {
+            userName: currentUserData.name,
+            userAvatar: currentUserData.avatarUrl || null,
+            text: text || "",
+            photoUrl: photoUrl,
+            createdAt: serverTimestamp()
         });
 
         postInput.value = "";
@@ -584,62 +593,33 @@ publishPostBtn.addEventListener("click", async () => {
 });
 
 // ========================
-// ЗАГРУЗКА ПОСТОВ
+// ЗАГРУЗКА ПОСТОВ (FIRESTORE)
 // ========================
 function loadUserPosts() {
     if (!currentUser) return;
 
+    // Отписываемся от предыдущего слушателя
     if (postsListener) {
         postsListener();
     }
 
-    const postsRef = dbRef(rtdb, 'posts');
+    const postsCollectionRef = collection(db, "users", currentUser.uid, "posts");
+    const postsQuery = query(postsCollectionRef, orderBy("createdAt", "desc"));
 
-    postsListener = onValue(postsRef, async (snapshot) => {
+    postsListener = onSnapshot(postsQuery, (snapshot) => {
         postsList.innerHTML = "";
 
-        if (!snapshot.exists()) {
+        if (snapshot.empty) {
             showEmptyPosts();
             return;
         }
 
-        // Собираем все посты
-        const allPosts = [];
-        snapshot.forEach(childSnapshot => {
-            allPosts.push({
-                id: childSnapshot.key,
-                data: childSnapshot.val()
-            });
-        });
-
-        // Для каждого поста проверяем, наш ли он через postOwners
-        const myPosts = [];
-        const ownerChecks = allPosts.map(async (post) => {
-            try {
-                const ownerSnap = await get(dbRef(rtdb, `postOwners/${post.id}`));
-
-                if (ownerSnap.exists() && ownerSnap.val() === currentUser.uid) {
-                    myPosts.push(post);
-                }
-            } catch (e) {
-            }
-        });
-
-        await Promise.all(ownerChecks);
-
-        if (myPosts.length === 0) {
-            showEmptyPosts();
-            return;
-        }
-
-        myPosts.sort((a, b) => b.data.createdAt - a.data.createdAt);
-
-        myPosts.forEach(post => {
-            addPostToUI(post.id, post.data);
+        snapshot.forEach((docSnap) => {
+            addPostToUI(docSnap.id, docSnap.data());
         });
 
         if (postsCount) {
-            postsCount.textContent = myPosts.length.toString();
+            postsCount.textContent = snapshot.size.toString();
         }
     }, (error) => {
         console.error("Ошибка загрузки постов:", error);
@@ -671,7 +651,8 @@ function addPostToUI(postId, post) {
     
     let timeStr = "Только что";
     if (post.createdAt) {
-        const date = new Date(post.createdAt);
+        // Firestore Timestamp → Date
+        const date = post.createdAt.toDate ? post.createdAt.toDate() : new Date(post.createdAt);
         const now = new Date();
         const diffMs = now - date;
         const diffMins = Math.floor(diffMs / 60000);
@@ -718,10 +699,8 @@ function addPostToUI(postId, post) {
     deleteBtn.addEventListener("click", async () => {
         if (confirm("Удалить эту запись?")) {
             try {
-                await update(dbRef(rtdb), {
-                    [`posts/${postId}`]: null,
-                    [`postOwners/${postId}`]: null
-                });
+                const postDocRef = doc(db, "users", currentUser.uid, "posts", postId);
+                await deleteDoc(postDocRef);
                 console.log("Запись удалена!");
             } catch (error) {
                 console.error("Ошибка удаления записи:", error);
