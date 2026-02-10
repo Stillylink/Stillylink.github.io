@@ -10,6 +10,7 @@ import {
     doc,
     setDoc,
     getDoc,
+    getDocs,
     serverTimestamp,
     updateDoc,
     collection,
@@ -18,7 +19,11 @@ import {
     orderBy,
     onSnapshot,
     deleteDoc,
-    Timestamp
+    Timestamp,
+    limit,
+    startAfter,
+    increment,
+    enableIndexedDbPersistence
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
 
 import {
@@ -41,6 +46,16 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
+
+// ✅ Способ Б: Включаем кэширование (Persistence)
+// При повторных загрузках профиля чтения будут = 0, если данные не изменились
+enableIndexedDbPersistence(db).catch((err) => {
+    if (err.code === 'failed-precondition') {
+        console.warn('Persistence: Несколько вкладок открыто, кэширование отключено');
+    } else if (err.code === 'unimplemented') {
+        console.warn('Persistence: Браузер не поддерживает IndexedDB');
+    }
+});
 
 // DOM элементы
 const regBtn = document.querySelector(".register-btn");
@@ -85,8 +100,12 @@ const infoContent = document.getElementById("infoContent");
 let currentUser = null;
 let currentUserData = null; 
 let currentPhotoFile = null;
-let postsListener = null;
 const PROFILE_CACHE_KEY = "userProfileCache_v1";
+
+// ✅ Infinite Scroll (бесконечная лента)
+const POSTS_PER_PAGE = 20;
+let lastVisible = null;
+let isFetching = false;
 
 // ЗАГРУЗКА АВАТАРКИ ИЗ localStorage СРАЗУ
 const savedAvatar = localStorage.getItem('userAvatarLetter');
@@ -357,6 +376,7 @@ onAuthStateChanged(auth, async (user) => {
             avatarUrl: null,
             youtubeVideoId: null,
             status: "",
+            postsCount: 0, // ✅ Способ В: Счетчик постов
             info: {
                 links: [],
                 email: "",
@@ -427,11 +447,6 @@ onAuthStateChanged(auth, async (user) => {
 logoutBtn?.addEventListener("click", async (e) => {
     e.preventDefault();
     
-    if (postsListener) {
-        postsListener();
-        postsListener = null;
-    }
-    
     await signOut(auth);
     localStorage.clear();
     window.location.href = "/login/";
@@ -472,6 +487,11 @@ function renderProfile(userData) {
             year: "numeric",
             month: "long"
         });
+    }
+
+    // ✅ Способ В: Отображаем счетчик постов из профиля (0 чтений вместо N)
+    if (postsCount) {
+        postsCount.textContent = (userData.postsCount || 0).toString();
     }
 }
 
@@ -568,13 +588,43 @@ publishPostBtn.addEventListener("click", async () => {
         // Добавляем пост в Firestore: users/{uid}/posts/{postId}
         const postsCollectionRef = collection(db, "users", currentUser.uid, "posts");
         
-        await addDoc(postsCollectionRef, {
+        // Данные для сохранения
+        const newPostData = {
             userName: currentUserData.name,
             userAvatar: currentUserData.avatarUrl || null,
             text: text || "",
             photoUrl: photoUrl,
             createdAt: serverTimestamp()
+        };
+
+        // Сохраняем в Firestore и получаем ID документа
+        const docRef = await addDoc(postsCollectionRef, newPostData);
+
+        // ✅ Способ В: Увеличиваем счетчик постов (+1)
+        const userDocRef = doc(db, "users", currentUser.uid);
+        await updateDoc(userDocRef, {
+            postsCount: increment(1)
         });
+
+        // Обновляем локальный счетчик
+        currentUserData.postsCount = (currentUserData.postsCount || 0) + 1;
+        localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(currentUserData));
+        
+        if (postsCount) {
+            postsCount.textContent = currentUserData.postsCount.toString();
+        }
+
+        // ✅ МГНОВЕННОЕ ОТОБРАЖЕНИЕ: Убираем сообщение "нет постов" если оно есть
+        const emptyMsg = document.querySelector(".posts-empty");
+        if (emptyMsg) emptyMsg.remove();
+
+        // ✅ МГНОВЕННОЕ ОТОБРАЖЕНИЕ: Добавляем пост в начало списка
+        // Для UI используем текущее время вместо серверного timestamp
+        const postDataForUI = {
+            ...newPostData,
+            createdAt: Timestamp.now() // Используем клиентское время для UI
+        };
+        addPostToUI(docRef.id, postDataForUI, true); // true = добавить вверх
 
         postInput.value = "";
         currentPhotoFile = null;
@@ -593,38 +643,89 @@ publishPostBtn.addEventListener("click", async () => {
 });
 
 // ========================
-// ЗАГРУЗКА ПОСТОВ (FIRESTORE)
+// ЗАГРУЗКА ПОСТОВ (INFINITE SCROLL)
 // ========================
-function loadUserPosts() {
-    if (!currentUser) return;
+async function loadUserPosts(isNextPage = false) {
+    if (!currentUser || isFetching) return;
+    isFetching = true;
 
-    // Отписываемся от предыдущего слушателя
-    if (postsListener) {
-        postsListener();
+    // Показываем индикатор загрузки при подгрузке
+    if (isNextPage) {
+        showLoadingIndicator();
     }
 
-    const postsCollectionRef = collection(db, "users", currentUser.uid, "posts");
-    const postsQuery = query(postsCollectionRef, orderBy("createdAt", "desc"));
+    try {
+        const postsCollectionRef = collection(db, "users", currentUser.uid, "posts");
+        
+        // Формируем запрос
+        let postsQuery;
+        if (isNextPage && lastVisible) {
+            // Запрос на следующую порцию (после курсора)
+            postsQuery = query(
+                postsCollectionRef, 
+                orderBy("createdAt", "desc"), 
+                startAfter(lastVisible), 
+                limit(POSTS_PER_PAGE)
+            );
+        } else {
+            // Первый запрос (первые 20 постов)
+            postsList.innerHTML = ""; // Очищаем только при первой загрузке
+            lastVisible = null; // Сбрасываем курсор
+            postsQuery = query(
+                postsCollectionRef, 
+                orderBy("createdAt", "desc"), 
+                limit(POSTS_PER_PAGE)
+            );
+        }
 
-    postsListener = onSnapshot(postsQuery, (snapshot) => {
-        postsList.innerHTML = "";
-
-        if (snapshot.empty) {
+        const snapshot = await getDocs(postsQuery);
+        
+        if (!snapshot.empty) {
+            // Запоминаем последний документ как курсор для следующей подгрузки
+            lastVisible = snapshot.docs[snapshot.docs.length - 1];
+            
+            snapshot.forEach((docSnap) => {
+                addPostToUI(docSnap.id, docSnap.data());
+            });
+        } else if (!isNextPage) {
+            // Постов нет вообще
             showEmptyPosts();
-            return;
         }
-
-        snapshot.forEach((docSnap) => {
-            addPostToUI(docSnap.id, docSnap.data());
-        });
-
-        if (postsCount) {
-            postsCount.textContent = snapshot.size.toString();
-        }
-    }, (error) => {
+        // Если snapshot.empty и isNextPage === true, значит больше постов нет (конец ленты)
+        
+    } catch (error) {
         console.error("Ошибка загрузки постов:", error);
-    });
+    } finally {
+        isFetching = false;
+        hideLoadingIndicator();
+    }
 }
+
+function showLoadingIndicator() {
+    let indicator = document.getElementById('loadingIndicator');
+    if (!indicator) {
+        indicator = document.createElement('div');
+        indicator.id = 'loadingIndicator';
+        indicator.className = 'loading-indicator';
+        indicator.innerHTML = '<div class="spinner"></div><span>Загрузка...</span>';
+        postsList.appendChild(indicator);
+    }
+}
+
+function hideLoadingIndicator() {
+    const indicator = document.getElementById('loadingIndicator');
+    if (indicator) {
+        indicator.remove();
+    }
+}
+
+// ✅ Infinite Scroll: Слежка за скроллом
+window.addEventListener('scroll', () => {
+    // Если пользователь доскроллил до низа (с запасом в 200px)
+    if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 200) {
+        loadUserPosts(true); // Загружаем следующую порцию
+    }
+});
 
 function showEmptyPosts() {
     postsList.innerHTML = `
@@ -640,7 +741,7 @@ function showEmptyPosts() {
     }
 }
 
-function addPostToUI(postId, post) {
+function addPostToUI(postId, post, toTop = false) {
     const postItem = document.createElement("div");
     postItem.className = "post-item";
     postItem.dataset.postId = postId;
@@ -693,7 +794,12 @@ function addPostToUI(postId, post) {
         ${post.photoUrl ? `<img src="${post.photoUrl}" alt="Post photo" class="post-image" data-photo="${post.photoUrl}">` : ''}
     `;
 
-    postsList.appendChild(postItem);
+    // ✅ Добавляем в начало (новые посты) или в конец (загрузка старых)
+    if (toTop) {
+        postsList.prepend(postItem); // Добавляет в начало
+    } else {
+        postsList.appendChild(postItem); // Добавляет в конец
+    }
 
     const deleteBtn = postItem.querySelector(".post-delete");
     deleteBtn.addEventListener("click", async () => {
@@ -701,6 +807,29 @@ function addPostToUI(postId, post) {
             try {
                 const postDocRef = doc(db, "users", currentUser.uid, "posts", postId);
                 await deleteDoc(postDocRef);
+                
+                // ✅ МГНОВЕННОЕ УДАЛЕНИЕ: Убираем пост из DOM сразу
+                postItem.remove();
+                
+                // ✅ Способ В: Уменьшаем счетчик постов (-1)
+                const userDocRef = doc(db, "users", currentUser.uid);
+                await updateDoc(userDocRef, {
+                    postsCount: increment(-1)
+                });
+
+                // Обновляем локальный счетчик
+                currentUserData.postsCount = Math.max(0, (currentUserData.postsCount || 1) - 1);
+                localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(currentUserData));
+                
+                if (postsCount) {
+                    postsCount.textContent = currentUserData.postsCount.toString();
+                }
+
+                // Если постов больше нет, показываем сообщение
+                if (currentUserData.postsCount === 0) {
+                    showEmptyPosts();
+                }
+
                 console.log("Запись удалена!");
             } catch (error) {
                 console.error("Ошибка удаления записи:", error);
