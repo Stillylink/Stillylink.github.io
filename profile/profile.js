@@ -30,7 +30,8 @@ import {
     getStorage,
     ref as storageRef,
     uploadBytes,
-    getDownloadURL
+    getDownloadURL,
+    deleteObject
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-storage.js";
 
 const firebaseConfig = {
@@ -106,6 +107,7 @@ const PROFILE_CACHE_KEY = "userProfileCache_v1";
 const POSTS_PER_PAGE = 20;
 let lastVisible = null;
 let isFetching = false;
+let hasMore = true; // Флаг: есть ли ещё посты для загрузки
 
 // ЗАГРУЗКА АВАТАРКИ ИЗ localStorage СРАЗУ
 const savedAvatar = localStorage.getItem('userAvatarLetter');
@@ -438,6 +440,9 @@ onAuthStateChanged(auth, async (user) => {
     renderStatus(currentUserData.status || "");
     renderInfo(currentUserData.info || {});
     loadYoutubeVideo(currentUserData.youtubeVideoId);
+    
+    // ✅ Инициализируем скролл-листенер и загружаем посты
+    initScrollListener();
     loadUserPosts();
 });
 
@@ -446,6 +451,9 @@ onAuthStateChanged(auth, async (user) => {
 // ========================
 logoutBtn?.addEventListener("click", async (e) => {
     e.preventDefault();
+    
+    // ✅ Очищаем обработчик скролла (предотвращение утечки памяти)
+    cleanupScrollListener();
     
     await signOut(auth);
     localStorage.clear();
@@ -508,14 +516,30 @@ avatarUpload.addEventListener("change", async (e) => {
     }
 
     try {
-        const avatarRef = storageRef(storage, `avatars/${currentUser.uid}/${Date.now()}_${file.name}`);
+        // ✅ Удаляем старую аватарку перед загрузкой новой
+        if (currentUserData.avatarPath) {
+            try {
+                const oldAvatarRef = storageRef(storage, currentUserData.avatarPath);
+                await deleteObject(oldAvatarRef);
+                console.log("Старая аватарка удалена");
+            } catch (error) {
+                console.warn("Не удалось удалить старую аватарку:", error);
+            }
+        }
+
+        const avatarPath = `avatars/${currentUser.uid}/${Date.now()}_${file.name}`;
+        const avatarRef = storageRef(storage, avatarPath);
         await uploadBytes(avatarRef, file);
         const avatarUrl = await getDownloadURL(avatarRef);
 
         const userDocRef = doc(db, "users", currentUser.uid);
-        await updateDoc(userDocRef, { avatarUrl });
+        await updateDoc(userDocRef, { 
+            avatarUrl,
+            avatarPath // ✅ Сохраняем путь для будущего удаления
+        });
 
         currentUserData.avatarUrl = avatarUrl;
+        currentUserData.avatarPath = avatarPath;
         localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(currentUserData));
 
         avatarLetterProfile.style.display = "none";
@@ -576,13 +600,18 @@ publishPostBtn.addEventListener("click", async () => {
     publishPostBtn.disabled = true;
     publishPostBtn.textContent = "Публикация...";
 
+    let uploadedPhotoRef = null; // ✅ Храним ссылку для отката
+
     try {
         let photoUrl = null;
+        let photoPath = null; // ✅ Сохраняем путь для надёжного удаления
 
         if (currentPhotoFile) {
-            const photoRef = storageRef(storage, `posts/${currentUser.uid}/${Date.now()}_${currentPhotoFile.name}`);
-            await uploadBytes(photoRef, currentPhotoFile);
-            photoUrl = await getDownloadURL(photoRef);
+            const filePath = `posts/${currentUser.uid}/${Date.now()}_${currentPhotoFile.name}`;
+            uploadedPhotoRef = storageRef(storage, filePath);
+            await uploadBytes(uploadedPhotoRef, currentPhotoFile);
+            photoUrl = await getDownloadURL(uploadedPhotoRef);
+            photoPath = filePath; // ✅ Сохраняем путь
         }
 
         // Добавляем пост в Firestore: users/{uid}/posts/{postId}
@@ -594,10 +623,11 @@ publishPostBtn.addEventListener("click", async () => {
             userAvatar: currentUserData.avatarUrl || null,
             text: text || "",
             photoUrl: photoUrl,
+            photoPath: photoPath, // ✅ Путь для надёжного удаления
             createdAt: serverTimestamp()
         };
 
-        // Сохраняем в Firestore и получаем ID документа
+        // ✅ КРИТИЧЕСКИЙ МОМЕНТ: Если здесь упадет - откатим фото
         const docRef = await addDoc(postsCollectionRef, newPostData);
 
         // ✅ Способ В: Увеличиваем счетчик постов (+1)
@@ -624,7 +654,13 @@ publishPostBtn.addEventListener("click", async () => {
             ...newPostData,
             createdAt: Timestamp.now() // Используем клиентское время для UI
         };
-        addPostToUI(docRef.id, postDataForUI, true); // true = добавить вверх
+        addPostToUI(docSnap.id, postDataForUI, true); // true = добавить вверх
+
+        // ✅ Сбрасываем флаг hasMore, если были в конце списка
+        // (теперь есть новый пост, возможно появятся и другие)
+        if (!hasMore && currentUserData.postsCount === 1) {
+            hasMore = true;
+        }
 
         postInput.value = "";
         currentPhotoFile = null;
@@ -635,6 +671,17 @@ publishPostBtn.addEventListener("click", async () => {
         console.log("Запись опубликована!");
     } catch (error) {
         console.error("Ошибка публикации записи:", error);
+        
+        // ✅ ОТКАТ: Если фото загрузилось, но пост не создался - удаляем фото
+        if (uploadedPhotoRef) {
+            try {
+                await deleteObject(uploadedPhotoRef);
+                console.log("Orphaned photo deleted (rollback)");
+            } catch (rollbackError) {
+                console.error("Failed to rollback photo:", rollbackError);
+            }
+        }
+        
         alert("Не удалось опубликовать запись");
     } finally {
         publishPostBtn.disabled = false;
@@ -647,6 +694,10 @@ publishPostBtn.addEventListener("click", async () => {
 // ========================
 async function loadUserPosts(isNextPage = false) {
     if (!currentUser || isFetching) return;
+    
+    // ✅ Если это попытка загрузить следующую страницу, но постов больше нет
+    if (isNextPage && !hasMore) return;
+    
     isFetching = true;
 
     // Показываем индикатор загрузки при подгрузке
@@ -671,6 +722,7 @@ async function loadUserPosts(isNextPage = false) {
             // Первый запрос (первые 20 постов)
             postsList.innerHTML = ""; // Очищаем только при первой загрузке
             lastVisible = null; // Сбрасываем курсор
+            hasMore = true; // Сбрасываем флаг
             postsQuery = query(
                 postsCollectionRef, 
                 orderBy("createdAt", "desc"), 
@@ -687,11 +739,19 @@ async function loadUserPosts(isNextPage = false) {
             snapshot.forEach((docSnap) => {
                 addPostToUI(docSnap.id, docSnap.data());
             });
-        } else if (!isNextPage) {
-            // Постов нет вообще
-            showEmptyPosts();
+
+            // ✅ Проверяем, есть ли ещё посты
+            // Если получили меньше чем POSTS_PER_PAGE, значит это последняя порция
+            if (snapshot.size < POSTS_PER_PAGE) {
+                hasMore = false;
+            }
+        } else {
+            // Постов нет вообще или больше не осталось
+            if (!isNextPage) {
+                showEmptyPosts();
+            }
+            hasMore = false;
         }
-        // Если snapshot.empty и isNextPage === true, значит больше постов нет (конец ленты)
         
     } catch (error) {
         console.error("Ошибка загрузки постов:", error);
@@ -720,12 +780,31 @@ function hideLoadingIndicator() {
 }
 
 // ✅ Infinite Scroll: Слежка за скроллом
-window.addEventListener('scroll', () => {
-    // Если пользователь доскроллил до низа (с запасом в 200px)
-    if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 200) {
-        loadUserPosts(true); // Загружаем следующую порцию
+let scrollHandler = null; // Храним ссылку на обработчик для очистки
+
+function initScrollListener() {
+    // Удаляем старый слушатель, если есть
+    if (scrollHandler) {
+        window.removeEventListener('scroll', scrollHandler);
     }
-});
+    
+    // Создаём новый обработчик
+    scrollHandler = () => {
+        if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 200) {
+            loadUserPosts(true);
+        }
+    };
+    
+    window.addEventListener('scroll', scrollHandler);
+}
+
+// Очистка при выходе
+function cleanupScrollListener() {
+    if (scrollHandler) {
+        window.removeEventListener('scroll', scrollHandler);
+        scrollHandler = null;
+    }
+}
 
 function showEmptyPosts() {
     postsList.innerHTML = `
@@ -751,29 +830,62 @@ function addPostToUI(postId, post, toTop = false) {
     const letter = userName.charAt(0).toUpperCase();
     
     let timeStr = "Только что";
+    
+    // ✅ Безопасная обработка даты
     if (post.createdAt) {
-        // Firestore Timestamp → Date
-        const date = post.createdAt.toDate ? post.createdAt.toDate() : new Date(post.createdAt);
-        const now = new Date();
-        const diffMs = now - date;
-        const diffMins = Math.floor(diffMs / 60000);
-        const diffHours = Math.floor(diffMs / 3600000);
-        const diffDays = Math.floor(diffMs / 86400000);
+        try {
+            let date;
+            
+            // Если это Firestore Timestamp с методом toDate
+            if (post.createdAt.toDate && typeof post.createdAt.toDate === 'function') {
+                date = post.createdAt.toDate();
+            } 
+            // Если это обычный объект Date или число
+            else if (post.createdAt instanceof Date) {
+                date = post.createdAt;
+            }
+            // Если это число (миллисекунды)
+            else if (typeof post.createdAt === 'number') {
+                date = new Date(post.createdAt);
+            }
+            // Если это объект с seconds (Firestore Timestamp в JSON)
+            else if (post.createdAt.seconds) {
+                date = new Date(post.createdAt.seconds * 1000);
+            }
+            
+            // Если дату удалось получить, рассчитываем время
+            if (date && date instanceof Date && !isNaN(date)) {
+                const now = new Date();
+                const diffMs = now - date;
 
-        if (diffMins < 1) {
+                // ✅ Проверка на отрицательное время (часы пользователя в будущем)
+                if (diffMs < 0) {
+                    timeStr = "Только что";
+                } else {
+                    const diffMins = Math.floor(diffMs / 60000);
+                    const diffHours = Math.floor(diffMs / 3600000);
+                    const diffDays = Math.floor(diffMs / 86400000);
+
+                    if (diffMins < 1) {
+                        timeStr = "Только что";
+                    } else if (diffMins < 60) {
+                        timeStr = `${diffMins} ${pluralize(diffMins, 'минуту', 'минуты', 'минут')} назад`;
+                    } else if (diffHours < 24) {
+                        timeStr = `${diffHours} ${pluralize(diffHours, 'час', 'часа', 'часов')} назад`;
+                    } else if (diffDays < 7) {
+                        timeStr = `${diffDays} ${pluralize(diffDays, 'день', 'дня', 'дней')} назад`;
+                    } else {
+                        timeStr = date.toLocaleDateString("ru-RU", { 
+                            day: 'numeric', 
+                            month: 'long',
+                            year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
+                        });
+                    }
+                }
+            }
+        } catch (error) {
+            console.warn('Ошибка обработки даты поста:', error);
             timeStr = "Только что";
-        } else if (diffMins < 60) {
-            timeStr = `${diffMins} ${pluralize(diffMins, 'минуту', 'минуты', 'минут')} назад`;
-        } else if (diffHours < 24) {
-            timeStr = `${diffHours} ${pluralize(diffHours, 'час', 'часа', 'часов')} назад`;
-        } else if (diffDays < 7) {
-            timeStr = `${diffDays} ${pluralize(diffDays, 'день', 'дня', 'дней')} назад`;
-        } else {
-            timeStr = date.toLocaleDateString("ru-RU", { 
-                day: 'numeric', 
-                month: 'long',
-                year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
-            });
         }
     }
 
@@ -805,6 +917,32 @@ function addPostToUI(postId, post, toTop = false) {
     deleteBtn.addEventListener("click", async () => {
         if (confirm("Удалить эту запись?")) {
             try {
+                // ✅ Удаляем фото из Storage используя photoPath (надёжнее чем URL)
+                if (post.photoPath) {
+                    try {
+                        const photoRef = storageRef(storage, post.photoPath);
+                        await deleteObject(photoRef);
+                        console.log("Фото удалено из Storage");
+                    } catch (storageError) {
+                        // Если фото уже удалено или ссылка битая - не критично
+                        console.warn("Не удалось удалить фото из Storage:", storageError);
+                    }
+                } else if (post.photoUrl) {
+                    // Fallback: старые посты без photoPath
+                    try {
+                        // Извлекаем путь из URL
+                        const urlParts = post.photoUrl.split('/o/')[1];
+                        if (urlParts) {
+                            const path = decodeURIComponent(urlParts.split('?')[0]);
+                            const photoRef = storageRef(storage, path);
+                            await deleteObject(photoRef);
+                            console.log("Фото удалено из Storage (fallback)");
+                        }
+                    } catch (storageError) {
+                        console.warn("Не удалось удалить фото из Storage (fallback):", storageError);
+                    }
+                }
+
                 const postDocRef = doc(db, "users", currentUser.uid, "posts", postId);
                 await deleteDoc(postDocRef);
                 
