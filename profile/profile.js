@@ -775,30 +775,44 @@ function hideLoadingIndicator() {
     }
 }
 
-// ✅ Infinite Scroll: Слежка за скроллом
-let scrollHandler = null; // Храним ссылку на обработчик для очистки
+// ✅ Infinite Scroll: Профессиональный метод с Intersection Observer
+let observer = null; // Храним наблюдателя для очистки
 
 function initScrollListener() {
-    // Удаляем старый слушатель, если есть
-    if (scrollHandler) {
-        window.removeEventListener('scroll', scrollHandler);
+    // Удаляем старый наблюдатель, если есть
+    if (observer) {
+        observer.disconnect();
     }
     
-    // Создаём новый обработчик
-    scrollHandler = () => {
-        if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 200) {
+    const sentinel = document.getElementById('scrollSentinel');
+    if (!sentinel) {
+        console.warn('Маячок scrollSentinel не найден');
+        return;
+    }
+    
+    // Создаём IntersectionObserver - современный API для отслеживания видимости элементов
+    observer = new IntersectionObserver((entries) => {
+        // entries[0].isIntersecting === true, когда маячок показался на экране
+        if (entries[0].isIntersecting && !isFetching && hasMore) {
+            console.log("🎯 Маячок сработал! Подгружаем посты...");
             loadUserPosts(true);
         }
-    };
+    }, {
+        // rootMargin: начинаем подгрузку за 400px до маячка (для плавности)
+        rootMargin: '400px'
+    });
     
-    window.addEventListener('scroll', scrollHandler);
+    // Даём команду следить за маячком
+    observer.observe(sentinel);
+    console.log("✅ Intersection Observer активирован");
 }
 
-// Очистка при выходе
+// Очистка при выходе (предотвращение утечки памяти)
 function cleanupScrollListener() {
-    if (scrollHandler) {
-        window.removeEventListener('scroll', scrollHandler);
-        scrollHandler = null;
+    if (observer) {
+        observer.disconnect();
+        observer = null;
+        console.log("🧹 Intersection Observer отключён");
     }
 }
 
