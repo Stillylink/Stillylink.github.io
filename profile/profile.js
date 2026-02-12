@@ -23,7 +23,8 @@ import {
     limit,
     startAfter,
     increment,
-    enableIndexedDbPersistence
+    persistentLocalCache,
+    initializeFirestore
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
 
 import {
@@ -45,18 +46,13 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
-const db = getFirestore(app);
-const storage = getStorage(app);
 
-// ✅ Способ Б: Включаем кэширование (Persistence)
-// При повторных загрузках профиля чтения будут = 0, если данные не изменились
-enableIndexedDbPersistence(db).catch((err) => {
-    if (err.code === 'failed-precondition') {
-        console.warn('Persistence: Несколько вкладок открыто, кэширование отключено');
-    } else if (err.code === 'unimplemented') {
-        console.warn('Persistence: Браузер не поддерживает IndexedDB');
-    }
+// ✅ ИСПРАВЛЕНО: Новый способ включения кэширования (без предупреждения)
+const db = initializeFirestore(app, {
+    localCache: persistentLocalCache(/*settings*/{})
 });
+
+const storage = getStorage(app);
 
 // DOM элементы
 const regBtn = document.querySelector(".register-btn");
@@ -627,7 +623,7 @@ publishPostBtn.addEventListener("click", async () => {
             createdAt: serverTimestamp()
         };
 
-        // ✅ КРИТИЧЕСКИЙ МОМЕНТ: Если здесь упадет - откатим фото
+        // ✅ ИСПРАВЛЕНО: Используем docRef вместо docSnap
         const docRef = await addDoc(postsCollectionRef, newPostData);
 
         // ✅ Способ В: Увеличиваем счетчик постов (+1)
@@ -654,7 +650,7 @@ publishPostBtn.addEventListener("click", async () => {
             ...newPostData,
             createdAt: Timestamp.now() // Используем клиентское время для UI
         };
-        addPostToUI(docSnap.id, postDataForUI, true); // true = добавить вверх
+        addPostToUI(docRef.id, postDataForUI, true); // ✅ ИСПРАВЛЕНО: docRef вместо docSnap
 
         // ✅ Сбрасываем флаг hasMore, если были в конце списка
         // (теперь есть новый пост, возможно появятся и другие)
