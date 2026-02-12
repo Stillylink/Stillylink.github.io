@@ -135,9 +135,10 @@
             <div class="posts-list" id="postsList">
               <!-- Записи будут добавляться динамически -->
             </div>
-            <!-- ✅ Маячок для бесконечной прокрутки (Intersection Observer) -->
-            <div id="scrollSentinel" style="height: 10px; margin-bottom: 50px;"></div>
           </div>
+          
+          <!-- ✅ Маячок для бесконечной прокрутки (вне wall-section, чтобы не растягивать посты) -->
+          <div id="scrollSentinel" style="height: 1px; opacity: 0; pointer-events: none;"></div>
         </div>
       </div>
     </main>
