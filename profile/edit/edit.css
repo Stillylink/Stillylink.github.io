@@ -629,6 +629,29 @@ body.edit-page .site-wrapper {
   transform: translateY(-1px);
 }
 
+
+.field-error {
+  font-size: 13px;
+  color: #ff3b30;
+  margin-top: 6px;
+  display: block;
+  font-weight: 500;
+}
+
+.field-error.hidden {
+  display: none;
+}
+
+.form-input.error {
+  border-color: #ff3b30;
+  background: rgba(255, 59, 48, 0.05);
+}
+
+.field-hint.cooldown {
+  color: #ff9500;
+  font-weight: 500;
+}
+
 /* ======== УТИЛИТЫ ======== */
 .hidden {
   display: none !important;
