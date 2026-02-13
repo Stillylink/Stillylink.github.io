@@ -105,6 +105,19 @@ body.profile-page .site-wrapper {
   margin: 0;
 }
 
+.profile-username-id {
+  font-size: 16px;
+  color: rgba(255, 255, 255, 0.6);
+  margin-top: 4px;
+  margin-bottom: 12px;
+  font-weight: 500;
+}
+
+.profile-username-id:hover {
+  color: var(--accent);
+  cursor: default;
+}
+
 .edit-profile-btn {
   padding: 10px 20px;
   background: transparent;
@@ -987,6 +1000,10 @@ body.profile-page .site-wrapper {
     gap: 10px;
   }
 
+  .profile-username-id {
+    font-size: 14px;
+  }
+  
   .post-composer {
     padding: 16px;
   }
