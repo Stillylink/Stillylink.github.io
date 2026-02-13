@@ -94,10 +94,11 @@
                     type="text" 
                     id="editProfileId" 
                     class="form-input" 
-                    placeholder="Скоро будет доступно"
-                    disabled
+                    placeholder="ваш_id"
+                    maxlength="20"
                   >
-                  <small class="field-hint">ID будет добавлен в следующем обновлении</small>
+                  <small class="field-hint" id="idHint">Только латиница, цифры и _ (3-20 символов). Можно менять раз в 7 дней.</small>
+                  <small class="field-error hidden" id="idError"></small>
                 </div>
               </div>
             </div>
