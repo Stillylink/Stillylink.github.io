@@ -140,7 +140,8 @@ import {
     getFirestore,
     doc,
     setDoc,
-    getDoc
+    getDoc,
+    runTransaction
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -234,16 +235,35 @@ async function createUserProfile(user) {
         }
     };
     
-    // Создаём документ в коллекции usernames для отслеживания уникальности
-    const usernameDocRef = doc(db, "usernames", generatedID.toLowerCase());
-    
-    // Атомарная операция: создаём оба документа
-    await Promise.all([
-        setDoc(userDocRef, newProfile),
-        setDoc(usernameDocRef, { ownerUID: user.uid })
-    ]);
-    
-    console.log("✅ Профиль создан с usernameID:", generatedID);
+    // ✅ ТРАНЗАКЦИЯ: Атомарное создание профиля и документа в usernames
+    await runTransaction(db, async (transaction) => {
+        const usernameDocRef = doc(db, "usernames", generatedID.toLowerCase());
+        
+        // 1. Проверяем, не занят ли сгенерированный ID
+        const usernameSnap = await transaction.get(usernameDocRef);
+        
+        if (usernameSnap.exists()) {
+            // Если занят (очень редкий случай), добавляем timestamp
+            const timestamp = Date.now().toString().slice(-6);
+            const fallbackID = `${generatedID}_${timestamp}`.toLowerCase();
+            const fallbackDocRef = doc(db, "usernames", fallbackID);
+            
+            newProfile.usernameID = fallbackID;
+            
+            transaction.set(userDocRef, newProfile);
+            transaction.set(fallbackDocRef, { ownerUID: user.uid });
+            
+            console.log("✅ Профиль создан с fallback usernameID:", fallbackID);
+        } else {
+            // 2. Создаём документ пользователя
+            transaction.set(userDocRef, newProfile);
+            
+            // 3. Создаём документ в usernames
+            transaction.set(usernameDocRef, { ownerUID: user.uid });
+            
+            console.log("✅ Профиль создан с usernameID:", generatedID);
+        }
+    });
 }
 
 /* ---------- Регистрация ---------- */
