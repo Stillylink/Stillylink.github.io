@@ -326,6 +326,25 @@ addVideoBtn?.addEventListener("click", async () => {
 });
 
 // ========================
+// ФУНКЦИЯ ГЕНЕРАЦИИ КОРОТКОГО USERNAMEID
+// ========================
+function generateUsernameID(email, uid) {
+    // 1. Берём часть email до @
+    const emailPart = email.split('@')[0];
+    
+    // 2. Оставляем только латиницу и цифры
+    const cleanEmail = emailPart.replace(/[^a-zA-Z0-9]/g, '');
+    
+    // 3. Добавляем нижнее подчеркивание и первые 4 символа от uid
+    const shortUID = uid.substring(0, 4);
+    
+    // 4. Формируем финальный ID (всё в нижнем регистре)
+    const generatedID = `${cleanEmail}_${shortUID}`.toLowerCase();
+    
+    return generatedID;
+}
+
+// ========================
 // ПРОВЕРКА АВТОРИЗАЦИИ
 // ========================
 onAuthStateChanged(auth, async (user) => {
@@ -367,6 +386,9 @@ onAuthStateChanged(auth, async (user) => {
     if (!userSnap.exists()) {
         // Новый пользователь - создаём профиль
         const defaultName = user.email.split('@')[0];
+        
+        // ✅ Генерируем короткий и понятный usernameID
+        const generatedID = generateUsernameID(user.email, user.uid);
 
         const newProfile = {
             name: defaultName,
@@ -376,7 +398,7 @@ onAuthStateChanged(auth, async (user) => {
             youtubeVideoId: null,
             status: "",
             postsCount: 0,
-            usernameID: user.uid, // ✅ По умолчанию равен uid
+            usernameID: generatedID, // ✅ Короткий ID типа "ivanivanov_a1b2"
             info: {
                 links: [],
                 email: "",
@@ -388,7 +410,7 @@ onAuthStateChanged(auth, async (user) => {
         };
 
         // Создаём документ в коллекции usernames для отслеживания уникальности
-        const usernameDocRef = doc(db, "usernames", user.uid.toLowerCase());
+        const usernameDocRef = doc(db, "usernames", generatedID.toLowerCase());
 
         await Promise.all([
             setDoc(userDocRef, newProfile),
@@ -397,24 +419,26 @@ onAuthStateChanged(auth, async (user) => {
         
         currentUserData = newProfile;
         localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(currentUserData));
-        console.log("Создан новый профиль с usernameID:", user.uid);
+        console.log("Создан новый профиль с usernameID:", generatedID);
     } else {
         // Профиль существует - получаем актуальные данные
         const freshData = userSnap.data();
         
         // ✅ Миграция старых пользователей: добавляем usernameID если его нет
         if (!freshData.usernameID) {
-            freshData.usernameID = user.uid;
+            // Генерируем короткий ID для старого пользователя
+            const generatedID = generateUsernameID(user.email, user.uid);
+            freshData.usernameID = generatedID;
             
             // Создаём документ в usernames для старых пользователей
-            const usernameDocRef = doc(db, "usernames", user.uid.toLowerCase());
+            const usernameDocRef = doc(db, "usernames", generatedID.toLowerCase());
             
             await Promise.all([
-                updateDoc(userDocRef, { usernameID: user.uid }),
+                updateDoc(userDocRef, { usernameID: generatedID }),
                 setDoc(usernameDocRef, { ownerUID: user.uid })
             ]);
             
-            console.log("✅ Миграция: добавлен usernameID для старого пользователя");
+            console.log("✅ Миграция: добавлен usernameID для старого пользователя:", generatedID);
         }
         
         // Инициализация info, если его нет
