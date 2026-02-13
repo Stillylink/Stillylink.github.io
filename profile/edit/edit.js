@@ -9,7 +9,11 @@ import {
     getFirestore,
     doc,
     setDoc,
-    getDoc
+    getDoc,
+    updateDoc,
+    deleteDoc,
+    serverTimestamp,
+    runTransaction
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -40,6 +44,9 @@ const editSections = document.querySelectorAll(".edit-section");
 // DOM элементы профиля
 const editAvatarLetter = document.getElementById("editAvatarLetter");
 const editProfileName = document.getElementById("editProfileName");
+const editProfileId = document.getElementById("editProfileId");
+const idHint = document.getElementById("idHint");
+const idError = document.getElementById("idError");
 const editProfileBio = document.getElementById("editProfileBio");
 const bioCharCount = document.getElementById("bioCharCount");
 const bioLineCount = document.getElementById("bioLineCount");
@@ -84,6 +91,11 @@ let currentUser = null;
 let currentUserData = null;
 let originalData = {}; // Для отмены изменений
 const PROFILE_CACHE_KEY = "userProfileCache_v1";
+
+// Константы для смены ID
+const USERNAME_CHANGE_COOLDOWN_DAYS = 7;
+const USERNAME_MIN_LENGTH = 3;
+const USERNAME_MAX_LENGTH = 20;
 
 // ========================
 // НАВИГАЦИЯ
@@ -144,6 +156,17 @@ editTabs.forEach(tab => {
 });
 
 // ========================
+// ФУНКЦИЯ ГЕНЕРАЦИИ USERNAMEID
+// ========================
+function generateUsernameID(email, uid) {
+    const emailPart = email.split('@')[0];
+    const cleanEmail = emailPart.replace(/[^a-zA-Z0-9]/g, '');
+    const shortUID = uid.substring(0, 4);
+    const generatedID = `${cleanEmail}_${shortUID}`.toLowerCase();
+    return generatedID;
+}
+
+// ========================
 // ПРОВЕРКА АВТОРИЗАЦИИ
 // ========================
 onAuthStateChanged(auth, async (user) => {
@@ -184,6 +207,7 @@ onAuthStateChanged(auth, async (user) => {
 
         if (!userSnap.exists()) {
             const defaultName = user.email.split('@')[0];
+            const generatedID = generateUsernameID(user.email, user.uid);
 
             const newProfile = {
                 name: defaultName,
@@ -192,6 +216,7 @@ onAuthStateChanged(auth, async (user) => {
                 avatarUrl: null,
                 youtubeVideoId: null,
                 status: "",
+                usernameID: generatedID,
                 info: {
                     links: [],
                     email: "",
@@ -202,10 +227,50 @@ onAuthStateChanged(auth, async (user) => {
                 }
             };
 
-            await setDoc(userDocRef, newProfile);
+            const usernameDocRef = doc(db, "usernames", generatedID.toLowerCase());
+
+            await Promise.all([
+                setDoc(userDocRef, newProfile),
+                setDoc(usernameDocRef, { ownerUID: user.uid })
+            ]);
+            
             currentUserData = newProfile;
         } else {
             currentUserData = userSnap.data();
+            
+            // ✅ Миграция: добавляем usernameID если его нет (ЧЕРЕЗ ТРАНЗАКЦИЮ)
+            if (!currentUserData.usernameID) {
+                const generatedID = generateUsernameID(user.email, user.uid);
+                
+                await runTransaction(db, async (transaction) => {
+                    const usernameDocRef = doc(db, "usernames", generatedID.toLowerCase());
+                    
+                    // 1. Проверяем, не занят ли сгенерированный ID
+                    const usernameSnap = await transaction.get(usernameDocRef);
+                    
+                    if (usernameSnap.exists()) {
+                        // Если занят (очень редкий случай), добавляем timestamp
+                        const timestamp = Date.now().toString().slice(-6);
+                        const fallbackID = `${generatedID}_${timestamp}`.toLowerCase();
+                        const fallbackDocRef = doc(db, "usernames", fallbackID);
+                        
+                        transaction.set(fallbackDocRef, { ownerUID: user.uid });
+                        transaction.update(userDocRef, { usernameID: fallbackID });
+                        
+                        currentUserData.usernameID = fallbackID;
+                        console.log("✅ Миграция: добавлен fallback usernameID:", fallbackID);
+                    } else {
+                        // 2. Создаём документ в usernames
+                        transaction.set(usernameDocRef, { ownerUID: user.uid });
+                        
+                        // 3. Обновляем профиль пользователя
+                        transaction.update(userDocRef, { usernameID: generatedID });
+                        
+                        currentUserData.usernameID = generatedID;
+                        console.log("✅ Миграция: добавлен usernameID:", generatedID);
+                    }
+                });
+            }
             
             if (!currentUserData.info) {
                 currentUserData.info = {
@@ -233,6 +298,9 @@ onAuthStateChanged(auth, async (user) => {
     loadInfoData();
     loadVideoData();
     
+    // Проверяем cooldown для смены ID
+    checkUsernameCooldown();
+    
     // Сохраняем оригинальные данные для отмены
     saveOriginalData();
 });
@@ -254,7 +322,8 @@ function saveOriginalData() {
     originalData = {
         profile: {
             name: currentUserData.name,
-            bio: currentUserData.bio || ""
+            bio: currentUserData.bio || "",
+            usernameID: currentUserData.usernameID || ""
         },
         status: currentUserData.status || "",
         info: JSON.parse(JSON.stringify(currentUserData.info || {})),
@@ -268,6 +337,7 @@ function saveOriginalData() {
 function loadProfileData() {
     editAvatarLetter.textContent = currentUserData.name.charAt(0).toUpperCase();
     editProfileName.value = currentUserData.name;
+    editProfileId.value = currentUserData.usernameID || "";
     editProfileBio.value = currentUserData.bio || "";
     
     updateBioCounter();
@@ -310,15 +380,156 @@ editProfileBio.addEventListener('input', () => {
     updateBioCounter();
 });
 
+// ========================
+// ВАЛИДАЦИЯ USERNAMEID
+// ========================
+function validateUsernameID(username) {
+    // Приводим к нижнему регистру
+    username = username.toLowerCase().trim();
+    
+    // Проверка длины
+    if (username.length < USERNAME_MIN_LENGTH || username.length > USERNAME_MAX_LENGTH) {
+        return {
+            valid: false,
+            error: `ID должен быть от ${USERNAME_MIN_LENGTH} до ${USERNAME_MAX_LENGTH} символов`
+        };
+    }
+    
+    // Проверка формата (только латиница, цифры и _)
+    const validFormat = /^[a-z0-9_]+$/;
+    if (!validFormat.test(username)) {
+        return {
+            valid: false,
+            error: "Только латиница, цифры и нижнее подчеркивание"
+        };
+    }
+    
+    // Проверка зарезервированных слов
+    const reserved = ['admin', 'root', 'system', 'api', 'app', 'stillylink', 'support', 'help'];
+    if (reserved.includes(username)) {
+        return {
+            valid: false,
+            error: "Этот ID зарезервирован"
+        };
+    }
+    
+    return { valid: true, username };
+}
+
+// ========================
+// ПРОВЕРКА COOLDOWN
+// ========================
+function checkUsernameCooldown() {
+    const lastChange = currentUserData.lastUsernameChange;
+    
+    if (!lastChange) {
+        // Первая смена - разрешаем
+        return;
+    }
+    
+    // Преобразуем Firestore Timestamp в Date
+    let changeDate;
+    if (lastChange.toDate && typeof lastChange.toDate === 'function') {
+        changeDate = lastChange.toDate();
+    } else if (lastChange.seconds) {
+        changeDate = new Date(lastChange.seconds * 1000);
+    } else {
+        changeDate = new Date(lastChange);
+    }
+    
+    const now = new Date();
+    const diffMs = now - changeDate;
+    const diffDays = diffMs / (1000 * 60 * 60 * 24);
+    
+    if (diffDays < USERNAME_CHANGE_COOLDOWN_DAYS) {
+        const daysLeft = Math.ceil(USERNAME_CHANGE_COOLDOWN_DAYS - diffDays);
+        editProfileId.disabled = true;
+        idHint.textContent = `Смена ID доступна через ${daysLeft} ${pluralize(daysLeft, 'день', 'дня', 'дней')}`;
+        idHint.classList.add('cooldown');
+    } else {
+        editProfileId.disabled = false;
+        idHint.classList.remove('cooldown');
+    }
+}
+
+// ========================
+// ВАЛИДАЦИЯ ID ПРИ ВВОДЕ
+// ========================
+editProfileId.addEventListener('input', () => {
+    const value = editProfileId.value.trim().toLowerCase();
+    editProfileId.value = value; // Автоматически приводим к нижнему регистру
+    
+    // Убираем ошибки при вводе
+    editProfileId.classList.remove('error');
+    idError.classList.add('hidden');
+    idError.textContent = '';
+    
+    // Валидация в реальном времени
+    if (value.length > 0) {
+        const validation = validateUsernameID(value);
+        if (!validation.valid) {
+            editProfileId.classList.add('error');
+            idError.classList.remove('hidden');
+            idError.textContent = validation.error;
+        }
+    }
+});
+
+// ========================
+// СОХРАНЕНИЕ ПРОФИЛЯ С ПРОВЕРКОЙ ID
+// ========================
 saveProfileBtn.addEventListener('click', async () => {
     if (!currentUser) return;
     
     const name = editProfileName.value.trim();
     const bio = editProfileBio.value.trim();
+    const newUsernameID = editProfileId.value.trim().toLowerCase();
     
     if (!name) {
         alert('Введите имя');
         return;
+    }
+    
+    // Валидация нового ID
+    const validation = validateUsernameID(newUsernameID);
+    if (!validation.valid) {
+        editProfileId.classList.add('error');
+        idError.classList.remove('hidden');
+        idError.textContent = validation.error;
+        return;
+    }
+    
+    const oldUsernameID = currentUserData.usernameID;
+    let usernameChanged = false;
+    
+    // Проверяем, изменился ли ID
+    if (newUsernameID !== oldUsernameID) {
+        usernameChanged = true;
+        
+        // Проверка cooldown
+        const lastChange = currentUserData.lastUsernameChange;
+        if (lastChange) {
+            let changeDate;
+            if (lastChange.toDate && typeof lastChange.toDate === 'function') {
+                changeDate = lastChange.toDate();
+            } else if (lastChange.seconds) {
+                changeDate = new Date(lastChange.seconds * 1000);
+            } else {
+                changeDate = new Date(lastChange);
+            }
+            
+            const now = new Date();
+            const diffMs = now - changeDate;
+            const diffDays = diffMs / (1000 * 60 * 60 * 24);
+            
+            if (diffDays < USERNAME_CHANGE_COOLDOWN_DAYS) {
+                const daysLeft = Math.ceil(USERNAME_CHANGE_COOLDOWN_DAYS - diffDays);
+                alert(`⏱️ Сменить ID можно будет через ${daysLeft} ${pluralize(daysLeft, 'день', 'дня', 'дней')}`);
+                return;
+            }
+        }
+        
+        // Проверка уникальности происходит внутри транзакции
     }
     
     saveProfileBtn.disabled = true;
@@ -326,10 +537,46 @@ saveProfileBtn.addEventListener('click', async () => {
     
     try {
         const userDocRef = doc(db, "users", currentUser.uid);
-        await setDoc(userDocRef, {
-            name,
-            bio: bio || ""
-        }, { merge: true });
+        
+        if (usernameChanged) {
+            // ✅ ТРАНЗАКЦИЯ: Атомарная смена ID
+            await runTransaction(db, async (transaction) => {
+                const oldUsernameDocRef = doc(db, "usernames", oldUsernameID.toLowerCase());
+                const newUsernameDocRef = doc(db, "usernames", newUsernameID);
+                
+                // 1. Проверяем уникальность нового ID внутри транзакции
+                const newUsernameSnap = await transaction.get(newUsernameDocRef);
+                
+                if (newUsernameSnap.exists()) {
+                    throw new Error('ID_ALREADY_TAKEN');
+                }
+                
+                // 2. Удаляем старый документ из usernames
+                transaction.delete(oldUsernameDocRef);
+                
+                // 3. Создаём новый документ в usernames
+                transaction.set(newUsernameDocRef, { ownerUID: currentUser.uid });
+                
+                // 4. Обновляем профиль пользователя
+                transaction.update(userDocRef, {
+                    name,
+                    bio: bio || "",
+                    usernameID: newUsernameID,
+                    lastUsernameChange: serverTimestamp()
+                });
+            });
+            
+            currentUserData.usernameID = newUsernameID;
+            currentUserData.lastUsernameChange = new Date(); // Для локального кэша
+            
+            console.log("✅ ID успешно изменён через транзакцию:", newUsernameID);
+        } else {
+            // Просто обновляем имя и био
+            await setDoc(userDocRef, {
+                name,
+                bio: bio || ""
+            }, { merge: true });
+        }
         
         currentUserData.name = name;
         currentUserData.bio = bio || "";
@@ -342,12 +589,21 @@ saveProfileBtn.addEventListener('click', async () => {
         localStorage.setItem("userAvatarLetter", newLetter);
         
         saveOriginalData();
+        checkUsernameCooldown(); // Обновляем статус cooldown
         
-        alert('✅ Профиль успешно сохранен!');
-        console.log("Профиль обновлен!");
+        alert('✅ Профиль успешно сохранён!');
+        console.log("Профиль обновлён!");
     } catch (error) {
         console.error("Ошибка сохранения профиля:", error);
-        alert('❌ Не удалось сохранить профиль');
+        
+        // Обработка специфичной ошибки занятости ID
+        if (error.message === 'ID_ALREADY_TAKEN') {
+            editProfileId.classList.add('error');
+            idError.classList.remove('hidden');
+            idError.textContent = '❌ Этот ID уже занят';
+        } else {
+            alert('❌ Не удалось сохранить профиль: ' + error.message);
+        }
     } finally {
         saveProfileBtn.disabled = false;
         saveProfileBtn.textContent = 'Сохранить изменения';
@@ -434,8 +690,8 @@ saveStatusBtn.addEventListener('click', async () => {
         
         saveOriginalData();
         
-        alert('✅ Статус успешно сохранен!');
-        console.log("Статус обновлен!");
+        alert('✅ Статус успешно сохранён!');
+        console.log("Статус обновлён!");
     } catch (error) {
         console.error("Ошибка сохранения статуса:", error);
         alert('❌ Не удалось сохранить статус');
@@ -771,4 +1027,13 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+function pluralize(num, one, few, many) {
+    const mod10 = num % 10;
+    const mod100 = num % 100;
+    
+    if (mod10 === 1 && mod100 !== 11) return one;
+    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return few;
+    return many;
 }
