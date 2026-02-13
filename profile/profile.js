@@ -65,6 +65,7 @@ const profileAvatar = document.getElementById("profileAvatar");
 const avatarLetterProfile = document.getElementById("avatarLetter");
 const profileName = document.getElementById("profileName");
 const profileBio = document.getElementById("profileBio");
+const profileUsernameID = document.getElementById("profileUsernameID"); // ✅ НОВОЕ
 const avatarUpload = document.getElementById("avatarUpload");
 
 const editProfileBtn = document.getElementById("editProfileBtn");
@@ -374,7 +375,8 @@ onAuthStateChanged(auth, async (user) => {
             avatarUrl: null,
             youtubeVideoId: null,
             status: "",
-            postsCount: 0, // ✅ Способ В: Счетчик постов
+            postsCount: 0,
+            usernameID: user.uid, // ✅ По умолчанию равен uid
             info: {
                 links: [],
                 email: "",
@@ -385,13 +387,35 @@ onAuthStateChanged(auth, async (user) => {
             }
         };
 
-        await setDoc(userDocRef, newProfile);
+        // Создаём документ в коллекции usernames для отслеживания уникальности
+        const usernameDocRef = doc(db, "usernames", user.uid.toLowerCase());
+
+        await Promise.all([
+            setDoc(userDocRef, newProfile),
+            setDoc(usernameDocRef, { ownerUID: user.uid })
+        ]);
+        
         currentUserData = newProfile;
         localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(currentUserData));
-        console.log("Создан новый профиль");
+        console.log("Создан новый профиль с usernameID:", user.uid);
     } else {
         // Профиль существует - получаем актуальные данные
         const freshData = userSnap.data();
+        
+        // ✅ Миграция старых пользователей: добавляем usernameID если его нет
+        if (!freshData.usernameID) {
+            freshData.usernameID = user.uid;
+            
+            // Создаём документ в usernames для старых пользователей
+            const usernameDocRef = doc(db, "usernames", user.uid.toLowerCase());
+            
+            await Promise.all([
+                updateDoc(userDocRef, { usernameID: user.uid }),
+                setDoc(usernameDocRef, { ownerUID: user.uid })
+            ]);
+            
+            console.log("✅ Миграция: добавлен usernameID для старого пользователя");
+        }
         
         // Инициализация info, если его нет
         if (!freshData.info) {
@@ -461,6 +485,11 @@ logoutBtn?.addEventListener("click", async (e) => {
 // ========================
 function renderProfile(userData) {
     profileName.textContent = userData.name;
+
+    // ✅ НОВОЕ: Отображение usernameID
+    if (profileUsernameID && userData.usernameID) {
+        profileUsernameID.textContent = `@${userData.usernameID}`;
+    }
 
     const hasBio = userData.bio && 
                    userData.bio.trim() !== "" && 
