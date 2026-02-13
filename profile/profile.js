@@ -24,7 +24,8 @@ import {
     startAfter,
     increment,
     persistentLocalCache,
-    initializeFirestore
+    initializeFirestore,
+    runTransaction
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
 
 import {
@@ -424,21 +425,39 @@ onAuthStateChanged(auth, async (user) => {
         // Профиль существует - получаем актуальные данные
         const freshData = userSnap.data();
         
-        // ✅ Миграция старых пользователей: добавляем usernameID если его нет
+        // ✅ Миграция старых пользователей: добавляем usernameID если его нет (ЧЕРЕЗ ТРАНЗАКЦИЮ)
         if (!freshData.usernameID) {
             // Генерируем короткий ID для старого пользователя
             const generatedID = generateUsernameID(user.email, user.uid);
-            freshData.usernameID = generatedID;
             
-            // Создаём документ в usernames для старых пользователей
-            const usernameDocRef = doc(db, "usernames", generatedID.toLowerCase());
-            
-            await Promise.all([
-                updateDoc(userDocRef, { usernameID: generatedID }),
-                setDoc(usernameDocRef, { ownerUID: user.uid })
-            ]);
-            
-            console.log("✅ Миграция: добавлен usernameID для старого пользователя:", generatedID);
+            await runTransaction(db, async (transaction) => {
+                const usernameDocRef = doc(db, "usernames", generatedID.toLowerCase());
+                
+                // 1. Проверяем, не занят ли сгенерированный ID
+                const usernameSnap = await transaction.get(usernameDocRef);
+                
+                if (usernameSnap.exists()) {
+                    // Если занят (очень редкий случай), добавляем timestamp
+                    const timestamp = Date.now().toString().slice(-6);
+                    const fallbackID = `${generatedID}_${timestamp}`.toLowerCase();
+                    const fallbackDocRef = doc(db, "usernames", fallbackID);
+                    
+                    transaction.set(fallbackDocRef, { ownerUID: user.uid });
+                    transaction.update(userDocRef, { usernameID: fallbackID });
+                    
+                    freshData.usernameID = fallbackID;
+                    console.log("✅ Миграция: добавлен fallback usernameID:", fallbackID);
+                } else {
+                    // 2. Создаём документ в usernames
+                    transaction.set(usernameDocRef, { ownerUID: user.uid });
+                    
+                    // 3. Обновляем профиль пользователя
+                    transaction.update(userDocRef, { usernameID: generatedID });
+                    
+                    freshData.usernameID = generatedID;
+                    console.log("✅ Миграция: добавлен usernameID для старого пользователя:", generatedID);
+                }
+            });
         }
         
         // Инициализация info, если его нет
