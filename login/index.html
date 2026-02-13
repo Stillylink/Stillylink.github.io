@@ -181,6 +181,23 @@ function showError(code) {
     errorMsg.textContent = msg;
 }
 
+/* ---------- ФУНКЦИЯ ГЕНЕРАЦИИ КОРОТКОГО USERNAMEID ---------- */
+function generateUsernameID(email, uid) {
+    // 1. Берём часть email до @
+    const emailPart = email.split('@')[0];
+    
+    // 2. Оставляем только латиницу и цифры (удаляем точки, дефисы и т.д.)
+    const cleanEmail = emailPart.replace(/[^a-zA-Z0-9]/g, '');
+    
+    // 3. Добавляем нижнее подчеркивание и первые 4 символа от uid
+    const shortUID = uid.substring(0, 4);
+    
+    // 4. Формируем финальный ID (всё в нижнем регистре)
+    const generatedID = `${cleanEmail}_${shortUID}`.toLowerCase();
+    
+    return generatedID;
+}
+
 /* ---------- ФУНКЦИЯ СОЗДАНИЯ ПРОФИЛЯ ПОЛЬЗОВАТЕЛЯ ---------- */
 async function createUserProfile(user) {
     const userDocRef = doc(db, "users", user.uid);
@@ -194,7 +211,10 @@ async function createUserProfile(user) {
     
     const defaultName = user.email.split('@')[0];
     
-    // Создаём профиль с usernameID = uid
+    // ✅ Генерируем короткий и понятный usernameID
+    const generatedID = generateUsernameID(user.email, user.uid);
+    
+    // Создаём профиль с сгенерированным usernameID
     const newProfile = {
         name: defaultName,
         email: user.email,
@@ -203,7 +223,7 @@ async function createUserProfile(user) {
         youtubeVideoId: null,
         status: "",
         postsCount: 0,
-        usernameID: user.uid, // ✅ По умолчанию равен uid
+        usernameID: generatedID, // ✅ Короткий ID типа "ivanivanov_a1b2"
         info: {
             links: [],
             email: "",
@@ -215,7 +235,7 @@ async function createUserProfile(user) {
     };
     
     // Создаём документ в коллекции usernames для отслеживания уникальности
-    const usernameDocRef = doc(db, "usernames", user.uid.toLowerCase());
+    const usernameDocRef = doc(db, "usernames", generatedID.toLowerCase());
     
     // Атомарная операция: создаём оба документа
     await Promise.all([
@@ -223,7 +243,7 @@ async function createUserProfile(user) {
         setDoc(usernameDocRef, { ownerUID: user.uid })
     ]);
     
-    console.log("✅ Профиль создан с usernameID:", user.uid);
+    console.log("✅ Профиль создан с usernameID:", generatedID);
 }
 
 /* ---------- Регистрация ---------- */
