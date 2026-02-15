@@ -105,17 +105,20 @@ body.profile-page .site-wrapper {
   margin: 0;
 }
 
+/* ✅ ИСПРАВЛЕНО: ID профиля */
 .profile-username-id {
   font-size: 16px;
   color: rgba(255, 255, 255, 0.6);
   margin-top: 4px;
   margin-bottom: 12px;
   font-weight: 500;
+  width: fit-content; /* ✅ Только ширина содержимого */
+  cursor: default;
+  transition: color 0.2s;
 }
 
 .profile-username-id:hover {
   color: var(--accent);
-  cursor: default;
 }
 
 .edit-profile-btn {
@@ -295,6 +298,7 @@ body.profile-page .site-wrapper {
   line-height: 1.5;
 }
 
+/* ✅ ИСПРАВЛЕНО: Ссылки в блоке информации */
 .info-link {
   color: var(--accent);
   text-decoration: none;
@@ -304,6 +308,7 @@ body.profile-page .site-wrapper {
   transition: all 0.2s;
   font-size: 15px;
   line-height: 1.5;
+  width: fit-content; /* ✅ Только ширина содержимого */
 }
 
 .info-link:hover {
