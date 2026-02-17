@@ -48,9 +48,8 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 
-// ✅ ИСПРАВЛЕНО: Новый способ включения кэширования (без предупреждения)
 const db = initializeFirestore(app, {
-    localCache: persistentLocalCache(/*settings*/{})
+    localCache: persistentLocalCache({})
 });
 
 const storage = getStorage(app);
@@ -66,7 +65,7 @@ const profileAvatar = document.getElementById("profileAvatar");
 const avatarLetterProfile = document.getElementById("avatarLetter");
 const profileName = document.getElementById("profileName");
 const profileBio = document.getElementById("profileBio");
-const profileUsernameID = document.getElementById("profileUsernameID"); // ✅ НОВОЕ
+const profileUsernameID = document.getElementById("profileUsernameID");
 const avatarUpload = document.getElementById("avatarUpload");
 
 const editProfileBtn = document.getElementById("editProfileBtn");
@@ -84,28 +83,28 @@ const modalPhoto = document.getElementById("modalPhoto");
 const postsCount = document.getElementById("postsCount");
 const memberSince = document.getElementById("memberSince");
 
-// YouTube элементы
 const youtubeCard = document.getElementById("youtubeCard");
 const youtubeEmpty = document.getElementById("youtubeEmpty");
 const youtubeIframe = document.getElementById("youtubeIframe");
 const addVideoBtn = document.getElementById("addVideoBtn");
 
-// Статус элементы
 const statusText = document.querySelector(".status-text");
-
-// Информация элементы
 const infoContent = document.getElementById("infoContent");
 
 let currentUser = null;
-let currentUserData = null; 
+let currentUserData = null;
 let currentPhotoFile = null;
 const PROFILE_CACHE_KEY = "userProfileCache_v1";
 
-// ✅ Infinite Scroll (бесконечная лента)
+// ✅ Infinite Scroll
 const POSTS_PER_PAGE = 20;
 let lastVisible = null;
 let isFetching = false;
-let hasMore = true; // Флаг: есть ли ещё посты для загрузки
+let hasMore = true;
+
+// ✅ Unsubscribe-функции для onSnapshot слушателей
+let unsubscribeProfile = null;
+let unsubscribePosts = null;
 
 // ЗАГРУЗКА АВАТАРКИ ИЗ localStorage СРАЗУ
 const savedAvatar = localStorage.getItem('userAvatarLetter');
@@ -142,10 +141,8 @@ document.addEventListener("click", e => {
 });
 
 // ========================
-// 📝 ИНФОРМАЦИЯ ФУНКЦИИ (ТОЛЬКО ОТОБРАЖЕНИЕ)
+// 📝 ИНФОРМАЦИЯ
 // ========================
-
-// Рендер блока информации
 function renderInfo(infoData) {
     if (!infoContent) return;
     
@@ -164,7 +161,6 @@ function renderInfo(infoData) {
     
     let html = '';
     
-    // 1) Местоположение
     if (hasCountry) {
         html += `
             <div class="info-item">
@@ -174,7 +170,6 @@ function renderInfo(infoData) {
         `;
     }
     
-    // 2) Прозвище (с кастомным названием)
     if (hasNickname) {
         const nicknameLabel = infoData.nicknameLabel || "Прозвище";
         html += `
@@ -185,7 +180,6 @@ function renderInfo(infoData) {
         `;
     }
     
-    // 3) Электронная почта
     if (hasEmail) {
         html += `
             <div class="info-item">
@@ -195,7 +189,6 @@ function renderInfo(infoData) {
         `;
     }
     
-    // 4) Род деятельности
     if (hasOccupation) {
         html += `
             <div class="info-item">
@@ -205,7 +198,6 @@ function renderInfo(infoData) {
         `;
     }
     
-    // 5) Ссылки
     if (hasLinks) {
         html += `
             <div class="info-item">
@@ -225,7 +217,7 @@ function renderInfo(infoData) {
 }
 
 // ========================
-// 📝 СТАТУС ФУНКЦИИ (ТОЛЬКО ОТОБРАЖЕНИЕ)
+// 📝 СТАТУС
 // ========================
 function renderStatus(status) {
     if (!statusText) return;
@@ -238,38 +230,22 @@ function renderStatus(status) {
         statusText.innerHTML = `
             <div class="status-content" style="white-space: pre-wrap; word-break: break-word;"></div>
         `;
-        
-        const contentDiv = statusText.querySelector('.status-content');
-        contentDiv.textContent = status;
+        statusText.querySelector('.status-content').textContent = status;
     }
 }
 
 // ========================
-// 🎬 YOUTUBE ФУНКЦИИ
+// 🎬 YOUTUBE
 // ========================
 function extractVideoId(url) {
     if (!url) return null;
-    
     url = url.trim();
-    
-    if (url.includes('/shorts/')) {
-        return null;
-    }
-    
+    if (url.includes('/shorts/')) return null;
     const watchMatch = url.match(/[?&]v=([a-zA-Z0-9_-]{11})/);
-    if (watchMatch) {
-        return watchMatch[1];
-    }
-    
+    if (watchMatch) return watchMatch[1];
     const shortMatch = url.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/);
-    if (shortMatch) {
-        return shortMatch[1];
-    }
-    
-    if (/^[a-zA-Z0-9_-]{11}$/.test(url)) {
-        return url;
-    }
-    
+    if (shortMatch) return shortMatch[1];
+    if (/^[a-zA-Z0-9_-]{11}$/.test(url)) return url;
     return null;
 }
 
@@ -280,7 +256,6 @@ function loadYoutubeVideo(videoId) {
         youtubeEmpty.classList.remove('hidden');
         return;
     }
-
     youtubeIframe.src = `https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1`;
     youtubeCard.classList.remove('hidden');
     youtubeEmpty.classList.add('hidden');
@@ -288,17 +263,11 @@ function loadYoutubeVideo(videoId) {
 
 async function saveYoutubeVideo(videoId) {
     if (!currentUser) return;
-    
     try {
         const userDocRef = doc(db, "users", currentUser.uid);
-        await setDoc(userDocRef, {
-            youtubeVideoId: videoId || null
-        }, { merge: true });
-        
+        await setDoc(userDocRef, { youtubeVideoId: videoId || null }, { merge: true });
         currentUserData.youtubeVideoId = videoId || null;
         localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(currentUserData));
-        
-        console.log("YouTube видео сохранено!");
     } catch (error) {
         console.error("Ошибка сохранения YouTube видео:", error);
         throw error;
@@ -307,16 +276,12 @@ async function saveYoutubeVideo(videoId) {
 
 addVideoBtn?.addEventListener("click", async () => {
     const url = prompt("Вставьте ссылку на YouTube видео:\n\nПоддерживаемые форматы:\n• youtube.com/watch?v=...\n• youtu.be/...\n\n⚠️ Shorts не поддерживаются!");
-    
     if (!url) return;
-    
     const videoId = extractVideoId(url);
-    
     if (!videoId) {
         alert("❌ Неверная ссылка!\n\nПроверьте, что:\n• Это ссылка на обычное YouTube видео\n• Это НЕ Shorts\n• Формат: youtube.com/watch?v=... или youtu.be/...");
         return;
     }
-    
     try {
         await saveYoutubeVideo(videoId);
         loadYoutubeVideo(videoId);
@@ -327,26 +292,17 @@ addVideoBtn?.addEventListener("click", async () => {
 });
 
 // ========================
-// ФУНКЦИЯ ГЕНЕРАЦИИ КОРОТКОГО USERNAMEID
+// ГЕНЕРАЦИЯ USERNAMEID
 // ========================
 function generateUsernameID(email, uid) {
-    // 1. Берём часть email до @
     const emailPart = email.split('@')[0];
-    
-    // 2. Оставляем только латиницу и цифры
     const cleanEmail = emailPart.replace(/[^a-zA-Z0-9]/g, '');
-    
-    // 3. Добавляем нижнее подчеркивание и первые 4 символа от uid
     const shortUID = uid.substring(0, 4);
-    
-    // 4. Формируем финальный ID (всё в нижнем регистре)
-    const generatedID = `${cleanEmail}_${shortUID}`.toLowerCase();
-    
-    return generatedID;
+    return `${cleanEmail}_${shortUID}`.toLowerCase();
 }
 
 // ========================
-// ПРОВЕРКА АВТОРИЗАЦИИ
+// 🔑 ПРОВЕРКА АВТОРИЗАЦИИ
 // ========================
 onAuthStateChanged(auth, async (user) => {
     if (!user || !user.email) {
@@ -355,158 +311,160 @@ onAuthStateChanged(auth, async (user) => {
     }
 
     const cachedUID = localStorage.getItem("currentUserUID");
-    
     if (cachedUID && cachedUID !== user.uid) {
         console.log("Обнаружена смена пользователя, очистка кэша...");
         localStorage.removeItem(PROFILE_CACHE_KEY);
         localStorage.removeItem("userAvatarLetter");
     }
-    
     localStorage.setItem("currentUserUID", user.uid);
 
     currentUser = user;
 
-    const userDocRef = doc(db, "users", user.uid);
-
+    // ✅ Загружаем кэш из localStorage для мгновенного отображения
     const cachedProfile = localStorage.getItem(PROFILE_CACHE_KEY);
-
     if (cachedProfile) {
         try {
             currentUserData = JSON.parse(cachedProfile);
-            console.log("Профиль загружен из кэша");
-        } catch (e) {
-            console.error("Ошибка парсинга кэша, загружаем из Firestore");
-            localStorage.removeItem(PROFILE_CACHE_KEY);
-            currentUserData = null;
-        }
-    }
-    
-    // Всегда загружаем актуальные данные из Firestore
-    const userSnap = await getDoc(userDocRef);
-
-    if (!userSnap.exists()) {
-        // Новый пользователь - создаём профиль
-        const defaultName = user.email.split('@')[0];
-        
-        // ✅ Генерируем короткий и понятный usernameID
-        const generatedID = generateUsernameID(user.email, user.uid);
-
-        const newProfile = {
-            name: defaultName,
-            email: user.email,
-            bio: "",
-            avatarUrl: null,
-            youtubeVideoId: null,
-            status: "",
-            postsCount: 0,
-            usernameID: generatedID, // ✅ Короткий ID типа "ivanivanov_a1b2"
-            info: {
-                links: [],
-                email: "",
-                country: "",
-                nickname: "",
-                nicknameLabel: "Прозвище",
-                occupation: ""
-            }
-        };
-
-        // Создаём документ в коллекции usernames для отслеживания уникальности
-        const usernameDocRef = doc(db, "usernames", generatedID.toLowerCase());
-
-        await Promise.all([
-            setDoc(userDocRef, newProfile),
-            setDoc(usernameDocRef, { ownerUID: user.uid })
-        ]);
-        
-        currentUserData = newProfile;
-        localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(currentUserData));
-        console.log("Создан новый профиль с usernameID:", generatedID);
-    } else {
-        // Профиль существует - получаем актуальные данные
-        const freshData = userSnap.data();
-        
-        // ✅ Миграция старых пользователей: добавляем usernameID если его нет (ЧЕРЕЗ ТРАНЗАКЦИЮ)
-        if (!freshData.usernameID) {
-            // Генерируем короткий ID для старого пользователя
-            const generatedID = generateUsernameID(user.email, user.uid);
-            
-            await runTransaction(db, async (transaction) => {
-                const usernameDocRef = doc(db, "usernames", generatedID.toLowerCase());
-                
-                // 1. Проверяем, не занят ли сгенерированный ID
-                const usernameSnap = await transaction.get(usernameDocRef);
-                
-                if (usernameSnap.exists()) {
-                    // Если занят (очень редкий случай), добавляем timestamp
-                    const timestamp = Date.now().toString().slice(-6);
-                    const fallbackID = `${generatedID}_${timestamp}`.toLowerCase();
-                    const fallbackDocRef = doc(db, "usernames", fallbackID);
-                    
-                    transaction.set(fallbackDocRef, { ownerUID: user.uid });
-                    transaction.update(userDocRef, { usernameID: fallbackID });
-                    
-                    freshData.usernameID = fallbackID;
-                    console.log("✅ Миграция: добавлен fallback usernameID:", fallbackID);
-                } else {
-                    // 2. Создаём документ в usernames
-                    transaction.set(usernameDocRef, { ownerUID: user.uid });
-                    
-                    // 3. Обновляем профиль пользователя
-                    transaction.update(userDocRef, { usernameID: generatedID });
-                    
-                    freshData.usernameID = generatedID;
-                    console.log("✅ Миграция: добавлен usernameID для старого пользователя:", generatedID);
-                }
-            });
-        }
-        
-        // Инициализация info, если его нет
-        if (!freshData.info) {
-            freshData.info = {
-                links: [],
-                email: "",
-                country: "",
-                nickname: "",
-                nicknameLabel: "Прозвище",
-                occupation: ""
-            };
-        }
-
-        // Проверяем, изменились ли данные
-        const cachedJSON = JSON.stringify(currentUserData);
-        const freshJSON = JSON.stringify(freshData);
-
-        if (cachedJSON !== freshJSON) {
-            console.log("Обнаружены обновления профиля, синхронизация...");
-            currentUserData = freshData;
-            localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(currentUserData));
-            
-            // Обновляем UI с актуальными данными
+            // Сразу рисуем UI из кэша — пользователь не ждёт сети
             renderProfile(currentUserData);
             renderStatus(currentUserData.status || "");
             renderInfo(currentUserData.info || {});
             loadYoutubeVideo(currentUserData.youtubeVideoId);
-        } else {
-            console.log("Профиль актуален");
-            // Если был загружен из кэша, используем свежие данные
-            if (currentUserData) {
-                currentUserData = freshData;
-            }
+            console.log("⚡ Профиль отрисован из localStorage-кэша (0 чтений Firestore)");
+        } catch (e) {
+            console.error("Ошибка парсинга кэша:", e);
+            localStorage.removeItem(PROFILE_CACHE_KEY);
+            currentUserData = null;
         }
     }
 
-    const letter = currentUserData.name.charAt(0).toUpperCase();
-    avatarLetter.textContent = letter;
-    localStorage.setItem("userAvatarLetter", letter);
+    const userDocRef = doc(db, "users", user.uid);
 
-    renderProfile(currentUserData);
-    renderStatus(currentUserData.status || "");
-    renderInfo(currentUserData.info || {});
-    loadYoutubeVideo(currentUserData.youtubeVideoId);
-    
-    // ✅ Инициализируем скролл-листенер и загружаем посты
-    initScrollListener();
-    loadUserPosts();
+    // ✅ КЛЮЧЕВОЕ ИЗМЕНЕНИЕ #1:
+    // Заменяем getDoc (всегда сервер) на onSnapshot (кэш → сервер при изменениях).
+    // При наличии persistentLocalCache первый вызов onSnapshot отдаёт данные
+    // из локального кэша (0 чтений Firestore), а сервер опрашивается только
+    // если данные изменились.
+    unsubscribeProfile = onSnapshot(
+        userDocRef,
+        { includeMetadataChanges: true }, // слушаем смену кэш↔сервер
+        async (snap) => {
+            const fromCache = snap.metadata.fromCache;
+            const hasPendingWrites = snap.metadata.hasPendingWrites;
+
+            console.log(`📥 Профиль: fromCache=${fromCache}, hasPendingWrites=${hasPendingWrites}`);
+
+            if (!snap.exists()) {
+                // ── Новый пользователь, создаём профиль ──
+                const defaultName = user.email.split('@')[0];
+                const generatedID = generateUsernameID(user.email, user.uid);
+
+                const newProfile = {
+                    name: defaultName,
+                    email: user.email,
+                    bio: "",
+                    avatarUrl: null,
+                    youtubeVideoId: null,
+                    status: "",
+                    postsCount: 0,
+                    usernameID: generatedID,
+                    info: {
+                        links: [],
+                        email: "",
+                        country: "",
+                        nickname: "",
+                        nicknameLabel: "Прозвище",
+                        occupation: ""
+                    }
+                };
+
+                const usernameDocRef = doc(db, "usernames", generatedID.toLowerCase());
+                await Promise.all([
+                    setDoc(userDocRef, newProfile),
+                    setDoc(usernameDocRef, { ownerUID: user.uid })
+                ]);
+
+                currentUserData = newProfile;
+                localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(currentUserData));
+                console.log("✅ Создан новый профиль с usernameID:", generatedID);
+                return;
+            }
+
+            // ── Профиль существует ──
+            const freshData = snap.data();
+
+            // Миграция старых пользователей: добавляем usernameID если его нет
+            if (!freshData.usernameID) {
+                const generatedID = generateUsernameID(user.email, user.uid);
+                await runTransaction(db, async (transaction) => {
+                    const usernameDocRef = doc(db, "usernames", generatedID.toLowerCase());
+                    const usernameSnap = await transaction.get(usernameDocRef);
+                    if (usernameSnap.exists()) {
+                        const timestamp = Date.now().toString().slice(-6);
+                        const fallbackID = `${generatedID}_${timestamp}`.toLowerCase();
+                        const fallbackDocRef = doc(db, "usernames", fallbackID);
+                        transaction.set(fallbackDocRef, { ownerUID: user.uid });
+                        transaction.update(userDocRef, { usernameID: fallbackID });
+                        freshData.usernameID = fallbackID;
+                    } else {
+                        transaction.set(usernameDocRef, { ownerUID: user.uid });
+                        transaction.update(userDocRef, { usernameID: generatedID });
+                        freshData.usernameID = generatedID;
+                    }
+                });
+            }
+
+            if (!freshData.info) {
+                freshData.info = {
+                    links: [],
+                    email: "",
+                    country: "",
+                    nickname: "",
+                    nicknameLabel: "Прозвище",
+                    occupation: ""
+                };
+            }
+
+            // ✅ Если данные пришли из кэша — просто убеждаемся, что UI отрисован,
+            //    никаких "платных" чтений Firestore нет.
+            // ✅ Если данные пришли с сервера (fromCache=false) — обновляем UI и кэш
+            //    только при реальном изменении данных.
+            const cachedJSON = JSON.stringify(currentUserData);
+            const freshJSON = JSON.stringify(freshData);
+
+            if (cachedJSON !== freshJSON) {
+                console.log(fromCache
+                    ? "♻️ Профиль из Firestore-кэша (0 чтений)"
+                    : "🔄 Профиль обновлён с сервера (1 чтение)"
+                );
+                currentUserData = freshData;
+                localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(currentUserData));
+                renderProfile(currentUserData);
+                renderStatus(currentUserData.status || "");
+                renderInfo(currentUserData.info || {});
+                loadYoutubeVideo(currentUserData.youtubeVideoId);
+            } else {
+                console.log(fromCache
+                    ? "✅ Профиль актуален (кэш, 0 чтений)"
+                    : "✅ Профиль актуален (сервер подтвердил, 1 чтение)"
+                );
+                currentUserData = freshData;
+            }
+
+            const letter = currentUserData.name.charAt(0).toUpperCase();
+            avatarLetter.textContent = letter;
+            localStorage.setItem("userAvatarLetter", letter);
+
+            // Запускаем посты только при первой инициализации
+            if (!observer) {
+                initScrollListener();
+                loadUserPosts();
+            }
+        },
+        (error) => {
+            console.error("Ошибка слушателя профиля:", error);
+        }
+    );
 });
 
 // ========================
@@ -514,30 +472,26 @@ onAuthStateChanged(auth, async (user) => {
 // ========================
 logoutBtn?.addEventListener("click", async (e) => {
     e.preventDefault();
-    
-    // ✅ Очищаем обработчик скролла (предотвращение утечки памяти)
-    cleanupScrollListener();
-    
+    cleanupAllListeners();
     await signOut(auth);
     localStorage.clear();
     window.location.href = "/login/";
 });
 
 // ========================
-// ЗАГРУЗКА ПРОФИЛЯ ПОЛЬЗОВАТЕЛЯ
+// РЕНДЕР ПРОФИЛЯ
 // ========================
 function renderProfile(userData) {
     profileName.textContent = userData.name;
 
-    // ✅ НОВОЕ: Отображение usernameID
     if (profileUsernameID && userData.usernameID) {
         profileUsernameID.textContent = `@${userData.usernameID}`;
     }
 
-    const hasBio = userData.bio && 
-                   userData.bio.trim() !== "" && 
-                   userData.bio !== "Расскажите о себе..." &&
-                   userData.bio !== "Расскажите о себе…";
+    const hasBio = userData.bio &&
+        userData.bio.trim() !== "" &&
+        userData.bio !== "Расскажите о себе..." &&
+        userData.bio !== "Расскажите о себе…";
 
     if (hasBio) {
         profileBio.textContent = userData.bio;
@@ -565,7 +519,6 @@ function renderProfile(userData) {
         });
     }
 
-    // ✅ Способ В: Отображаем счетчик постов из профиля (0 чтений вместо N)
     if (postsCount) {
         postsCount.textContent = (userData.postsCount || 0).toString();
     }
@@ -584,12 +537,10 @@ avatarUpload.addEventListener("change", async (e) => {
     }
 
     try {
-        // ✅ Удаляем старую аватарку перед загрузкой новой
         if (currentUserData.avatarPath) {
             try {
                 const oldAvatarRef = storageRef(storage, currentUserData.avatarPath);
                 await deleteObject(oldAvatarRef);
-                console.log("Старая аватарка удалена");
             } catch (error) {
                 console.warn("Не удалось удалить старую аватарку:", error);
             }
@@ -601,10 +552,7 @@ avatarUpload.addEventListener("change", async (e) => {
         const avatarUrl = await getDownloadURL(avatarRef);
 
         const userDocRef = doc(db, "users", currentUser.uid);
-        await updateDoc(userDocRef, { 
-            avatarUrl,
-            avatarPath // ✅ Сохраняем путь для будущего удаления
-        });
+        await updateDoc(userDocRef, { avatarUrl, avatarPath });
 
         currentUserData.avatarUrl = avatarUrl;
         currentUserData.avatarPath = avatarPath;
@@ -616,8 +564,6 @@ avatarUpload.addEventListener("change", async (e) => {
         img.alt = "Avatar";
         profileAvatar.innerHTML = "";
         profileAvatar.appendChild(img);
-
-        console.log("Аватар обновлен!");
     } catch (error) {
         console.error("Ошибка загрузки аватара:", error);
         alert("Не удалось загрузить аватар");
@@ -634,7 +580,7 @@ editProfileBtn.addEventListener("click", () => {
 });
 
 // ========================
-// ПУБЛИКАЦИЯ ЗАПИСИ (FIRESTORE)
+// ПУБЛИКАЦИЯ ЗАПИСИ
 // ========================
 attachPhotoBtn.addEventListener("click", () => {
     postPhotoInput.click();
@@ -659,7 +605,6 @@ publishPostBtn.addEventListener("click", async () => {
     if (!currentUser || !currentUserData) return;
 
     const text = postInput.value.trim();
-
     if (!text && !currentPhotoFile) {
         alert("Напишите текст или добавьте фото");
         return;
@@ -668,67 +613,50 @@ publishPostBtn.addEventListener("click", async () => {
     publishPostBtn.disabled = true;
     publishPostBtn.textContent = "Публикация...";
 
-    let uploadedPhotoRef = null; // ✅ Храним ссылку для отката
+    let uploadedPhotoRef = null;
 
     try {
         let photoUrl = null;
-        let photoPath = null; // ✅ Сохраняем путь для надёжного удаления
+        let photoPath = null;
 
         if (currentPhotoFile) {
             const filePath = `posts/${currentUser.uid}/${Date.now()}_${currentPhotoFile.name}`;
             uploadedPhotoRef = storageRef(storage, filePath);
             await uploadBytes(uploadedPhotoRef, currentPhotoFile);
             photoUrl = await getDownloadURL(uploadedPhotoRef);
-            photoPath = filePath; // ✅ Сохраняем путь
+            photoPath = filePath;
         }
 
-        // Добавляем пост в Firestore: users/{uid}/posts/{postId}
         const postsCollectionRef = collection(db, "users", currentUser.uid, "posts");
-        
-        // Данные для сохранения
         const newPostData = {
             userName: currentUserData.name,
             userAvatar: currentUserData.avatarUrl || null,
             text: text || "",
             photoUrl: photoUrl,
-            photoPath: photoPath, // ✅ Путь для надёжного удаления
+            photoPath: photoPath,
             createdAt: serverTimestamp()
         };
 
-        // ✅ ИСПРАВЛЕНО: Используем docRef вместо docSnap
         const docRef = await addDoc(postsCollectionRef, newPostData);
 
-        // ✅ Способ В: Увеличиваем счетчик постов (+1)
         const userDocRef = doc(db, "users", currentUser.uid);
-        await updateDoc(userDocRef, {
-            postsCount: increment(1)
-        });
+        await updateDoc(userDocRef, { postsCount: increment(1) });
 
-        // Обновляем локальный счетчик
         currentUserData.postsCount = (currentUserData.postsCount || 0) + 1;
         localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(currentUserData));
-        
+
         if (postsCount) {
             postsCount.textContent = currentUserData.postsCount.toString();
         }
 
-        // ✅ МГНОВЕННОЕ ОТОБРАЖЕНИЕ: Убираем сообщение "нет постов" если оно есть
         const emptyMsg = document.querySelector(".posts-empty");
         if (emptyMsg) emptyMsg.remove();
 
-        // ✅ МГНОВЕННОЕ ОТОБРАЖЕНИЕ: Добавляем пост в начало списка
-        // Для UI используем текущее время вместо серверного timestamp
         const postDataForUI = {
             ...newPostData,
-            createdAt: Timestamp.now() // Используем клиентское время для UI
+            createdAt: Timestamp.now()
         };
-        addPostToUI(docRef.id, postDataForUI, true); // ✅ ИСПРАВЛЕНО: docRef вместо docSnap
-
-        // ✅ Сбрасываем флаг hasMore, если были в конце списка
-        // (теперь есть новый пост, возможно появятся и другие)
-        if (!hasMore && currentUserData.postsCount === 1) {
-            hasMore = true;
-        }
+        addPostToUI(docRef.id, postDataForUI, true);
 
         postInput.value = "";
         currentPhotoFile = null;
@@ -736,20 +664,16 @@ publishPostBtn.addEventListener("click", async () => {
         attachPhotoBtn.textContent = "📷 Фото";
         attachPhotoBtn.style.color = "";
 
-        console.log("Запись опубликована!");
+        console.log("✅ Запись опубликована!");
     } catch (error) {
         console.error("Ошибка публикации записи:", error);
-        
-        // ✅ ОТКАТ: Если фото загрузилось, но пост не создался - удаляем фото
         if (uploadedPhotoRef) {
             try {
                 await deleteObject(uploadedPhotoRef);
-                console.log("Orphaned photo deleted (rollback)");
             } catch (rollbackError) {
-                console.error("Failed to rollback photo:", rollbackError);
+                console.error("Не удалось откатить фото:", rollbackError);
             }
         }
-        
         alert("Не удалось опубликовать запись");
     } finally {
         publishPostBtn.disabled = false;
@@ -758,76 +682,129 @@ publishPostBtn.addEventListener("click", async () => {
 });
 
 // ========================
-// ЗАГРУЗКА ПОСТОВ (INFINITE SCROLL)
+// 📜 ЗАГРУЗКА ПОСТОВ (INFINITE SCROLL + CACHE-FIRST)
 // ========================
-async function loadUserPosts(isNextPage = false) {
+function loadUserPosts(isNextPage = false) {
     if (!currentUser || isFetching) return;
-    
-    // ✅ Если это попытка загрузить следующую страницу, но постов больше нет
     if (isNextPage && !hasMore) return;
-    
+
     isFetching = true;
 
-    // Показываем индикатор загрузки при подгрузке
     if (isNextPage) {
         showLoadingIndicator();
     }
 
-    try {
-        const postsCollectionRef = collection(db, "users", currentUser.uid, "posts");
-        
-        // Формируем запрос
-        let postsQuery;
-        if (isNextPage && lastVisible) {
-            // Запрос на следующую порцию (после курсора)
-            postsQuery = query(
-                postsCollectionRef, 
-                orderBy("createdAt", "desc"), 
-                startAfter(lastVisible), 
-                limit(POSTS_PER_PAGE)
-            );
-        } else {
-            // Первый запрос (первые 20 постов)
-            postsList.innerHTML = ""; // Очищаем только при первой загрузке
-            lastVisible = null; // Сбрасываем курсор
-            hasMore = true; // Сбрасываем флаг
-            postsQuery = query(
-                postsCollectionRef, 
-                orderBy("createdAt", "desc"), 
-                limit(POSTS_PER_PAGE)
-            );
-        }
+    const postsCollectionRef = collection(db, "users", currentUser.uid, "posts");
 
-        const snapshot = await getDocs(postsQuery);
-        
-        if (!snapshot.empty) {
-            // Запоминаем последний документ как курсор для следующей подгрузки
-            lastVisible = snapshot.docs[snapshot.docs.length - 1];
-            
-            snapshot.forEach((docSnap) => {
-                addPostToUI(docSnap.id, docSnap.data());
-            });
+    let postsQuery;
+    if (isNextPage && lastVisible) {
+        postsQuery = query(
+            postsCollectionRef,
+            orderBy("createdAt", "desc"),
+            startAfter(lastVisible),
+            limit(POSTS_PER_PAGE)
+        );
+    } else {
+        postsList.innerHTML = "";
+        lastVisible = null;
+        hasMore = true;
+        postsQuery = query(
+            postsCollectionRef,
+            orderBy("createdAt", "desc"),
+            limit(POSTS_PER_PAGE)
+        );
+    }
 
-            // ✅ Проверяем, есть ли ещё посты
-            // Если получили меньше чем POSTS_PER_PAGE, значит это последняя порция
-            if (snapshot.size < POSTS_PER_PAGE) {
+    // ✅ КЛЮЧЕВОЕ ИЗМЕНЕНИЕ #2:
+    // Заменяем getDocs (всегда сервер) на onSnapshot.
+    //
+    // Как это работает с persistentLocalCache:
+    //   1. Первый вызов onSnapshot мгновенно отдаёт данные из локального кэша
+    //      на диске → fromCache=true → 0 чтений Firestore.
+    //   2. Firebase параллельно проверяет сервер. Если ничего не изменилось —
+    //      повторного события НЕ будет → 0 чтений.
+    //   3. Только если появился новый/изменённый/удалённый пост — придёт
+    //      второе событие с fromCache=false → платное чтение только дельты.
+    //
+    // Для пагинации: каждый "следующий блок" тоже получает свой onSnapshot,
+    // который сохраняем в массив postsPageListeners для очистки при выходе.
+    const unsubscribe = onSnapshot(
+        postsQuery,
+        { includeMetadataChanges: true },
+        (snapshot) => {
+            const fromCache = snapshot.metadata.fromCache;
+
+            console.log(`📄 Посты: fromCache=${fromCache}, docs=${snapshot.size}, isNextPage=${isNextPage}`);
+
+            // Если данные из кэша — рисуем сразу. Если с сервера — обновляем UI.
+            // Для пагинации не перерисовываем всё, а только добавляем новые.
+            if (!fromCache || isNextPage) {
+                // Очищаем предыдущий контент только при первой загрузке с сервера
+                // (не пагинация, не из кэша)
+                if (!isNextPage && !fromCache) {
+                    // Пост-список уже был наполнен из кэша — мягко обновляем
+                    syncPostsFromSnapshot(snapshot);
+                    return;
+                }
+            }
+
+            if (snapshot.empty) {
+                if (!isNextPage) showEmptyPosts();
                 hasMore = false;
+            } else {
+                lastVisible = snapshot.docs[snapshot.docs.length - 1];
+                snapshot.forEach((docSnap) => {
+                    // Пропускаем посты, которые уже есть в DOM (при обновлении кэша)
+                    if (!document.querySelector(`[data-post-id="${docSnap.id}"]`)) {
+                        addPostToUI(docSnap.id, docSnap.data(), isNextPage ? false : false);
+                    }
+                });
+                if (snapshot.size < POSTS_PER_PAGE) hasMore = false;
             }
-        } else {
-            // Постов нет вообще или больше не осталось
-            if (!isNextPage) {
-                showEmptyPosts();
-            }
-            hasMore = false;
+
+            isFetching = false;
+            hideLoadingIndicator();
+        },
+        (error) => {
+            console.error("Ошибка слушателя постов:", error);
+            isFetching = false;
+            hideLoadingIndicator();
         }
-        
-    } catch (error) {
-        console.error("Ошибка загрузки постов:", error);
-    } finally {
-        isFetching = false;
-        hideLoadingIndicator();
+    );
+
+    // Сохраняем unsubscribe для очистки
+    if (!isNextPage) {
+        // Для первой страницы — переподписываемся
+        if (unsubscribePosts) unsubscribePosts();
+        unsubscribePosts = unsubscribe;
+    } else {
+        // Для пагинации — добавляем в массив
+        postsPageListeners.push(unsubscribe);
     }
 }
+
+// ✅ Умная синхронизация: обновляем только изменившиеся посты,
+//    не перерисовывая весь список (предотвращает мигание UI)
+function syncPostsFromSnapshot(snapshot) {
+    const serverIds = new Set(snapshot.docs.map(d => d.id));
+
+    // Удаляем из DOM посты, которых нет на сервере
+    document.querySelectorAll('[data-post-id]').forEach(el => {
+        if (!serverIds.has(el.dataset.postId)) {
+            el.remove();
+        }
+    });
+
+    // Добавляем новые посты (которых ещё нет в DOM)
+    snapshot.forEach((docSnap) => {
+        if (!document.querySelector(`[data-post-id="${docSnap.id}"]`)) {
+            addPostToUI(docSnap.id, docSnap.data(), true);
+        }
+    });
+}
+
+// Массив для хранения unsubscribe пагинации
+const postsPageListeners = [];
 
 function showLoadingIndicator() {
     let indicator = document.getElementById('loadingIndicator');
@@ -842,51 +819,53 @@ function showLoadingIndicator() {
 
 function hideLoadingIndicator() {
     const indicator = document.getElementById('loadingIndicator');
-    if (indicator) {
-        indicator.remove();
-    }
+    if (indicator) indicator.remove();
 }
 
-// ✅ Infinite Scroll: Профессиональный метод с Intersection Observer
-let observer = null; // Храним наблюдателя для очистки
+// ✅ Intersection Observer для бесконечного скролла
+let observer = null;
 
 function initScrollListener() {
-    // Удаляем старый наблюдатель, если есть
-    if (observer) {
-        observer.disconnect();
-    }
-    
+    if (observer) observer.disconnect();
+
     const sentinel = document.getElementById('scrollSentinel');
     if (!sentinel) {
         console.warn('Маячок scrollSentinel не найден');
         return;
     }
-    
-    // Создаём IntersectionObserver - современный API для отслеживания видимости элементов
+
     observer = new IntersectionObserver((entries) => {
-        // entries[0].isIntersecting === true, когда маячок показался на экране
         if (entries[0].isIntersecting && !isFetching && hasMore) {
             console.log("🎯 Маячок сработал! Подгружаем посты...");
             loadUserPosts(true);
         }
-    }, {
-        // rootMargin: начинаем подгрузку за 400px до маячка (для плавности)
-        rootMargin: '400px'
-    });
-    
-    // Даём команду следить за маячком
+    }, { rootMargin: '400px' });
+
     observer.observe(sentinel);
     console.log("✅ Intersection Observer активирован");
 }
 
-// Очистка при выходе (предотвращение утечки памяти)
-function cleanupScrollListener() {
+// ✅ Полная очистка всех слушателей (вызывается при logout и unload)
+function cleanupAllListeners() {
     if (observer) {
         observer.disconnect();
         observer = null;
-        console.log("🧹 Intersection Observer отключён");
     }
+    if (unsubscribeProfile) {
+        unsubscribeProfile();
+        unsubscribeProfile = null;
+    }
+    if (unsubscribePosts) {
+        unsubscribePosts();
+        unsubscribePosts = null;
+    }
+    postsPageListeners.forEach(unsub => unsub());
+    postsPageListeners.length = 0;
+    console.log("🧹 Все слушатели отключены");
 }
+
+// Очистка при закрытии вкладки
+window.addEventListener('beforeunload', cleanupAllListeners);
 
 function showEmptyPosts() {
     postsList.innerHTML = `
@@ -897,9 +876,7 @@ function showEmptyPosts() {
             </div>
         </div>
     `;
-    if (postsCount) {
-        postsCount.textContent = "0";
-    }
+    if (postsCount) postsCount.textContent = "0";
 }
 
 function addPostToUI(postId, post, toTop = false) {
@@ -910,37 +887,25 @@ function addPostToUI(postId, post, toTop = false) {
     const userName = post.userName || 'Пользователь';
     const userAvatar = post.userAvatar;
     const letter = userName.charAt(0).toUpperCase();
-    
+
     let timeStr = "Только что";
-    
-    // ✅ Безопасная обработка даты
+
     if (post.createdAt) {
         try {
             let date;
-            
-            // Если это Firestore Timestamp с методом toDate
             if (post.createdAt.toDate && typeof post.createdAt.toDate === 'function') {
                 date = post.createdAt.toDate();
-            } 
-            // Если это обычный объект Date или число
-            else if (post.createdAt instanceof Date) {
+            } else if (post.createdAt instanceof Date) {
                 date = post.createdAt;
-            }
-            // Если это число (миллисекунды)
-            else if (typeof post.createdAt === 'number') {
+            } else if (typeof post.createdAt === 'number') {
                 date = new Date(post.createdAt);
-            }
-            // Если это объект с seconds (Firestore Timestamp в JSON)
-            else if (post.createdAt.seconds) {
+            } else if (post.createdAt.seconds) {
                 date = new Date(post.createdAt.seconds * 1000);
             }
-            
-            // Если дату удалось получить, рассчитываем время
+
             if (date && date instanceof Date && !isNaN(date)) {
                 const now = new Date();
                 const diffMs = now - date;
-
-                // ✅ Проверка на отрицательное время (часы пользователя в будущем)
                 if (diffMs < 0) {
                     timeStr = "Только что";
                 } else {
@@ -948,21 +913,15 @@ function addPostToUI(postId, post, toTop = false) {
                     const diffHours = Math.floor(diffMs / 3600000);
                     const diffDays = Math.floor(diffMs / 86400000);
 
-                    if (diffMins < 1) {
-                        timeStr = "Только что";
-                    } else if (diffMins < 60) {
-                        timeStr = `${diffMins} ${pluralize(diffMins, 'минуту', 'минуты', 'минут')} назад`;
-                    } else if (diffHours < 24) {
-                        timeStr = `${diffHours} ${pluralize(diffHours, 'час', 'часа', 'часов')} назад`;
-                    } else if (diffDays < 7) {
-                        timeStr = `${diffDays} ${pluralize(diffDays, 'день', 'дня', 'дней')} назад`;
-                    } else {
-                        timeStr = date.toLocaleDateString("ru-RU", { 
-                            day: 'numeric', 
-                            month: 'long',
-                            year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
-                        });
-                    }
+                    if (diffMins < 1) timeStr = "Только что";
+                    else if (diffMins < 60) timeStr = `${diffMins} ${pluralize(diffMins, 'минуту', 'минуты', 'минут')} назад`;
+                    else if (diffHours < 24) timeStr = `${diffHours} ${pluralize(diffHours, 'час', 'часа', 'часов')} назад`;
+                    else if (diffDays < 7) timeStr = `${diffDays} ${pluralize(diffDays, 'день', 'дня', 'дней')} назад`;
+                    else timeStr = date.toLocaleDateString("ru-RU", {
+                        day: 'numeric',
+                        month: 'long',
+                        year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
+                    });
                 }
             }
         } catch (error) {
@@ -971,7 +930,7 @@ function addPostToUI(postId, post, toTop = false) {
         }
     }
 
-    const avatarHtml = userAvatar 
+    const avatarHtml = userAvatar
         ? `<img src="${userAvatar}" alt="${userName}" class="post-avatar-img">`
         : letter;
 
@@ -988,69 +947,50 @@ function addPostToUI(postId, post, toTop = false) {
         ${post.photoUrl ? `<img src="${post.photoUrl}" alt="Post photo" class="post-image" data-photo="${post.photoUrl}">` : ''}
     `;
 
-    // ✅ Добавляем в начало (новые посты) или в конец (загрузка старых)
     if (toTop) {
-        postsList.prepend(postItem); // Добавляет в начало
+        postsList.prepend(postItem);
     } else {
-        postsList.appendChild(postItem); // Добавляет в конец
+        postsList.appendChild(postItem);
     }
 
     const deleteBtn = postItem.querySelector(".post-delete");
     deleteBtn.addEventListener("click", async () => {
         if (confirm("Удалить эту запись?")) {
             try {
-                // ✅ Удаляем фото из Storage используя photoPath (надёжнее чем URL)
                 if (post.photoPath) {
                     try {
                         const photoRef = storageRef(storage, post.photoPath);
                         await deleteObject(photoRef);
-                        console.log("Фото удалено из Storage");
                     } catch (storageError) {
-                        // Если фото уже удалено или ссылка битая - не критично
-                        console.warn("Не удалось удалить фото из Storage:", storageError);
+                        console.warn("Не удалось удалить фото:", storageError);
                     }
                 } else if (post.photoUrl) {
-                    // Fallback: старые посты без photoPath
                     try {
-                        // Извлекаем путь из URL
                         const urlParts = post.photoUrl.split('/o/')[1];
                         if (urlParts) {
                             const path = decodeURIComponent(urlParts.split('?')[0]);
-                            const photoRef = storageRef(storage, path);
-                            await deleteObject(photoRef);
-                            console.log("Фото удалено из Storage (fallback)");
+                            await deleteObject(storageRef(storage, path));
                         }
                     } catch (storageError) {
-                        console.warn("Не удалось удалить фото из Storage (fallback):", storageError);
+                        console.warn("Не удалось удалить фото (fallback):", storageError);
                     }
                 }
 
                 const postDocRef = doc(db, "users", currentUser.uid, "posts", postId);
                 await deleteDoc(postDocRef);
-                
-                // ✅ МГНОВЕННОЕ УДАЛЕНИЕ: Убираем пост из DOM сразу
-                postItem.remove();
-                
-                // ✅ Способ В: Уменьшаем счетчик постов (-1)
-                const userDocRef = doc(db, "users", currentUser.uid);
-                await updateDoc(userDocRef, {
-                    postsCount: increment(-1)
-                });
 
-                // Обновляем локальный счетчик
+                postItem.remove();
+
+                const userDocRef = doc(db, "users", currentUser.uid);
+                await updateDoc(userDocRef, { postsCount: increment(-1) });
+
                 currentUserData.postsCount = Math.max(0, (currentUserData.postsCount || 1) - 1);
                 localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(currentUserData));
-                
-                if (postsCount) {
-                    postsCount.textContent = currentUserData.postsCount.toString();
-                }
 
-                // Если постов больше нет, показываем сообщение
-                if (currentUserData.postsCount === 0) {
-                    showEmptyPosts();
-                }
+                if (postsCount) postsCount.textContent = currentUserData.postsCount.toString();
+                if (currentUserData.postsCount === 0) showEmptyPosts();
 
-                console.log("Запись удалена!");
+                console.log("✅ Запись удалена!");
             } catch (error) {
                 console.error("Ошибка удаления записи:", error);
                 alert("Не удалось удалить запись");
@@ -1072,15 +1012,12 @@ closePhotoModal.addEventListener("click", () => {
 });
 
 photoModal.addEventListener("click", (e) => {
-    if (e.target === photoModal) {
-        photoModal.classList.add("hidden");
-    }
+    if (e.target === photoModal) photoModal.classList.add("hidden");
 });
 
 function pluralize(num, one, few, many) {
     const mod10 = num % 10;
     const mod100 = num % 100;
-    
     if (mod10 === 1 && mod100 !== 11) return one;
     if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return few;
     return many;
