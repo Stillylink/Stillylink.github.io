@@ -119,13 +119,16 @@
             </div>
 
             <!-- Ссылки на соц сети -->
-            <div class="form-group">
-              <label>Ссылки на социальные сети</label>
-              <div class="social-links-placeholder">
-                <div class="placeholder-icon">🔗</div>
-                <p>Добавление ссылок на соцсети будет доступно в следующем обновлении</p>
-              </div>
-            </div>
+<div class="form-group">
+  <label>Ссылки на социальные сети</label>
+  <div class="social-links-list" id="socialLinksList">
+    <!-- Динамически добавляемые строки -->
+  </div>
+  <button type="button" class="add-link-btn" id="addSocialLinkBtn">
+    + Добавить социальную сеть
+  </button>
+  <small class="field-hint" id="socialLinksHint">Максимум 5 ссылок</small>
+</div>
 
             <!-- Кнопка сохранения -->
             <div class="form-actions">
