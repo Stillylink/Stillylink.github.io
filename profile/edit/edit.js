@@ -87,15 +87,39 @@ const cancelRenameBtn = document.getElementById("cancelRenameBtn");
 const saveRenameBtn = document.getElementById("saveRenameBtn");
 const newFieldName = document.getElementById("newFieldName");
 
+// DOM элементы социальных сетей
+const socialLinksList  = document.getElementById("socialLinksList");
+const addSocialLinkBtn = document.getElementById("addSocialLinkBtn");
+const socialLinksHint  = document.getElementById("socialLinksHint");
+
 let currentUser = null;
 let currentUserData = null;
-let originalData = {}; // Для отмены изменений
+let originalData = {};
 const PROFILE_CACHE_KEY = "userProfileCache_v1";
 
 // Константы для смены ID
 const USERNAME_CHANGE_COOLDOWN_DAYS = 7;
 const USERNAME_MIN_LENGTH = 3;
 const USERNAME_MAX_LENGTH = 20;
+
+// ========================
+// СОЦИАЛЬНЫЕ СЕТИ — КОНФИГ
+// ========================
+const MAX_SOCIAL_LINKS = 5;
+
+const SOCIAL_NETWORKS = [
+    { value: 'instagram', label: 'Instagram',   placeholder: 'https://instagram.com/username' },
+    { value: 'telegram',  label: 'Telegram',    placeholder: 'https://t.me/username' },
+    { value: 'vk',        label: 'ВКонтакте',   placeholder: 'https://vk.com/username' },
+    { value: 'tiktok',    label: 'TikTok',      placeholder: 'https://tiktok.com/@username' },
+    { value: 'youtube',   label: 'YouTube',     placeholder: 'https://youtube.com/@channel' },
+    { value: 'twitter',   label: 'X (Twitter)', placeholder: 'https://x.com/username' },
+    { value: 'twitch',    label: 'Twitch',      placeholder: 'https://twitch.tv/username' },
+    { value: 'discord',   label: 'Discord',     placeholder: 'https://discord.gg/invite' },
+    { value: 'github',    label: 'GitHub',      placeholder: 'https://github.com/username' },
+    { value: 'spotify',   label: 'Spotify',     placeholder: 'https://open.spotify.com/...' },
+    { value: 'other',     label: 'Другое',      placeholder: 'https://example.com' },
+];
 
 // ========================
 // НАВИГАЦИЯ
@@ -139,12 +163,10 @@ if (savedAvatar) {
 editTabs.forEach(tab => {
     tab.addEventListener('click', () => {
         const targetTab = tab.dataset.tab;
-        
-        // Переключение активного таба
+
         editTabs.forEach(t => t.classList.remove('active'));
         tab.classList.add('active');
-        
-        // Переключение активной секции
+
         editSections.forEach(section => {
             if (section.dataset.section === targetTab) {
                 section.classList.add('active');
@@ -176,13 +198,13 @@ onAuthStateChanged(auth, async (user) => {
     }
 
     const cachedUID = localStorage.getItem("currentUserUID");
-    
+
     if (cachedUID && cachedUID !== user.uid) {
         console.log("Обнаружена смена пользователя, очистка кэша...");
         localStorage.removeItem(PROFILE_CACHE_KEY);
         localStorage.removeItem("userAvatarLetter");
     }
-    
+
     localStorage.setItem("currentUserUID", user.uid);
 
     currentUser = user;
@@ -201,7 +223,7 @@ onAuthStateChanged(auth, async (user) => {
             currentUserData = null;
         }
     }
-    
+
     if (!currentUserData) {
         const userSnap = await getDoc(userDocRef);
 
@@ -217,6 +239,7 @@ onAuthStateChanged(auth, async (user) => {
                 youtubeVideoId: null,
                 status: "",
                 usernameID: generatedID,
+                socialLinks: [],
                 info: {
                     links: [],
                     email: "",
@@ -233,45 +256,44 @@ onAuthStateChanged(auth, async (user) => {
                 setDoc(userDocRef, newProfile),
                 setDoc(usernameDocRef, { ownerUID: user.uid })
             ]);
-            
+
             currentUserData = newProfile;
         } else {
             currentUserData = userSnap.data();
-            
-            // ✅ Миграция: добавляем usernameID если его нет (ЧЕРЕЗ ТРАНЗАКЦИЮ)
+
+            // Миграция: добавляем usernameID если его нет
             if (!currentUserData.usernameID) {
                 const generatedID = generateUsernameID(user.email, user.uid);
-                
+
                 await runTransaction(db, async (transaction) => {
                     const usernameDocRef = doc(db, "usernames", generatedID.toLowerCase());
-                    
-                    // 1. Проверяем, не занят ли сгенерированный ID
                     const usernameSnap = await transaction.get(usernameDocRef);
-                    
+
                     if (usernameSnap.exists()) {
-                        // Если занят (очень редкий случай), добавляем timestamp
                         const timestamp = Date.now().toString().slice(-6);
                         const fallbackID = `${generatedID}_${timestamp}`.toLowerCase();
                         const fallbackDocRef = doc(db, "usernames", fallbackID);
-                        
+
                         transaction.set(fallbackDocRef, { ownerUID: user.uid });
                         transaction.update(userDocRef, { usernameID: fallbackID });
-                        
+
                         currentUserData.usernameID = fallbackID;
                         console.log("✅ Миграция: добавлен fallback usernameID:", fallbackID);
                     } else {
-                        // 2. Создаём документ в usernames
                         transaction.set(usernameDocRef, { ownerUID: user.uid });
-                        
-                        // 3. Обновляем профиль пользователя
                         transaction.update(userDocRef, { usernameID: generatedID });
-                        
+
                         currentUserData.usernameID = generatedID;
                         console.log("✅ Миграция: добавлен usernameID:", generatedID);
                     }
                 });
             }
-            
+
+            // Миграция: добавляем socialLinks если нет
+            if (!currentUserData.socialLinks) {
+                currentUserData.socialLinks = [];
+            }
+
             if (!currentUserData.info) {
                 currentUserData.info = {
                     links: [],
@@ -292,16 +314,12 @@ onAuthStateChanged(auth, async (user) => {
     avatarLetter.textContent = letter;
     localStorage.setItem("userAvatarLetter", letter);
 
-    // Загружаем данные в формы
     loadProfileData();
     loadStatusData();
     loadInfoData();
     loadVideoData();
-    
-    // Проверяем cooldown для смены ID
+
     checkUsernameCooldown();
-    
-    // Сохраняем оригинальные данные для отмены
     saveOriginalData();
 });
 
@@ -327,7 +345,8 @@ function saveOriginalData() {
         },
         status: currentUserData.status || "",
         info: JSON.parse(JSON.stringify(currentUserData.info || {})),
-        video: currentUserData.youtubeVideoId || null
+        video: currentUserData.youtubeVideoId || null,
+        socialLinks: JSON.parse(JSON.stringify(currentUserData.socialLinks || []))
     };
 }
 
@@ -339,44 +358,36 @@ function loadProfileData() {
     editProfileName.value = currentUserData.name;
     editProfileId.value = currentUserData.usernameID || "";
     editProfileBio.value = currentUserData.bio || "";
-    
+
     updateBioCounter();
+    loadSocialLinks(currentUserData.socialLinks || []);
 }
 
 function updateBioCounter() {
     const text = editProfileBio.value;
     const lines = text.split('\n');
-    
+
     bioCharCount.textContent = text.length;
     bioLineCount.textContent = lines.length;
-    
-    if (text.length > 100) {
-        bioCharCount.style.color = '#ff3b30';
-    } else {
-        bioCharCount.style.color = 'var(--text-secondary)';
-    }
-    
-    if (lines.length > 10) {
-        bioLineCount.style.color = '#ff3b30';
-    } else {
-        bioLineCount.style.color = 'var(--text-secondary)';
-    }
+
+    bioCharCount.style.color = text.length > 100 ? '#ff3b30' : 'var(--text-secondary)';
+    bioLineCount.style.color = lines.length > 10  ? '#ff3b30' : 'var(--text-secondary)';
 }
 
 editProfileBio.addEventListener('input', () => {
     let text = editProfileBio.value;
     let lines = text.split('\n');
-    
+
     if (lines.length > 10) {
         text = lines.slice(0, 10).join('\n');
         editProfileBio.value = text;
         lines = text.split('\n');
     }
-    
+
     if (text.length > 100) {
         editProfileBio.value = text.slice(0, 100);
     }
-    
+
     updateBioCounter();
 });
 
@@ -384,18 +395,15 @@ editProfileBio.addEventListener('input', () => {
 // ВАЛИДАЦИЯ USERNAMEID
 // ========================
 function validateUsernameID(username) {
-    // Приводим к нижнему регистру
     username = username.toLowerCase().trim();
-    
-    // Проверка длины
+
     if (username.length < USERNAME_MIN_LENGTH || username.length > USERNAME_MAX_LENGTH) {
         return {
             valid: false,
             error: `ID должен быть от ${USERNAME_MIN_LENGTH} до ${USERNAME_MAX_LENGTH} символов`
         };
     }
-    
-    // Проверка формата (только латиница, цифры и _)
+
     const validFormat = /^[a-z0-9_]+$/;
     if (!validFormat.test(username)) {
         return {
@@ -403,8 +411,7 @@ function validateUsernameID(username) {
             error: "Только латиница, цифры и нижнее подчеркивание"
         };
     }
-    
-    // Проверка зарезервированных слов
+
     const reserved = ['admin', 'root', 'system', 'api', 'app', 'stillylink', 'support', 'help'];
     if (reserved.includes(username)) {
         return {
@@ -412,7 +419,7 @@ function validateUsernameID(username) {
             error: "Этот ID зарезервирован"
         };
     }
-    
+
     return { valid: true, username };
 }
 
@@ -421,13 +428,9 @@ function validateUsernameID(username) {
 // ========================
 function checkUsernameCooldown() {
     const lastChange = currentUserData.lastUsernameChange;
-    
-    if (!lastChange) {
-        // Первая смена - разрешаем
-        return;
-    }
-    
-    // Преобразуем Firestore Timestamp в Date
+
+    if (!lastChange) return;
+
     let changeDate;
     if (lastChange.toDate && typeof lastChange.toDate === 'function') {
         changeDate = lastChange.toDate();
@@ -436,11 +439,10 @@ function checkUsernameCooldown() {
     } else {
         changeDate = new Date(lastChange);
     }
-    
+
     const now = new Date();
-    const diffMs = now - changeDate;
-    const diffDays = diffMs / (1000 * 60 * 60 * 24);
-    
+    const diffDays = (now - changeDate) / (1000 * 60 * 60 * 24);
+
     if (diffDays < USERNAME_CHANGE_COOLDOWN_DAYS) {
         const daysLeft = Math.ceil(USERNAME_CHANGE_COOLDOWN_DAYS - diffDays);
         editProfileId.disabled = true;
@@ -457,14 +459,12 @@ function checkUsernameCooldown() {
 // ========================
 editProfileId.addEventListener('input', () => {
     const value = editProfileId.value.trim().toLowerCase();
-    editProfileId.value = value; // Автоматически приводим к нижнему регистру
-    
-    // Убираем ошибки при вводе
+    editProfileId.value = value;
+
     editProfileId.classList.remove('error');
     idError.classList.add('hidden');
     idError.textContent = '';
-    
-    // Валидация в реальном времени
+
     if (value.length > 0) {
         const validation = validateUsernameID(value);
         if (!validation.valid) {
@@ -476,21 +476,21 @@ editProfileId.addEventListener('input', () => {
 });
 
 // ========================
-// СОХРАНЕНИЕ ПРОФИЛЯ С ПРОВЕРКОЙ ID
+// СОХРАНЕНИЕ ПРОФИЛЯ
 // ========================
 saveProfileBtn.addEventListener('click', async () => {
     if (!currentUser) return;
-    
+
     const name = editProfileName.value.trim();
     const bio = editProfileBio.value.trim();
     const newUsernameID = editProfileId.value.trim().toLowerCase();
-    
+    const socialLinks = collectSocialLinks();
+
     if (!name) {
         alert('Введите имя');
         return;
     }
-    
-    // Валидация нового ID
+
     const validation = validateUsernameID(newUsernameID);
     if (!validation.valid) {
         editProfileId.classList.add('error');
@@ -498,15 +498,13 @@ saveProfileBtn.addEventListener('click', async () => {
         idError.textContent = validation.error;
         return;
     }
-    
+
     const oldUsernameID = currentUserData.usernameID;
     let usernameChanged = false;
-    
-    // Проверяем, изменился ли ID
+
     if (newUsernameID !== oldUsernameID) {
         usernameChanged = true;
-        
-        // Проверка cooldown
+
         const lastChange = currentUserData.lastUsernameChange;
         if (lastChange) {
             let changeDate;
@@ -517,86 +515,75 @@ saveProfileBtn.addEventListener('click', async () => {
             } else {
                 changeDate = new Date(lastChange);
             }
-            
-            const now = new Date();
-            const diffMs = now - changeDate;
-            const diffDays = diffMs / (1000 * 60 * 60 * 24);
-            
+
+            const diffDays = (new Date() - changeDate) / (1000 * 60 * 60 * 24);
+
             if (diffDays < USERNAME_CHANGE_COOLDOWN_DAYS) {
                 const daysLeft = Math.ceil(USERNAME_CHANGE_COOLDOWN_DAYS - diffDays);
                 alert(`⏱️ Сменить ID можно будет через ${daysLeft} ${pluralize(daysLeft, 'день', 'дня', 'дней')}`);
                 return;
             }
         }
-        
-        // Проверка уникальности происходит внутри транзакции
     }
-    
+
     saveProfileBtn.disabled = true;
     saveProfileBtn.textContent = 'Сохранение...';
-    
+
     try {
         const userDocRef = doc(db, "users", currentUser.uid);
-        
+
         if (usernameChanged) {
-            // ✅ ТРАНЗАКЦИЯ: Атомарная смена ID
             await runTransaction(db, async (transaction) => {
                 const oldUsernameDocRef = doc(db, "usernames", oldUsernameID.toLowerCase());
                 const newUsernameDocRef = doc(db, "usernames", newUsernameID);
-                
-                // 1. Проверяем уникальность нового ID внутри транзакции
+
                 const newUsernameSnap = await transaction.get(newUsernameDocRef);
-                
+
                 if (newUsernameSnap.exists()) {
                     throw new Error('ID_ALREADY_TAKEN');
                 }
-                
-                // 2. Удаляем старый документ из usernames
+
                 transaction.delete(oldUsernameDocRef);
-                
-                // 3. Создаём новый документ в usernames
                 transaction.set(newUsernameDocRef, { ownerUID: currentUser.uid });
-                
-                // 4. Обновляем профиль пользователя
                 transaction.update(userDocRef, {
                     name,
                     bio: bio || "",
                     usernameID: newUsernameID,
-                    lastUsernameChange: serverTimestamp()
+                    lastUsernameChange: serverTimestamp(),
+                    socialLinks
                 });
             });
-            
+
             currentUserData.usernameID = newUsernameID;
-            currentUserData.lastUsernameChange = new Date(); // Для локального кэша
-            
-            console.log("✅ ID успешно изменён через транзакцию:", newUsernameID);
+            currentUserData.lastUsernameChange = new Date();
+
+            console.log("✅ ID успешно изменён:", newUsernameID);
         } else {
-            // Просто обновляем имя и био
             await setDoc(userDocRef, {
                 name,
-                bio: bio || ""
+                bio: bio || "",
+                socialLinks
             }, { merge: true });
         }
-        
+
         currentUserData.name = name;
         currentUserData.bio = bio || "";
-        
+        currentUserData.socialLinks = socialLinks;
+
         localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(currentUserData));
-        
+
         const newLetter = name.charAt(0).toUpperCase();
         editAvatarLetter.textContent = newLetter;
         avatarLetter.textContent = newLetter;
         localStorage.setItem("userAvatarLetter", newLetter);
-        
+
         saveOriginalData();
-        checkUsernameCooldown(); // Обновляем статус cooldown
-        
+        checkUsernameCooldown();
+
         alert('✅ Профиль успешно сохранён!');
-        console.log("Профиль обновлён!");
     } catch (error) {
         console.error("Ошибка сохранения профиля:", error);
-        
-        // Обработка специфичной ошибки занятости ID
+
         if (error.message === 'ID_ALREADY_TAKEN') {
             editProfileId.classList.add('error');
             idError.classList.remove('hidden');
@@ -621,37 +608,28 @@ function loadStatusData() {
 function updateStatusCounter() {
     const text = editStatusText.value;
     const lines = text.split('\n');
-    
+
     statusCharCount.textContent = text.length;
     statusLineCount.textContent = lines.length;
-    
-    if (text.length > 100) {
-        statusCharCount.style.color = '#ff3b30';
-    } else {
-        statusCharCount.style.color = 'var(--text-secondary)';
-    }
-    
-    if (lines.length > 10) {
-        statusLineCount.style.color = '#ff3b30';
-    } else {
-        statusLineCount.style.color = 'var(--text-secondary)';
-    }
+
+    statusCharCount.style.color = text.length > 100 ? '#ff3b30' : 'var(--text-secondary)';
+    statusLineCount.style.color = lines.length > 10  ? '#ff3b30' : 'var(--text-secondary)';
 }
 
 editStatusText.addEventListener('input', () => {
     let text = editStatusText.value;
     let lines = text.split('\n');
-    
+
     if (lines.length > 10) {
         text = lines.slice(0, 10).join('\n');
         editStatusText.value = text;
         lines = text.split('\n');
     }
-    
+
     if (text.length > 100) {
         editStatusText.value = text.slice(0, 100);
     }
-    
+
     updateStatusCounter();
 });
 
@@ -662,36 +640,33 @@ cancelStatusBtn.addEventListener('click', () => {
 
 saveStatusBtn.addEventListener('click', async () => {
     if (!currentUser) return;
-    
+
     const status = editStatusText.value.trim();
-    
     const lines = status.split('\n');
+
     if (lines.length > 10) {
         alert('Статус не может содержать более 10 строк');
         return;
     }
-    
+
     if (status.length > 100) {
         alert('Статус не может быть длиннее 100 символов');
         return;
     }
-    
+
     saveStatusBtn.disabled = true;
     saveStatusBtn.textContent = 'Сохранение...';
-    
+
     try {
         const userDocRef = doc(db, "users", currentUser.uid);
-        await setDoc(userDocRef, {
-            status: status || ""
-        }, { merge: true });
-        
+        await setDoc(userDocRef, { status: status || "" }, { merge: true });
+
         currentUserData.status = status || "";
         localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(currentUserData));
-        
+
         saveOriginalData();
-        
+
         alert('✅ Статус успешно сохранён!');
-        console.log("Статус обновлён!");
     } catch (error) {
         console.error("Ошибка сохранения статуса:", error);
         alert('❌ Не удалось сохранить статус');
@@ -706,14 +681,14 @@ saveStatusBtn.addEventListener('click', async () => {
 // ========================
 function loadInfoData() {
     const infoData = currentUserData.info || {};
-    
+
     editInfoCountry.value = infoData.country || "";
     editInfoNickname.value = infoData.nickname || "";
     editInfoEmail.value = infoData.email || "";
     editInfoOccupation.value = infoData.occupation || "";
-    
+
     nicknameLabel.textContent = infoData.nicknameLabel || "Прозвище";
-    
+
     renderInfoLinks(infoData.links || []);
     updateOccupationCounter();
 }
@@ -721,12 +696,7 @@ function loadInfoData() {
 function updateOccupationCounter() {
     const length = editInfoOccupation.value.length;
     occupationCharCount.textContent = length;
-    
-    if (length > 200) {
-        occupationCharCount.style.color = '#ff3b30';
-    } else {
-        occupationCharCount.style.color = 'var(--text-secondary)';
-    }
+    occupationCharCount.style.color = length > 200 ? '#ff3b30' : 'var(--text-secondary)';
 }
 
 editInfoOccupation.addEventListener('input', () => {
@@ -738,37 +708,31 @@ editInfoOccupation.addEventListener('input', () => {
 
 function renderInfoLinks(links = []) {
     infoLinksContainer.innerHTML = '';
-    
-    links.forEach((link) => {
-        addInfoLinkInput(link.name, link.url);
-    });
-    
+    links.forEach(link => addInfoLinkInput(link.name, link.url));
     updateAddLinkButton();
 }
 
 function addInfoLinkInput(name = '', url = '') {
     const linkItem = document.createElement('div');
     linkItem.className = 'link-item';
-    
+
     linkItem.innerHTML = `
         <input type="text" placeholder="Название" value="${escapeHtml(name)}" class="link-name" maxlength="50">
         <input type="url" placeholder="https://example.com" value="${escapeHtml(url)}" class="link-url">
         <button type="button" class="remove-link-btn">×</button>
     `;
-    
-    const removeBtn = linkItem.querySelector('.remove-link-btn');
-    removeBtn.addEventListener('click', () => {
+
+    linkItem.querySelector('.remove-link-btn').addEventListener('click', () => {
         linkItem.remove();
         updateAddLinkButton();
     });
-    
+
     infoLinksContainer.appendChild(linkItem);
 }
 
 addInfoLinkBtn.addEventListener('click', () => {
     const currentLinks = infoLinksContainer.querySelectorAll('.link-item');
     if (currentLinks.length >= 3) return;
-    
     addInfoLinkInput();
     updateAddLinkButton();
 });
@@ -790,17 +754,14 @@ cancelInfoBtn.addEventListener('click', () => {
 
 saveInfoBtn.addEventListener('click', async () => {
     if (!currentUser) return;
-    
+
     const linkItems = infoLinksContainer.querySelectorAll('.link-item');
     const links = [];
-    
+
     linkItems.forEach(item => {
-        const nameInput = item.querySelector('.link-name');
-        const urlInput = item.querySelector('.link-url');
-        
-        const name = nameInput.value.trim();
-        const url = urlInput.value.trim();
-        
+        const name = item.querySelector('.link-name').value.trim();
+        const url  = item.querySelector('.link-url').value.trim();
+
         if (name && url) {
             try {
                 new URL(url);
@@ -810,32 +771,29 @@ saveInfoBtn.addEventListener('click', async () => {
             }
         }
     });
-    
+
     const infoData = {
-        links: links,
+        links,
         email: editInfoEmail.value.trim(),
         country: editInfoCountry.value,
         nickname: editInfoNickname.value.trim(),
         nicknameLabel: nicknameLabel.textContent,
         occupation: editInfoOccupation.value.trim().slice(0, 200)
     };
-    
+
     saveInfoBtn.disabled = true;
     saveInfoBtn.textContent = 'Сохранение...';
-    
+
     try {
         const userDocRef = doc(db, "users", currentUser.uid);
-        await setDoc(userDocRef, {
-            info: infoData
-        }, { merge: true });
-        
+        await setDoc(userDocRef, { info: infoData }, { merge: true });
+
         currentUserData.info = infoData;
         localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(currentUserData));
-        
+
         saveOriginalData();
-        
+
         alert('✅ Информация успешно сохранена!');
-        console.log("Информация обновлена!");
     } catch (error) {
         console.error("Ошибка сохранения информации:", error);
         alert('❌ Не удалось сохранить информацию');
@@ -854,33 +812,26 @@ renameNicknameBtn.addEventListener('click', () => {
 
 saveRenameBtn.addEventListener('click', () => {
     const label = newFieldName.value.trim();
-    
+
     if (!label) {
         alert('Введите название поля');
         return;
     }
-    
+
     if (label.length > 30) {
         alert('Название не может быть длиннее 30 символов');
         return;
     }
-    
+
     nicknameLabel.textContent = label;
     renameModal.classList.add('hidden');
 });
 
-closeRenameModal.addEventListener('click', () => {
-    renameModal.classList.add('hidden');
-});
-
-cancelRenameBtn.addEventListener('click', () => {
-    renameModal.classList.add('hidden');
-});
+closeRenameModal.addEventListener('click', () => renameModal.classList.add('hidden'));
+cancelRenameBtn.addEventListener('click', () => renameModal.classList.add('hidden'));
 
 renameModal.addEventListener('click', (e) => {
-    if (e.target === renameModal) {
-        renameModal.classList.add('hidden');
-    }
+    if (e.target === renameModal) renameModal.classList.add('hidden');
 });
 
 // ========================
@@ -888,7 +839,7 @@ renameModal.addEventListener('click', (e) => {
 // ========================
 function loadVideoData() {
     const videoId = currentUserData.youtubeVideoId;
-    
+
     if (videoId) {
         editVideoUrl.value = `https://www.youtube.com/watch?v=${videoId}`;
         showVideoPreview(videoId);
@@ -912,74 +863,53 @@ function hideVideoPreview() {
 
 function extractVideoId(url) {
     if (!url) return null;
-    
+
     url = url.trim();
-    
-    if (url.includes('/shorts/')) {
-        return null;
-    }
-    
+
+    if (url.includes('/shorts/')) return null;
+
     const watchMatch = url.match(/[?&]v=([a-zA-Z0-9_-]{11})/);
-    if (watchMatch) {
-        return watchMatch[1];
-    }
-    
+    if (watchMatch) return watchMatch[1];
+
     const shortMatch = url.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/);
-    if (shortMatch) {
-        return shortMatch[1];
-    }
-    
-    if (/^[a-zA-Z0-9_-]{11}$/.test(url)) {
-        return url;
-    }
-    
+    if (shortMatch) return shortMatch[1];
+
+    if (/^[a-zA-Z0-9_-]{11}$/.test(url)) return url;
+
     return null;
 }
 
 editVideoUrl.addEventListener('input', () => {
     const url = editVideoUrl.value.trim();
-    
-    if (!url) {
-        hideVideoPreview();
-        return;
-    }
-    
+    if (!url) { hideVideoPreview(); return; }
     const videoId = extractVideoId(url);
-    
-    if (videoId) {
-        showVideoPreview(videoId);
-    } else {
-        hideVideoPreview();
-    }
+    if (videoId) { showVideoPreview(videoId); } else { hideVideoPreview(); }
 });
 
 saveVideoBtn.addEventListener('click', async () => {
     if (!currentUser) return;
-    
+
     const url = editVideoUrl.value.trim();
     const videoId = extractVideoId(url);
-    
+
     if (url && !videoId) {
         alert('❌ Неверная ссылка!\n\nПроверьте, что:\n• Это ссылка на обычное YouTube видео\n• Это НЕ Shorts\n• Формат: youtube.com/watch?v=... или youtu.be/...');
         return;
     }
-    
+
     saveVideoBtn.disabled = true;
     saveVideoBtn.textContent = 'Сохранение...';
-    
+
     try {
         const userDocRef = doc(db, "users", currentUser.uid);
-        await setDoc(userDocRef, {
-            youtubeVideoId: videoId || null
-        }, { merge: true });
-        
+        await setDoc(userDocRef, { youtubeVideoId: videoId || null }, { merge: true });
+
         currentUserData.youtubeVideoId = videoId || null;
         localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(currentUserData));
-        
+
         saveOriginalData();
-        
+
         alert('✅ Видео успешно сохранено!');
-        console.log("Видео обновлено!");
     } catch (error) {
         console.error("Ошибка сохранения видео:", error);
         alert('❌ Не удалось сохранить видео');
@@ -991,32 +921,131 @@ saveVideoBtn.addEventListener('click', async () => {
 
 deleteVideoBtn.addEventListener('click', async () => {
     if (!confirm('Удалить видео из профиля?')) return;
-    
+
     deleteVideoBtn.disabled = true;
     deleteVideoBtn.textContent = 'Удаление...';
-    
+
     try {
         const userDocRef = doc(db, "users", currentUser.uid);
-        await setDoc(userDocRef, {
-            youtubeVideoId: null
-        }, { merge: true });
-        
+        await setDoc(userDocRef, { youtubeVideoId: null }, { merge: true });
+
         currentUserData.youtubeVideoId = null;
         localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(currentUserData));
-        
+
         editVideoUrl.value = "";
         hideVideoPreview();
-        
+
         saveOriginalData();
-        
+
         alert('✅ Видео успешно удалено!');
-        console.log("Видео удалено!");
     } catch (error) {
         console.error("Ошибка удаления видео:", error);
         alert('❌ Не удалось удалить видео');
     } finally {
         deleteVideoBtn.disabled = false;
         deleteVideoBtn.textContent = 'Удалить видео';
+    }
+});
+
+// ========================
+// СОЦИАЛЬНЫЕ СЕТИ
+// ========================
+function buildSelectOptions(selectedValue = '') {
+    return SOCIAL_NETWORKS.map(n =>
+        `<option value="${n.value}" ${n.value === selectedValue ? 'selected' : ''}>${n.label}</option>`
+    ).join('');
+}
+
+function getPlaceholder(value) {
+    return (SOCIAL_NETWORKS.find(n => n.value === value) || SOCIAL_NETWORKS.at(-1)).placeholder;
+}
+
+function isValidUrl(url) {
+    try { new URL(url); return true; } catch { return false; }
+}
+
+function addSocialLinkRow(network = 'instagram', url = '') {
+    const row = document.createElement('div');
+    row.className = 'social-link-item';
+
+    row.innerHTML = `
+        <select class="social-select">
+            ${buildSelectOptions(network)}
+        </select>
+        <input
+            type="url"
+            class="social-url-input"
+            placeholder="${getPlaceholder(network)}"
+            value="${escapeHtml(url)}"
+        >
+        <button type="button" class="remove-link-btn" title="Удалить">×</button>
+    `;
+
+    const select = row.querySelector('.social-select');
+    const input  = row.querySelector('.social-url-input');
+
+    select.addEventListener('change', () => {
+        input.placeholder = getPlaceholder(select.value);
+        input.classList.remove('invalid');
+    });
+
+    input.addEventListener('blur', () => {
+        const val = input.value.trim();
+        if (val && !isValidUrl(val)) {
+            input.classList.add('invalid');
+        } else {
+            input.classList.remove('invalid');
+        }
+    });
+
+    input.addEventListener('input', () => input.classList.remove('invalid'));
+
+    row.querySelector('.remove-link-btn').addEventListener('click', () => {
+        row.remove();
+        updateSocialLinkButton();
+    });
+
+    socialLinksList.appendChild(row);
+    updateSocialLinkButton();
+}
+
+function updateSocialLinkButton() {
+    const count = socialLinksList.querySelectorAll('.social-link-item').length;
+    addSocialLinkBtn.disabled = count >= MAX_SOCIAL_LINKS;
+    addSocialLinkBtn.textContent = count >= MAX_SOCIAL_LINKS
+        ? `+ Максимум ${MAX_SOCIAL_LINKS} ссылок`
+        : '+ Добавить социальную сеть';
+
+    if (socialLinksHint) {
+        socialLinksHint.textContent = `${count}/${MAX_SOCIAL_LINKS} ссылок`;
+    }
+}
+
+function loadSocialLinks(links = []) {
+    socialLinksList.innerHTML = '';
+    links.forEach(l => addSocialLinkRow(l.network, l.url));
+    updateSocialLinkButton();
+}
+
+function collectSocialLinks() {
+    const rows = socialLinksList.querySelectorAll('.social-link-item');
+    const result = [];
+
+    rows.forEach(row => {
+        const network = row.querySelector('.social-select').value;
+        const url     = row.querySelector('.social-url-input').value.trim();
+
+        if (url && isValidUrl(url)) {
+            result.push({ network, url });
+        }
+    });
+
+    return result;
+}
+
+addSocialLinkBtn.addEventListener('click', () => {
+    if (socialLinksList.querySelectorAll('.social-link-item').length < MAX_SOCIAL_LINKS) {
+        addSocialLinkRow();
     }
 });
 
@@ -1030,9 +1059,9 @@ function escapeHtml(text) {
 }
 
 function pluralize(num, one, few, many) {
-    const mod10 = num % 10;
+    const mod10  = num % 10;
     const mod100 = num % 100;
-    
+
     if (mod10 === 1 && mod100 !== 11) return one;
     if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return few;
     return many;
