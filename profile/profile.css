@@ -125,62 +125,81 @@ body.profile-page .site-wrapper {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-bottom: 14px;
-  min-height: 0;
-}
-
-.profile-social-links:empty {
-  margin-bottom: 0;
+  margin-top: 12px;
 }
 
 .social-icon-link {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.06);
   text-decoration: none;
-  transition: transform 0.2s ease, filter 0.2s ease, box-shadow 0.2s ease;
   flex-shrink: 0;
   position: relative;
-}
-
-.social-icon-link:hover {
-  transform: translateY(-3px) scale(1.1);
-  filter: brightness(1.15);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
 }
 
 .social-icon-link svg {
-  width: 18px;
-  height: 18px;
-  fill: #fff;
+  width: 16px;
+  height: 16px;
+  /* Монохромный приглушённый цвет — как у @id и даты */
+  fill: rgba(255, 255, 255, 0.45);
   flex-shrink: 0;
+  transition: fill 0.2s ease;
 }
 
-/* Цвета каждой сети */
-.social-icon-link[data-network="instagram"] { background: linear-gradient(135deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888); }
-.social-icon-link[data-network="telegram"]  { background: #2aabee; }
-.social-icon-link[data-network="vk"]        { background: #0077ff; }
-.social-icon-link[data-network="tiktok"]    { background: #010101; border: 1px solid rgba(255,255,255,0.12); }
-.social-icon-link[data-network="youtube"]   { background: #ff0000; }
-.social-icon-link[data-network="twitter"]   { background: #000; border: 1px solid rgba(255,255,255,0.12); }
-.social-icon-link[data-network="twitch"]    { background: #9146ff; }
-.social-icon-link[data-network="discord"]   { background: #5865f2; }
-.social-icon-link[data-network="github"]    { background: #24292e; }
-.social-icon-link[data-network="spotify"]   { background: #1db954; }
-.social-icon-link[data-network="other"]     { background: #444; }
+/* Hover: фон чуть светлее, иконка окрашивается в бренд */
+.social-icon-link:hover {
+  background: rgba(255, 255, 255, 0.09);
+  transform: translateY(-2px);
+}
 
-/* Тултип с названием сети */
+.social-icon-link[data-network="instagram"]:hover { border-color: #e1306c33; }
+.social-icon-link[data-network="instagram"]:hover svg { fill: #e1306c; }
+
+.social-icon-link[data-network="telegram"]:hover  { border-color: #2aabee33; }
+.social-icon-link[data-network="telegram"]:hover svg  { fill: #2aabee; }
+
+.social-icon-link[data-network="vk"]:hover        { border-color: #4a76a833; }
+.social-icon-link[data-network="vk"]:hover svg        { fill: #4a76a8; }
+
+.social-icon-link[data-network="tiktok"]:hover    { border-color: #ee1d5233; }
+.social-icon-link[data-network="tiktok"]:hover svg    { fill: #ee1d52; }
+
+.social-icon-link[data-network="youtube"]:hover   { border-color: #ff000033; }
+.social-icon-link[data-network="youtube"]:hover svg   { fill: #ff0000; }
+
+.social-icon-link[data-network="twitter"]:hover   { border-color: #ffffff22; }
+.social-icon-link[data-network="twitter"]:hover svg   { fill: #e7e9ea; }
+
+.social-icon-link[data-network="twitch"]:hover    { border-color: #9146ff33; }
+.social-icon-link[data-network="twitch"]:hover svg    { fill: #9146ff; }
+
+.social-icon-link[data-network="discord"]:hover   { border-color: #5865f233; }
+.social-icon-link[data-network="discord"]:hover svg   { fill: #5865f2; }
+
+.social-icon-link[data-network="github"]:hover    { border-color: #ffffff22; }
+.social-icon-link[data-network="github"]:hover svg    { fill: #e6edf3; }
+
+.social-icon-link[data-network="spotify"]:hover   { border-color: #1db95433; }
+.social-icon-link[data-network="spotify"]:hover svg   { fill: #1db954; }
+
+.social-icon-link[data-network="other"]:hover     { border-color: #ffffff22; }
+.social-icon-link[data-network="other"]:hover svg     { fill: rgba(255,255,255,0.8); }
+
+/* Тултип */
 .social-icon-link::after {
   content: attr(data-label);
   position: absolute;
-  bottom: calc(100% + 6px);
+  bottom: calc(100% + 7px);
   left: 50%;
   transform: translateX(-50%);
-  background: rgba(0, 0, 0, 0.85);
-  color: #fff;
+  background: rgba(0, 0, 0, 0.88);
+  color: rgba(255, 255, 255, 0.9);
   font-size: 11px;
   font-weight: 500;
   padding: 4px 8px;
