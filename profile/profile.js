@@ -66,6 +66,7 @@ const avatarLetterProfile = document.getElementById("avatarLetter");
 const profileName = document.getElementById("profileName");
 const profileBio = document.getElementById("profileBio");
 const profileUsernameID = document.getElementById("profileUsernameID");
+const profileSocialLinks = document.getElementById("profileSocialLinks");
 const avatarUpload = document.getElementById("avatarUpload");
 
 const editProfileBtn = document.getElementById("editProfileBtn");
@@ -96,13 +97,13 @@ let currentUserData = null;
 let currentPhotoFile = null;
 const PROFILE_CACHE_KEY = "userProfileCache_v1";
 
-// ✅ Infinite Scroll
+// Infinite Scroll
 const POSTS_PER_PAGE = 20;
 let lastVisible = null;
 let isFetching = false;
 let hasMore = true;
 
-// ✅ Unsubscribe-функции для onSnapshot слушателей
+// Unsubscribe-функции
 let unsubscribeProfile = null;
 let unsubscribePosts = null;
 
@@ -114,7 +115,9 @@ if (savedAvatar) {
     avatarLetter.textContent = savedAvatar;
 }
 
-// Навигация
+// ========================
+// НАВИГАЦИЯ
+// ========================
 function toggleMenu() {
     const menu = document.querySelector(".nav-links");
     menu.classList.toggle("open");
@@ -141,26 +144,107 @@ document.addEventListener("click", e => {
 });
 
 // ========================
-// 📝 ИНФОРМАЦИЯ
+// КОНФИГ СОЦИАЛЬНЫХ СЕТЕЙ
+// ========================
+const SOCIAL_NETWORKS_META = {
+    instagram: {
+        label: 'Instagram',
+        svg: `<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z"/></svg>`
+    },
+    telegram: {
+        label: 'Telegram',
+        svg: `<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>`
+    },
+    vk: {
+        label: 'ВКонтакте',
+        svg: `<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M15.684 0H8.316C1.592 0 0 1.592 0 8.316v7.368C0 22.408 1.592 24 8.316 24h7.368C22.408 24 24 22.408 24 15.684V8.316C24 1.592 22.391 0 15.684 0zm3.692 17.123h-1.744c-.66 0-.864-.525-2.05-1.727-1.033-1-1.49-1.135-1.744-1.135-.356 0-.458.102-.458.593v1.575c0 .424-.135.678-1.252.678-1.846 0-3.896-1.118-5.335-3.202C5.029 11.886 4.47 9.986 4.47 9.56c0-.254.102-.491.593-.491h1.744c.44 0 .61.203.78.677.863 2.49 2.303 4.675 2.896 4.675.22 0 .322-.102.322-.66V11.54c-.068-1.186-.695-1.287-.695-1.71 0-.204.17-.407.44-.407h2.743c.372 0 .508.203.508.643v3.473c0 .372.17.508.271.508.22 0 .407-.136.813-.542 1.27-1.422 2.168-3.608 2.168-3.608.119-.254.322-.491.763-.491h1.744c.525 0 .644.27.525.643-.22 1.017-2.354 4.031-2.354 4.031-.186.305-.254.44 0 .779.186.254.796.779 1.202 1.253.745.847 1.32 1.558 1.473 2.05.17.49-.085.745-.576.745z"/></svg>`
+    },
+    tiktok: {
+        label: 'TikTok',
+        svg: `<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/></svg>`
+    },
+    youtube: {
+        label: 'YouTube',
+        svg: `<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>`
+    },
+    twitter: {
+        label: 'X (Twitter)',
+        svg: `<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>`
+    },
+    twitch: {
+        label: 'Twitch',
+        svg: `<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714z"/></svg>`
+    },
+    discord: {
+        label: 'Discord',
+        svg: `<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057c.002.022.015.043.032.056a19.926 19.926 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg>`
+    },
+    github: {
+        label: 'GitHub',
+        svg: `<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>`
+    },
+    spotify: {
+        label: 'Spotify',
+        svg: `<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>`
+    },
+    other: {
+        label: 'Ссылка',
+        svg: `<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/></svg>`
+    }
+};
+
+// ========================
+// РЕНДЕР СОЦИАЛЬНЫХ СЕТЕЙ
+// ========================
+function renderSocialLinks(socialLinks) {
+    if (!profileSocialLinks) return;
+
+    if (!socialLinks || socialLinks.length === 0) {
+        profileSocialLinks.innerHTML = '';
+        return;
+    }
+
+    profileSocialLinks.innerHTML = socialLinks.map(item => {
+        const meta = SOCIAL_NETWORKS_META[item.network] || SOCIAL_NETWORKS_META.other;
+        const label = meta.label;
+        const svg = meta.svg;
+        const network = item.network || 'other';
+
+        return `
+            <a
+                href="${escapeHtml(item.url)}"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="social-icon-link"
+                data-network="${escapeHtml(network)}"
+                data-label="${escapeHtml(label)}"
+                title="${escapeHtml(label)}"
+            >${svg}</a>
+        `;
+    }).join('');
+}
+
+// ========================
+// ИНФОРМАЦИЯ
 // ========================
 function renderInfo(infoData) {
     if (!infoContent) return;
-    
-    const hasLinks = infoData?.links && infoData.links.length > 0;
-    const hasEmail = infoData?.email && infoData.email.trim() !== "";
-    const hasCountry = infoData?.country && infoData.country.trim() !== "";
-    const hasNickname = infoData?.nickname && infoData.nickname.trim() !== "";
+
+    const hasLinks      = infoData?.links && infoData.links.length > 0;
+    const hasEmail      = infoData?.email && infoData.email.trim() !== "";
+    const hasCountry    = infoData?.country && infoData.country.trim() !== "";
+    const hasNickname   = infoData?.nickname && infoData.nickname.trim() !== "";
     const hasOccupation = infoData?.occupation && infoData.occupation.trim() !== "";
-    
+
     const hasAnyInfo = hasLinks || hasEmail || hasCountry || hasNickname || hasOccupation;
-    
+
     if (!hasAnyInfo) {
         infoContent.innerHTML = '<div class="info-empty">Информация отсутствует</div>';
         return;
     }
-    
+
     let html = '';
-    
+
     if (hasCountry) {
         html += `
             <div class="info-item">
@@ -169,7 +253,7 @@ function renderInfo(infoData) {
             </div>
         `;
     }
-    
+
     if (hasNickname) {
         const nicknameLabel = infoData.nicknameLabel || "Прозвище";
         html += `
@@ -179,7 +263,7 @@ function renderInfo(infoData) {
             </div>
         `;
     }
-    
+
     if (hasEmail) {
         html += `
             <div class="info-item">
@@ -188,7 +272,7 @@ function renderInfo(infoData) {
             </div>
         `;
     }
-    
+
     if (hasOccupation) {
         html += `
             <div class="info-item">
@@ -197,7 +281,7 @@ function renderInfo(infoData) {
             </div>
         `;
     }
-    
+
     if (hasLinks) {
         html += `
             <div class="info-item">
@@ -212,30 +296,28 @@ function renderInfo(infoData) {
             </div>
         `;
     }
-    
+
     infoContent.innerHTML = html;
 }
 
 // ========================
-// 📝 СТАТУС
+// СТАТУС
 // ========================
 function renderStatus(status) {
     if (!statusText) return;
-    
+
     if (!status || status.trim() === "") {
         statusText.innerHTML = `
             <span style="opacity: 0.5; font-style: italic; color: var(--text-secondary);">Статус не установлен</span>
         `;
     } else {
-        statusText.innerHTML = `
-            <div class="status-content" style="white-space: pre-wrap; word-break: break-word;"></div>
-        `;
+        statusText.innerHTML = `<div class="status-content" style="white-space: pre-wrap; word-break: break-word;"></div>`;
         statusText.querySelector('.status-content').textContent = status;
     }
 }
 
 // ========================
-// 🎬 YOUTUBE
+// YOUTUBE
 // ========================
 function extractVideoId(url) {
     if (!url) return null;
@@ -302,7 +384,7 @@ function generateUsernameID(email, uid) {
 }
 
 // ========================
-// 🔑 ПРОВЕРКА АВТОРИЗАЦИИ
+// ПРОВЕРКА АВТОРИЗАЦИИ
 // ========================
 onAuthStateChanged(auth, async (user) => {
     if (!user || !user.email) {
@@ -320,17 +402,16 @@ onAuthStateChanged(auth, async (user) => {
 
     currentUser = user;
 
-    // ✅ Загружаем кэш из localStorage для мгновенного отображения
     const cachedProfile = localStorage.getItem(PROFILE_CACHE_KEY);
     if (cachedProfile) {
         try {
             currentUserData = JSON.parse(cachedProfile);
-            // Сразу рисуем UI из кэша — пользователь не ждёт сети
             renderProfile(currentUserData);
+            renderSocialLinks(currentUserData.socialLinks || []);
             renderStatus(currentUserData.status || "");
             renderInfo(currentUserData.info || {});
             loadYoutubeVideo(currentUserData.youtubeVideoId);
-            console.log("⚡ Профиль отрисован из localStorage-кэша (0 чтений Firestore)");
+            console.log("⚡ Профиль отрисован из localStorage-кэша");
         } catch (e) {
             console.error("Ошибка парсинга кэша:", e);
             localStorage.removeItem(PROFILE_CACHE_KEY);
@@ -340,14 +421,9 @@ onAuthStateChanged(auth, async (user) => {
 
     const userDocRef = doc(db, "users", user.uid);
 
-    // ✅ КЛЮЧЕВОЕ ИЗМЕНЕНИЕ #1:
-    // Заменяем getDoc (всегда сервер) на onSnapshot (кэш → сервер при изменениях).
-    // При наличии persistentLocalCache первый вызов onSnapshot отдаёт данные
-    // из локального кэша (0 чтений Firestore), а сервер опрашивается только
-    // если данные изменились.
     unsubscribeProfile = onSnapshot(
         userDocRef,
-        { includeMetadataChanges: true }, // слушаем смену кэш↔сервер
+        { includeMetadataChanges: true },
         async (snap) => {
             const fromCache = snap.metadata.fromCache;
             const hasPendingWrites = snap.metadata.hasPendingWrites;
@@ -355,7 +431,6 @@ onAuthStateChanged(auth, async (user) => {
             console.log(`📥 Профиль: fromCache=${fromCache}, hasPendingWrites=${hasPendingWrites}`);
 
             if (!snap.exists()) {
-                // ── Новый пользователь, создаём профиль ──
                 const defaultName = user.email.split('@')[0];
                 const generatedID = generateUsernameID(user.email, user.uid);
 
@@ -368,6 +443,7 @@ onAuthStateChanged(auth, async (user) => {
                     status: "",
                     postsCount: 0,
                     usernameID: generatedID,
+                    socialLinks: [],
                     info: {
                         links: [],
                         email: "",
@@ -386,14 +462,11 @@ onAuthStateChanged(auth, async (user) => {
 
                 currentUserData = newProfile;
                 localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(currentUserData));
-                console.log("✅ Создан новый профиль с usernameID:", generatedID);
                 return;
             }
 
-            // ── Профиль существует ──
             const freshData = snap.data();
 
-            // Миграция старых пользователей: добавляем usernameID если его нет
             if (!freshData.usernameID) {
                 const generatedID = generateUsernameID(user.email, user.uid);
                 await runTransaction(db, async (transaction) => {
@@ -414,6 +487,11 @@ onAuthStateChanged(auth, async (user) => {
                 });
             }
 
+            // Миграция: добавляем socialLinks если нет
+            if (!freshData.socialLinks) {
+                freshData.socialLinks = [];
+            }
+
             if (!freshData.info) {
                 freshData.info = {
                     links: [],
@@ -425,29 +503,20 @@ onAuthStateChanged(auth, async (user) => {
                 };
             }
 
-            // ✅ Если данные пришли из кэша — просто убеждаемся, что UI отрисован,
-            //    никаких "платных" чтений Firestore нет.
-            // ✅ Если данные пришли с сервера (fromCache=false) — обновляем UI и кэш
-            //    только при реальном изменении данных.
             const cachedJSON = JSON.stringify(currentUserData);
-            const freshJSON = JSON.stringify(freshData);
+            const freshJSON  = JSON.stringify(freshData);
 
             if (cachedJSON !== freshJSON) {
-                console.log(fromCache
-                    ? "♻️ Профиль из Firestore-кэша (0 чтений)"
-                    : "🔄 Профиль обновлён с сервера (1 чтение)"
-                );
+                console.log(fromCache ? "♻️ Профиль из Firestore-кэша" : "🔄 Профиль обновлён с сервера");
                 currentUserData = freshData;
                 localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(currentUserData));
                 renderProfile(currentUserData);
+                renderSocialLinks(currentUserData.socialLinks || []);
                 renderStatus(currentUserData.status || "");
                 renderInfo(currentUserData.info || {});
                 loadYoutubeVideo(currentUserData.youtubeVideoId);
             } else {
-                console.log(fromCache
-                    ? "✅ Профиль актуален (кэш, 0 чтений)"
-                    : "✅ Профиль актуален (сервер подтвердил, 1 чтение)"
-                );
+                console.log(fromCache ? "✅ Профиль актуален (кэш)" : "✅ Профиль актуален (сервер подтвердил)");
                 currentUserData = freshData;
             }
 
@@ -455,7 +524,6 @@ onAuthStateChanged(auth, async (user) => {
             avatarLetter.textContent = letter;
             localStorage.setItem("userAvatarLetter", letter);
 
-            // Запускаем посты только при первой инициализации
             if (!observer) {
                 initScrollListener();
                 loadUserPosts();
@@ -645,17 +713,12 @@ publishPostBtn.addEventListener("click", async () => {
         currentUserData.postsCount = (currentUserData.postsCount || 0) + 1;
         localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(currentUserData));
 
-        if (postsCount) {
-            postsCount.textContent = currentUserData.postsCount.toString();
-        }
+        if (postsCount) postsCount.textContent = currentUserData.postsCount.toString();
 
         const emptyMsg = document.querySelector(".posts-empty");
         if (emptyMsg) emptyMsg.remove();
 
-        const postDataForUI = {
-            ...newPostData,
-            createdAt: Timestamp.now()
-        };
+        const postDataForUI = { ...newPostData, createdAt: Timestamp.now() };
         addPostToUI(docRef.id, postDataForUI, true);
 
         postInput.value = "";
@@ -668,11 +731,7 @@ publishPostBtn.addEventListener("click", async () => {
     } catch (error) {
         console.error("Ошибка публикации записи:", error);
         if (uploadedPhotoRef) {
-            try {
-                await deleteObject(uploadedPhotoRef);
-            } catch (rollbackError) {
-                console.error("Не удалось откатить фото:", rollbackError);
-            }
+            try { await deleteObject(uploadedPhotoRef); } catch (e) {}
         }
         alert("Не удалось опубликовать запись");
     } finally {
@@ -682,7 +741,7 @@ publishPostBtn.addEventListener("click", async () => {
 });
 
 // ========================
-// 📜 ЗАГРУЗКА ПОСТОВ (INFINITE SCROLL + CACHE-FIRST)
+// ЗАГРУЗКА ПОСТОВ (INFINITE SCROLL)
 // ========================
 function loadUserPosts(isNextPage = false) {
     if (!currentUser || isFetching) return;
@@ -690,9 +749,7 @@ function loadUserPosts(isNextPage = false) {
 
     isFetching = true;
 
-    if (isNextPage) {
-        showLoadingIndicator();
-    }
+    if (isNextPage) showLoadingIndicator();
 
     const postsCollectionRef = collection(db, "users", currentUser.uid, "posts");
 
@@ -715,19 +772,6 @@ function loadUserPosts(isNextPage = false) {
         );
     }
 
-    // ✅ КЛЮЧЕВОЕ ИЗМЕНЕНИЕ #2:
-    // Заменяем getDocs (всегда сервер) на onSnapshot.
-    //
-    // Как это работает с persistentLocalCache:
-    //   1. Первый вызов onSnapshot мгновенно отдаёт данные из локального кэша
-    //      на диске → fromCache=true → 0 чтений Firestore.
-    //   2. Firebase параллельно проверяет сервер. Если ничего не изменилось —
-    //      повторного события НЕ будет → 0 чтений.
-    //   3. Только если появился новый/изменённый/удалённый пост — придёт
-    //      второе событие с fromCache=false → платное чтение только дельты.
-    //
-    // Для пагинации: каждый "следующий блок" тоже получает свой onSnapshot,
-    // который сохраняем в массив postsPageListeners для очистки при выходе.
     const unsubscribe = onSnapshot(
         postsQuery,
         { includeMetadataChanges: true },
@@ -736,13 +780,8 @@ function loadUserPosts(isNextPage = false) {
 
             console.log(`📄 Посты: fromCache=${fromCache}, docs=${snapshot.size}, isNextPage=${isNextPage}`);
 
-            // Если данные из кэша — рисуем сразу. Если с сервера — обновляем UI.
-            // Для пагинации не перерисовываем всё, а только добавляем новые.
             if (!fromCache || isNextPage) {
-                // Очищаем предыдущий контент только при первой загрузке с сервера
-                // (не пагинация, не из кэша)
                 if (!isNextPage && !fromCache) {
-                    // Пост-список уже был наполнен из кэша — мягко обновляем
                     syncPostsFromSnapshot(snapshot);
                     return;
                 }
@@ -754,9 +793,8 @@ function loadUserPosts(isNextPage = false) {
             } else {
                 lastVisible = snapshot.docs[snapshot.docs.length - 1];
                 snapshot.forEach((docSnap) => {
-                    // Пропускаем посты, которые уже есть в DOM (при обновлении кэша)
                     if (!document.querySelector(`[data-post-id="${docSnap.id}"]`)) {
-                        addPostToUI(docSnap.id, docSnap.data(), isNextPage ? false : false);
+                        addPostToUI(docSnap.id, docSnap.data(), false);
                     }
                 });
                 if (snapshot.size < POSTS_PER_PAGE) hasMore = false;
@@ -772,30 +810,21 @@ function loadUserPosts(isNextPage = false) {
         }
     );
 
-    // Сохраняем unsubscribe для очистки
     if (!isNextPage) {
-        // Для первой страницы — переподписываемся
         if (unsubscribePosts) unsubscribePosts();
         unsubscribePosts = unsubscribe;
     } else {
-        // Для пагинации — добавляем в массив
         postsPageListeners.push(unsubscribe);
     }
 }
 
-// ✅ Умная синхронизация: обновляем только изменившиеся посты,
-//    не перерисовывая весь список (предотвращает мигание UI)
 function syncPostsFromSnapshot(snapshot) {
     const serverIds = new Set(snapshot.docs.map(d => d.id));
 
-    // Удаляем из DOM посты, которых нет на сервере
     document.querySelectorAll('[data-post-id]').forEach(el => {
-        if (!serverIds.has(el.dataset.postId)) {
-            el.remove();
-        }
+        if (!serverIds.has(el.dataset.postId)) el.remove();
     });
 
-    // Добавляем новые посты (которых ещё нет в DOM)
     snapshot.forEach((docSnap) => {
         if (!document.querySelector(`[data-post-id="${docSnap.id}"]`)) {
             addPostToUI(docSnap.id, docSnap.data(), true);
@@ -803,7 +832,6 @@ function syncPostsFromSnapshot(snapshot) {
     });
 }
 
-// Массив для хранения unsubscribe пагинации
 const postsPageListeners = [];
 
 function showLoadingIndicator() {
@@ -822,7 +850,6 @@ function hideLoadingIndicator() {
     if (indicator) indicator.remove();
 }
 
-// ✅ Intersection Observer для бесконечного скролла
 let observer = null;
 
 function initScrollListener() {
@@ -845,35 +872,22 @@ function initScrollListener() {
     console.log("✅ Intersection Observer активирован");
 }
 
-// ✅ Полная очистка всех слушателей (вызывается при logout и unload)
 function cleanupAllListeners() {
-    if (observer) {
-        observer.disconnect();
-        observer = null;
-    }
-    if (unsubscribeProfile) {
-        unsubscribeProfile();
-        unsubscribeProfile = null;
-    }
-    if (unsubscribePosts) {
-        unsubscribePosts();
-        unsubscribePosts = null;
-    }
+    if (observer) { observer.disconnect(); observer = null; }
+    if (unsubscribeProfile) { unsubscribeProfile(); unsubscribeProfile = null; }
+    if (unsubscribePosts) { unsubscribePosts(); unsubscribePosts = null; }
     postsPageListeners.forEach(unsub => unsub());
     postsPageListeners.length = 0;
     console.log("🧹 Все слушатели отключены");
 }
 
-// Очистка при закрытии вкладки
 window.addEventListener('beforeunload', cleanupAllListeners);
 
 function showEmptyPosts() {
     postsList.innerHTML = `
         <div class="posts-empty">
             <div class="posts-empty-icon">📝</div>
-            <div class="posts-empty-text">
-                Здесь пока нет записей. Создайте первую!
-            </div>
+            <div class="posts-empty-text">Здесь пока нет записей. Создайте первую!</div>
         </div>
     `;
     if (postsCount) postsCount.textContent = "0";
@@ -884,9 +898,9 @@ function addPostToUI(postId, post, toTop = false) {
     postItem.className = "post-item";
     postItem.dataset.postId = postId;
 
-    const userName = post.userName || 'Пользователь';
+    const userName   = post.userName || 'Пользователь';
     const userAvatar = post.userAvatar;
-    const letter = userName.charAt(0).toUpperCase();
+    const letter     = userName.charAt(0).toUpperCase();
 
     let timeStr = "Только что";
 
@@ -905,28 +919,24 @@ function addPostToUI(postId, post, toTop = false) {
 
             if (date && date instanceof Date && !isNaN(date)) {
                 const now = new Date();
-                const diffMs = now - date;
-                if (diffMs < 0) {
-                    timeStr = "Только что";
-                } else {
-                    const diffMins = Math.floor(diffMs / 60000);
-                    const diffHours = Math.floor(diffMs / 3600000);
-                    const diffDays = Math.floor(diffMs / 86400000);
+                const diffMs    = now - date;
+                const diffMins  = Math.floor(diffMs / 60000);
+                const diffHours = Math.floor(diffMs / 3600000);
+                const diffDays  = Math.floor(diffMs / 86400000);
 
-                    if (diffMins < 1) timeStr = "Только что";
-                    else if (diffMins < 60) timeStr = `${diffMins} ${pluralize(diffMins, 'минуту', 'минуты', 'минут')} назад`;
-                    else if (diffHours < 24) timeStr = `${diffHours} ${pluralize(diffHours, 'час', 'часа', 'часов')} назад`;
-                    else if (diffDays < 7) timeStr = `${diffDays} ${pluralize(diffDays, 'день', 'дня', 'дней')} назад`;
-                    else timeStr = date.toLocaleDateString("ru-RU", {
-                        day: 'numeric',
-                        month: 'long',
-                        year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
-                    });
-                }
+                if (diffMs < 0)        timeStr = "Только что";
+                else if (diffMins < 1) timeStr = "Только что";
+                else if (diffMins < 60) timeStr = `${diffMins} ${pluralize(diffMins, 'минуту', 'минуты', 'минут')} назад`;
+                else if (diffHours < 24) timeStr = `${diffHours} ${pluralize(diffHours, 'час', 'часа', 'часов')} назад`;
+                else if (diffDays < 7)  timeStr = `${diffDays} ${pluralize(diffDays, 'день', 'дня', 'дней')} назад`;
+                else timeStr = date.toLocaleDateString("ru-RU", {
+                    day: 'numeric',
+                    month: 'long',
+                    year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
+                });
             }
         } catch (error) {
             console.warn('Ошибка обработки даты поста:', error);
-            timeStr = "Только что";
         }
     }
 
@@ -953,48 +963,37 @@ function addPostToUI(postId, post, toTop = false) {
         postsList.appendChild(postItem);
     }
 
-    const deleteBtn = postItem.querySelector(".post-delete");
-    deleteBtn.addEventListener("click", async () => {
-        if (confirm("Удалить эту запись?")) {
-            try {
-                if (post.photoPath) {
-                    try {
-                        const photoRef = storageRef(storage, post.photoPath);
-                        await deleteObject(photoRef);
-                    } catch (storageError) {
-                        console.warn("Не удалось удалить фото:", storageError);
+    postItem.querySelector(".post-delete").addEventListener("click", async () => {
+        if (!confirm("Удалить эту запись?")) return;
+        try {
+            if (post.photoPath) {
+                try { await deleteObject(storageRef(storage, post.photoPath)); } catch (e) {}
+            } else if (post.photoUrl) {
+                try {
+                    const urlParts = post.photoUrl.split('/o/')[1];
+                    if (urlParts) {
+                        const path = decodeURIComponent(urlParts.split('?')[0]);
+                        await deleteObject(storageRef(storage, path));
                     }
-                } else if (post.photoUrl) {
-                    try {
-                        const urlParts = post.photoUrl.split('/o/')[1];
-                        if (urlParts) {
-                            const path = decodeURIComponent(urlParts.split('?')[0]);
-                            await deleteObject(storageRef(storage, path));
-                        }
-                    } catch (storageError) {
-                        console.warn("Не удалось удалить фото (fallback):", storageError);
-                    }
-                }
-
-                const postDocRef = doc(db, "users", currentUser.uid, "posts", postId);
-                await deleteDoc(postDocRef);
-
-                postItem.remove();
-
-                const userDocRef = doc(db, "users", currentUser.uid);
-                await updateDoc(userDocRef, { postsCount: increment(-1) });
-
-                currentUserData.postsCount = Math.max(0, (currentUserData.postsCount || 1) - 1);
-                localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(currentUserData));
-
-                if (postsCount) postsCount.textContent = currentUserData.postsCount.toString();
-                if (currentUserData.postsCount === 0) showEmptyPosts();
-
-                console.log("✅ Запись удалена!");
-            } catch (error) {
-                console.error("Ошибка удаления записи:", error);
-                alert("Не удалось удалить запись");
+                } catch (e) {}
             }
+
+            await deleteDoc(doc(db, "users", currentUser.uid, "posts", postId));
+            postItem.remove();
+
+            const userDocRef = doc(db, "users", currentUser.uid);
+            await updateDoc(userDocRef, { postsCount: increment(-1) });
+
+            currentUserData.postsCount = Math.max(0, (currentUserData.postsCount || 1) - 1);
+            localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(currentUserData));
+
+            if (postsCount) postsCount.textContent = currentUserData.postsCount.toString();
+            if (currentUserData.postsCount === 0) showEmptyPosts();
+
+            console.log("✅ Запись удалена!");
+        } catch (error) {
+            console.error("Ошибка удаления записи:", error);
+            alert("Не удалось удалить запись");
         }
     });
 
@@ -1015,8 +1014,11 @@ photoModal.addEventListener("click", (e) => {
     if (e.target === photoModal) photoModal.classList.add("hidden");
 });
 
+// ========================
+// УТИЛИТЫ
+// ========================
 function pluralize(num, one, few, many) {
-    const mod10 = num % 10;
+    const mod10  = num % 10;
     const mod100 = num % 100;
     if (mod10 === 1 && mod100 !== 11) return one;
     if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return few;
