@@ -201,26 +201,27 @@ function renderSocialLinks(socialLinks) {
 
     if (!socialLinks || socialLinks.length === 0) {
         profileSocialLinks.innerHTML = '';
+        profileSocialLinks.classList.add('hidden');
         return;
     }
 
+    profileSocialLinks.classList.remove('hidden');
+
     profileSocialLinks.innerHTML = socialLinks.map(item => {
-        const meta = SOCIAL_NETWORKS_META[item.network] || SOCIAL_NETWORKS_META.other;
-        const label = meta.label;
-        const svg = meta.svg;
+        const meta    = SOCIAL_NETWORKS_META[item.network] || SOCIAL_NETWORKS_META.other;
+        const label   = meta.label;
+        const svg     = meta.svg;
         const network = item.network || 'other';
 
-        return `
-            <a
-                href="${escapeHtml(item.url)}"
-                target="_blank"
-                rel="noopener noreferrer"
-                class="social-icon-link"
-                data-network="${escapeHtml(network)}"
-                data-label="${escapeHtml(label)}"
-                title="${escapeHtml(label)}"
-            >${svg}</a>
-        `;
+        return `<a
+            href="${escapeHtml(item.url)}"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="social-icon-link"
+            data-network="${escapeHtml(network)}"
+            data-label="${escapeHtml(label)}"
+            title="${escapeHtml(label)}"
+        >${svg}</a>`;
     }).join('');
 }
 
