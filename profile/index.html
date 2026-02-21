@@ -50,73 +50,76 @@
               </label>
             </div>
             
-<div class="profile-info">
-  <div class="profile-name-section">
-    <h1 class="profile-name" id="profileName">Пользователь</h1>
-    <button class="edit-profile-btn" id="editProfileBtn">
-      Редактировать профиль
-    </button>
-  </div>
-  
-  <!-- ✅ НОВОЕ: Отображение usernameID -->
-  <div class="profile-username-id" id="profileUsernameID">
-    @username_id
-  </div>
-  
-  <div class="profile-bio" id="profileBio"></div>
-  
-  <div class="profile-meta">
-    Регистрация: <span id="memberSince">—</span>
-  </div>
-</div>
+            <div class="profile-info">
+              <div class="profile-name-section">
+                <h1 class="profile-name" id="profileName">Пользователь</h1>
+                <button class="edit-profile-btn" id="editProfileBtn">
+                  Редактировать профиль
+                </button>
+              </div>
+              
+              <!-- ID профиля -->
+              <div class="profile-username-id" id="profileUsernameID">
+                @username_id
+              </div>
+
+              <!-- Иконки социальных сетей -->
+              <div class="profile-social-links" id="profileSocialLinks"></div>
+              
+              <div class="profile-bio" id="profileBio"></div>
+              
+              <div class="profile-meta">
+                Регистрация: <span id="memberSince">—</span>
+              </div>
+            </div>
           </div>
         </div>
 
         <!-- Сетка: YouTube слева, Записи справа -->
-       <div class="content-grid">
-  <!-- ЛЕВАЯ КОЛОНКА -->
-  <div class="left-column">
-    
-<!-- Статус / цитата -->
-<div class="sidebar-card status-card">
-  <div class="sidebar-title">Статус</div>
-  <div class="status-text"></div>
-</div>
+        <div class="content-grid">
+          <!-- ЛЕВАЯ КОЛОНКА -->
+          <div class="left-column">
+            
+            <!-- Статус / цитата -->
+            <div class="sidebar-card status-card">
+              <div class="sidebar-title">Статус</div>
+              <div class="status-text"></div>
+            </div>
 
-    <!-- Информация -->
-<div class="sidebar-card info-card">
-  <div class="sidebar-title">Информация</div>
-  <div class="info-content" id="infoContent">
-    <div class="info-empty">Информация отсутствует</div>
-  </div>
-</div>
+            <!-- Информация -->
+            <div class="sidebar-card info-card">
+              <div class="sidebar-title">Информация</div>
+              <div class="info-content" id="infoContent">
+                <div class="info-empty">Информация отсутствует</div>
+              </div>
+            </div>
 
-    <!-- YouTube -->
-    <div class="sidebar-card youtube-block">
-      <div class="sidebar-title">Любимое видео</div>
+            <!-- YouTube -->
+            <div class="sidebar-card youtube-block">
+              <div class="sidebar-title">Любимое видео</div>
 
-      <div class="youtube-card hidden" id="youtubeCard">
-        <div class="video-wrapper">
-          <iframe
-            id="youtubeIframe"
-            loading="lazy"
-            referrerpolicy="strict-origin-when-cross-origin"
-            sandbox="allow-scripts allow-same-origin allow-presentation"
-            allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowfullscreen>
-          </iframe>
-        </div>
-      </div>
+              <div class="youtube-card hidden" id="youtubeCard">
+                <div class="video-wrapper">
+                  <iframe
+                    id="youtubeIframe"
+                    loading="lazy"
+                    referrerpolicy="strict-origin-when-cross-origin"
+                    sandbox="allow-scripts allow-same-origin allow-presentation"
+                    allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowfullscreen>
+                  </iframe>
+                </div>
+              </div>
 
-      <div class="youtube-empty" id="youtubeEmpty">
-        <p>Видео не добавлено</p>
-        <button class="add-video-btn" id="addVideoBtn">➕ Добавить видео</button>
-      </div>
-    </div>
-  </div>
+              <div class="youtube-empty" id="youtubeEmpty">
+                <p>Видео не добавлено</p>
+                <button class="add-video-btn" id="addVideoBtn">➕ Добавить видео</button>
+              </div>
+            </div>
+          </div>
 
-            <!-- ПРАВАЯ КОЛОНКА -->
-           <div class="wall-section">
+          <!-- ПРАВАЯ КОЛОНКА -->
+          <div class="wall-section">
             <div class="wall-header">
               <h2>Мои записи</h2>
               <span class="posts-counter">Записей: <span id="postsCount">0</span></span>
@@ -138,10 +141,7 @@
             </div>
 
             <!-- Список записей -->
-            <div class="posts-list" id="postsList">
-              <!-- Записи будут добавляться динамически -->
-            </div>
-            <!-- ✅ Маячок для бесконечной прокрутки (невидимый, без отступов) -->
+            <div class="posts-list" id="postsList"></div>
             <div id="scrollSentinel" style="height: 1px; margin: 0; padding: 0; opacity: 0; pointer-events: none;"></div>
           </div>
         </div>
