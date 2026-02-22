@@ -69,8 +69,6 @@ const infoLinksContainer = document.getElementById("infoLinksContainer");
 const addInfoLinkBtn = document.getElementById("addInfoLinkBtn");
 const saveInfoBtn = document.getElementById("saveInfoBtn");
 const cancelInfoBtn = document.getElementById("cancelInfoBtn");
-const renameNicknameBtn = document.getElementById("renameNicknameBtn");
-const nicknameLabel = document.getElementById("nicknameLabel");
 
 // DOM элементы видео
 const editVideoUrl = document.getElementById("editVideoUrl");
@@ -79,13 +77,6 @@ const videoPlayer = document.getElementById("videoPlayer");
 const videoIframe = document.getElementById("videoIframe");
 const saveVideoBtn = document.getElementById("saveVideoBtn");
 const deleteVideoBtn = document.getElementById("deleteVideoBtn");
-
-// DOM элементы модального окна
-const renameModal = document.getElementById("renameModal");
-const closeRenameModal = document.getElementById("closeRenameModal");
-const cancelRenameBtn = document.getElementById("cancelRenameBtn");
-const saveRenameBtn = document.getElementById("saveRenameBtn");
-const newFieldName = document.getElementById("newFieldName");
 
 // DOM элементы социальных сетей
 const socialLinksList  = document.getElementById("socialLinksList");
@@ -320,6 +311,7 @@ onAuthStateChanged(auth, async (user) => {
 
     checkUsernameCooldown();
     saveOriginalData();
+    updateSaveBtns();
 });
 
 // ========================
@@ -350,6 +342,63 @@ function saveOriginalData() {
 }
 
 // ========================
+// DIRTY CHECK — активация кнопок сохранения
+// ========================
+function setBtn(btn, enabled) {
+    btn.disabled = !enabled;
+    btn.style.opacity = enabled ? '' : '0.45';
+    btn.style.cursor  = enabled ? '' : 'not-allowed';
+    btn.style.filter  = enabled ? '' : 'grayscale(0.4)';
+}
+
+function isProfileDirty() {
+    const socialLinks = collectSocialLinks();
+    return (
+        editProfileName.value.trim()               !== originalData.profile.name      ||
+        editProfileBio.value.trim()                !== originalData.profile.bio       ||
+        editProfileId.value.trim().toLowerCase()   !== originalData.profile.usernameID ||
+        JSON.stringify(socialLinks)                !== JSON.stringify(originalData.socialLinks)
+    );
+}
+
+function isStatusDirty() {
+    return editStatusText.value !== originalData.status;
+}
+
+function isInfoDirty() {
+    const linkItems = infoLinksContainer.querySelectorAll('.link-item');
+    const links = [];
+    linkItems.forEach(item => {
+        const name = item.querySelector('.link-name').value.trim();
+        const url  = item.querySelector('.link-url').value.trim();
+        if (name && url) {
+            try { new URL(url); links.push({ name, url }); } catch {}
+        }
+    });
+
+    const orig = originalData.info || {};
+    return (
+        editInfoCountry.value                !== (orig.country    || '')   ||
+        editInfoNickname.value.trim()        !== (orig.nickname   || '')   ||
+        editInfoEmail.value.trim()           !== (orig.email      || '')   ||
+        editInfoOccupation.value.trim()      !== (orig.occupation || '')   ||
+        JSON.stringify(links)                !== JSON.stringify(orig.links || [])
+    );
+}
+
+function isVideoDirty() {
+    const currentId = extractVideoId(editVideoUrl.value.trim()) || null;
+    return currentId !== (originalData.video || null);
+}
+
+function updateSaveBtns() {
+    setBtn(saveProfileBtn, isProfileDirty());
+    setBtn(saveStatusBtn,  isStatusDirty());
+    setBtn(saveInfoBtn,    isInfoDirty());
+    setBtn(saveVideoBtn,   isVideoDirty());
+}
+
+// ========================
 // ПРОФИЛЬ
 // ========================
 function loadProfileData() {
@@ -361,6 +410,11 @@ function loadProfileData() {
     updateBioCounter();
     loadSocialLinks(currentUserData.socialLinks || []);
 }
+
+// Слушатели изменений профиля → dirty check
+editProfileName.addEventListener('input', updateSaveBtns);
+editProfileBio.addEventListener('input', updateSaveBtns);
+editProfileId.addEventListener('input', updateSaveBtns);
 
 function updateBioCounter() {
     const text = editProfileBio.value;
@@ -578,6 +632,7 @@ saveProfileBtn.addEventListener('click', async () => {
 
         saveOriginalData();
         checkUsernameCooldown();
+        updateSaveBtns();
 
         alert('✅ Профиль успешно сохранён!');
     } catch (error) {
@@ -591,8 +646,8 @@ saveProfileBtn.addEventListener('click', async () => {
             alert('❌ Не удалось сохранить профиль: ' + error.message);
         }
     } finally {
-        saveProfileBtn.disabled = false;
         saveProfileBtn.textContent = 'Сохранить изменения';
+        updateSaveBtns();
     }
 });
 
@@ -630,11 +685,13 @@ editStatusText.addEventListener('input', () => {
     }
 
     updateStatusCounter();
+    updateSaveBtns();
 });
 
 cancelStatusBtn.addEventListener('click', () => {
     editStatusText.value = originalData.status;
     updateStatusCounter();
+    updateSaveBtns();
 });
 
 saveStatusBtn.addEventListener('click', async () => {
@@ -664,14 +721,15 @@ saveStatusBtn.addEventListener('click', async () => {
         localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(currentUserData));
 
         saveOriginalData();
+        updateSaveBtns();
 
         alert('✅ Статус успешно сохранён!');
     } catch (error) {
         console.error("Ошибка сохранения статуса:", error);
         alert('❌ Не удалось сохранить статус');
     } finally {
-        saveStatusBtn.disabled = false;
         saveStatusBtn.textContent = 'Сохранить';
+        updateSaveBtns();
     }
 });
 
@@ -685,8 +743,6 @@ function loadInfoData() {
     editInfoNickname.value = infoData.nickname || "";
     editInfoEmail.value = infoData.email || "";
     editInfoOccupation.value = infoData.occupation || "";
-
-    nicknameLabel.textContent = infoData.nicknameLabel || "Прозвище";
 
     renderInfoLinks(infoData.links || []);
     updateOccupationCounter();
@@ -703,7 +759,13 @@ editInfoOccupation.addEventListener('input', () => {
         editInfoOccupation.value = editInfoOccupation.value.slice(0, 200);
     }
     updateOccupationCounter();
+    updateSaveBtns();
 });
+
+// Слушатели изменений блока информации → dirty check
+editInfoCountry.addEventListener('change', updateSaveBtns);
+editInfoNickname.addEventListener('input', updateSaveBtns);
+editInfoEmail.addEventListener('input', updateSaveBtns);
 
 function renderInfoLinks(links = []) {
     infoLinksContainer.innerHTML = '';
@@ -724,7 +786,11 @@ function addInfoLinkInput(name = '', url = '') {
     linkItem.querySelector('.remove-link-btn').addEventListener('click', () => {
         linkItem.remove();
         updateAddLinkButton();
+        updateSaveBtns();
     });
+
+    // Dirty check на ввод в полях ссылок
+    linkItem.querySelectorAll('input').forEach(i => i.addEventListener('input', updateSaveBtns));
 
     infoLinksContainer.appendChild(linkItem);
 }
@@ -749,6 +815,7 @@ function updateAddLinkButton() {
 
 cancelInfoBtn.addEventListener('click', () => {
     loadInfoData();
+    updateSaveBtns();
 });
 
 saveInfoBtn.addEventListener('click', async () => {
@@ -776,7 +843,7 @@ saveInfoBtn.addEventListener('click', async () => {
         email: editInfoEmail.value.trim(),
         country: editInfoCountry.value,
         nickname: editInfoNickname.value.trim(),
-        nicknameLabel: nicknameLabel.textContent,
+        nicknameLabel: "Прозвище",
         occupation: editInfoOccupation.value.trim().slice(0, 200)
     };
 
@@ -791,46 +858,16 @@ saveInfoBtn.addEventListener('click', async () => {
         localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(currentUserData));
 
         saveOriginalData();
+        updateSaveBtns();
 
         alert('✅ Информация успешно сохранена!');
     } catch (error) {
         console.error("Ошибка сохранения информации:", error);
         alert('❌ Не удалось сохранить информацию');
     } finally {
-        saveInfoBtn.disabled = false;
         saveInfoBtn.textContent = 'Сохранить';
+        updateSaveBtns();
     }
-});
-
-// Переименование поля "Прозвище"
-renameNicknameBtn.addEventListener('click', () => {
-    newFieldName.value = nicknameLabel.textContent;
-    renameModal.classList.remove('hidden');
-    newFieldName.focus();
-});
-
-saveRenameBtn.addEventListener('click', () => {
-    const label = newFieldName.value.trim();
-
-    if (!label) {
-        alert('Введите название поля');
-        return;
-    }
-
-    if (label.length > 30) {
-        alert('Название не может быть длиннее 30 символов');
-        return;
-    }
-
-    nicknameLabel.textContent = label;
-    renameModal.classList.add('hidden');
-});
-
-closeRenameModal.addEventListener('click', () => renameModal.classList.add('hidden'));
-cancelRenameBtn.addEventListener('click', () => renameModal.classList.add('hidden'));
-
-renameModal.addEventListener('click', (e) => {
-    if (e.target === renameModal) renameModal.classList.add('hidden');
 });
 
 // ========================
@@ -880,9 +917,11 @@ function extractVideoId(url) {
 
 editVideoUrl.addEventListener('input', () => {
     const url = editVideoUrl.value.trim();
-    if (!url) { hideVideoPreview(); return; }
-    const videoId = extractVideoId(url);
-    if (videoId) { showVideoPreview(videoId); } else { hideVideoPreview(); }
+    if (!url) { hideVideoPreview(); } else {
+        const videoId = extractVideoId(url);
+        if (videoId) { showVideoPreview(videoId); } else { hideVideoPreview(); }
+    }
+    updateSaveBtns();
 });
 
 saveVideoBtn.addEventListener('click', async () => {
@@ -907,14 +946,15 @@ saveVideoBtn.addEventListener('click', async () => {
         localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(currentUserData));
 
         saveOriginalData();
+        updateSaveBtns();
 
         alert('✅ Видео успешно сохранено!');
     } catch (error) {
         console.error("Ошибка сохранения видео:", error);
         alert('❌ Не удалось сохранить видео');
     } finally {
-        saveVideoBtn.disabled = false;
         saveVideoBtn.textContent = 'Сохранить';
+        updateSaveBtns();
     }
 });
 
@@ -935,14 +975,15 @@ deleteVideoBtn.addEventListener('click', async () => {
         hideVideoPreview();
 
         saveOriginalData();
+        updateSaveBtns();
 
         alert('✅ Видео успешно удалено!');
     } catch (error) {
         console.error("Ошибка удаления видео:", error);
         alert('❌ Не удалось удалить видео');
     } finally {
-        deleteVideoBtn.disabled = false;
         deleteVideoBtn.textContent = 'Удалить видео';
+        updateSaveBtns();
     }
 });
 
@@ -997,15 +1038,20 @@ function addSocialLinkRow(network = 'instagram', url = '') {
         }
     });
 
-    input.addEventListener('input', () => input.classList.remove('invalid'));
+    input.addEventListener('input', () => {
+        input.classList.remove('invalid');
+        updateSaveBtns();
+    });
 
     row.querySelector('.remove-link-btn').addEventListener('click', () => {
         row.remove();
         updateSocialLinkButton();
+        updateSaveBtns();
     });
 
     socialLinksList.appendChild(row);
     updateSocialLinkButton();
+    updateSaveBtns();
 }
 
 function updateSocialLinkButton() {
