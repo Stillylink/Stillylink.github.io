@@ -484,7 +484,6 @@ onAuthStateChanged(auth, async (user) => {
                 });
             }
 
-            // Миграция: добавляем socialLinks если нет
             if (!freshData.socialLinks) {
                 freshData.socialLinks = [];
             }
@@ -702,7 +701,7 @@ publishPostBtn.addEventListener("click", async () => {
             createdAt: serverTimestamp()
         };
 
-        const docRef = await addDoc(postsCollectionRef, newPostData);
+        await addDoc(postsCollectionRef, newPostData);
 
         const userDocRef = doc(db, "users", currentUser.uid);
         await updateDoc(userDocRef, { postsCount: increment(1) });
@@ -712,18 +711,13 @@ publishPostBtn.addEventListener("click", async () => {
 
         if (postsCount) postsCount.textContent = currentUserData.postsCount.toString();
 
-        const emptyMsg = document.querySelector(".posts-empty");
-        if (emptyMsg) emptyMsg.remove();
-
-        const postDataForUI = { ...newPostData, createdAt: Timestamp.now() };
-        addPostToUI(docRef.id, postDataForUI, true);
-
         postInput.value = "";
         currentPhotoFile = null;
         postPhotoInput.value = "";
         attachPhotoBtn.textContent = "📷 Фото";
         attachPhotoBtn.style.color = "";
 
+        // Пост появится автоматически через onSnapshot в loadUserPosts
         console.log("✅ Запись опубликована!");
     } catch (error) {
         console.error("Ошибка публикации записи:", error);
@@ -771,34 +765,35 @@ function loadUserPosts(isNextPage = false) {
 
     const unsubscribe = onSnapshot(
         postsQuery,
-        { includeMetadataChanges: true },
+        { includeMetadataChanges: false }, // ← ИЗМЕНЕНО: отключаем события fromCache
         (snapshot) => {
-            const fromCache = snapshot.metadata.fromCache;
+            console.log(`📄 Посты: docs=${snapshot.size}, isNextPage=${isNextPage}`);
 
-            console.log(`📄 Посты: fromCache=${fromCache}, docs=${snapshot.size}, isNextPage=${isNextPage}`);
-
-            if (!fromCache || isNextPage) {
-                if (!isNextPage && !fromCache) {
-                    syncPostsFromSnapshot(snapshot);
-                    return;
-                }
-            }
-
-            if (snapshot.empty) {
-                if (!isNextPage) showEmptyPosts();
-                hasMore = false;
+            if (!isNextPage) {
+                // Для первой страницы — полная синхронизация с сервером
+                syncPostsFromSnapshot(snapshot);
             } else {
-                lastVisible = snapshot.docs[snapshot.docs.length - 1];
-                snapshot.forEach((docSnap) => {
-                    if (!document.querySelector(`[data-post-id="${docSnap.id}"]`)) {
-                        addPostToUI(docSnap.id, docSnap.data(), false);
-                    }
-                });
-                if (snapshot.size < POSTS_PER_PAGE) hasMore = false;
+                // Для следующих страниц — только добавляем новые
+                if (snapshot.empty) {
+                    hasMore = false;
+                } else {
+                    lastVisible = snapshot.docs[snapshot.docs.length - 1];
+                    snapshot.forEach((docSnap) => {
+                        if (!document.querySelector(`[data-post-id="${docSnap.id}"]`)) {
+                            addPostToUI(docSnap.id, docSnap.data(), false);
+                        }
+                    });
+                    if (snapshot.size < POSTS_PER_PAGE) hasMore = false;
+                }
             }
 
             isFetching = false;
             hideLoadingIndicator();
+
+            // Показываем "нет записей" если список пуст после первой загрузки
+            if (!isNextPage && postsList.querySelectorAll('[data-post-id]').length === 0) {
+                showEmptyPosts();
+            }
         },
         (error) => {
             console.error("Ошибка слушателя постов:", error);
@@ -818,15 +813,24 @@ function loadUserPosts(isNextPage = false) {
 function syncPostsFromSnapshot(snapshot) {
     const serverIds = new Set(snapshot.docs.map(d => d.id));
 
+    // Удаляем посты которых нет на сервере
     document.querySelectorAll('[data-post-id]').forEach(el => {
         if (!serverIds.has(el.dataset.postId)) el.remove();
     });
 
-    snapshot.forEach((docSnap) => {
+    // Добавляем новые посты которых нет в DOM
+    // Добавляем в правильном порядке (сервер уже отдаёт по desc)
+    snapshot.docs.forEach((docSnap) => {
         if (!document.querySelector(`[data-post-id="${docSnap.id}"]`)) {
             addPostToUI(docSnap.id, docSnap.data(), true);
         }
     });
+
+    // Обновляем lastVisible для пагинации
+    if (snapshot.docs.length > 0) {
+        lastVisible = snapshot.docs[snapshot.docs.length - 1];
+    }
+    if (snapshot.size < POSTS_PER_PAGE) hasMore = false;
 }
 
 const postsPageListeners = [];
@@ -976,7 +980,7 @@ function addPostToUI(postId, post, toTop = false) {
             }
 
             await deleteDoc(doc(db, "users", currentUser.uid, "posts", postId));
-            postItem.remove();
+            // НЕ удаляем postItem вручную — onSnapshot сам обновит DOM через syncPostsFromSnapshot
 
             const userDocRef = doc(db, "users", currentUser.uid);
             await updateDoc(userDocRef, { postsCount: increment(-1) });
@@ -985,7 +989,6 @@ function addPostToUI(postId, post, toTop = false) {
             localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(currentUserData));
 
             if (postsCount) postsCount.textContent = currentUserData.postsCount.toString();
-            if (currentUserData.postsCount === 0) showEmptyPosts();
 
             console.log("✅ Запись удалена!");
         } catch (error) {
