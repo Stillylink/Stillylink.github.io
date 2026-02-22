@@ -352,6 +352,7 @@ function setBtn(btn, enabled) {
 }
 
 function isProfileDirty() {
+    if (!originalData.profile) return false;
     const socialLinks = collectSocialLinks();
     return (
         editProfileName.value.trim()               !== originalData.profile.name      ||
@@ -362,10 +363,12 @@ function isProfileDirty() {
 }
 
 function isStatusDirty() {
+    if (!originalData.hasOwnProperty('status')) return false;
     return editStatusText.value !== originalData.status;
 }
 
 function isInfoDirty() {
+    if (!originalData.info) return false;
     const linkItems = infoLinksContainer.querySelectorAll('.link-item');
     const links = [];
     linkItems.forEach(item => {
@@ -387,6 +390,7 @@ function isInfoDirty() {
 }
 
 function isVideoDirty() {
+    if (!originalData.hasOwnProperty('video')) return false;
     const currentId = extractVideoId(editVideoUrl.value.trim()) || null;
     return currentId !== (originalData.video || null);
 }
