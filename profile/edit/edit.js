@@ -118,7 +118,6 @@ const SOCIAL_NETWORKS = [
     { value: 'discord',   label: 'Discord',     placeholder: 'https://discord.gg/invite' },
     { value: 'github',    label: 'GitHub',      placeholder: 'https://github.com/username' },
     { value: 'spotify',   label: 'Spotify',     placeholder: 'https://open.spotify.com/...' },
-    { value: 'other',     label: 'Другое',      placeholder: 'https://example.com' },
 ];
 
 // ========================
