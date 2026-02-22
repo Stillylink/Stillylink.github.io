@@ -346,9 +346,6 @@ function saveOriginalData() {
 // ========================
 function setBtn(btn, enabled) {
     btn.disabled = !enabled;
-    btn.style.opacity = enabled ? '' : '0.45';
-    btn.style.cursor  = enabled ? '' : 'not-allowed';
-    btn.style.filter  = enabled ? '' : 'grayscale(0.4)';
 }
 
 function isProfileDirty() {
