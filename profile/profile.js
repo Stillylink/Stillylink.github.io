@@ -818,11 +818,21 @@ function syncPostsFromSnapshot(snapshot) {
         if (!serverIds.has(el.dataset.postId)) el.remove();
     });
 
-    // Добавляем новые посты которых нет в DOM
-    // Добавляем в правильном порядке (сервер уже отдаёт по desc)
-    snapshot.docs.forEach((docSnap) => {
-        if (!document.querySelector(`[data-post-id="${docSnap.id}"]`)) {
-            addPostToUI(docSnap.id, docSnap.data(), true);
+    // Добавляем новые посты в правильную позицию согласно порядку сервера (desc)
+    snapshot.docs.forEach((docSnap, index) => {
+        const existing = document.querySelector(`[data-post-id="${docSnap.id}"]`);
+        if (!existing) {
+            // Создаём элемент
+            addPostToUI(docSnap.id, docSnap.data(), false);
+            // Перемещаем на нужную позицию
+            const insertedEl = document.querySelector(`[data-post-id="${docSnap.id}"]`);
+            if (insertedEl) {
+                const allPosts = postsList.querySelectorAll('[data-post-id]');
+                const refEl = allPosts[index] || null;
+                if (refEl && refEl !== insertedEl) {
+                    postsList.insertBefore(insertedEl, refEl);
+                }
+            }
         }
     });
 
