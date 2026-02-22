@@ -330,13 +330,13 @@ logoutBtn?.addEventListener("click", async (e) => {
 function saveOriginalData() {
     originalData = {
         profile: {
-            name: currentUserData.name,
-            bio: currentUserData.bio || "",
-            usernameID: currentUserData.usernameID || ""
+            name:       currentUserData.name.trim(),
+            bio:        (currentUserData.bio || "").trim(),
+            usernameID: (currentUserData.usernameID || "").toLowerCase()
         },
-        status: currentUserData.status || "",
-        info: JSON.parse(JSON.stringify(currentUserData.info || {})),
-        video: currentUserData.youtubeVideoId || null,
+        status:      currentUserData.status || "",
+        info:        JSON.parse(JSON.stringify(currentUserData.info || {})),
+        video:       currentUserData.youtubeVideoId || null,
         socialLinks: JSON.parse(JSON.stringify(currentUserData.socialLinks || []))
     };
 }
@@ -1052,7 +1052,8 @@ function addSocialLinkRow(network = 'instagram', url = '') {
 
     socialLinksList.appendChild(row);
     updateSocialLinkButton();
-    updateSaveBtns();
+    // updateSaveBtns не вызываем здесь — при загрузке данных это лишнее,
+    // при ручном добавлении строки вызов идёт через addSocialLinkBtn listener
 }
 
 function updateSocialLinkButton() {
@@ -1092,6 +1093,7 @@ function collectSocialLinks() {
 addSocialLinkBtn.addEventListener('click', () => {
     if (socialLinksList.querySelectorAll('.social-link-item').length < MAX_SOCIAL_LINKS) {
         addSocialLinkRow();
+        updateSaveBtns();
     }
 });
 
