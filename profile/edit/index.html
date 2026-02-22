@@ -199,12 +199,7 @@
 
             <!-- Прозвище -->
             <div class="form-group">
-              <div class="field-with-action">
-                <label for="editInfoNickname" id="nicknameLabel">Прозвище</label>
-                <button type="button" class="rename-btn" id="renameNicknameBtn" title="Переименовать поле">
-                  ✏️
-                </button>
-              </div>
+              <label for="editInfoNickname">Прозвище</label>
               <input 
                 type="text" 
                 id="editInfoNickname" 
@@ -297,7 +292,7 @@
               >
               <small class="field-hint">
                 Поддерживаемые форматы: youtube.com/watch?v=... или youtu.be/...<br>
-                ⚠️ Shorts не поддерживаются
+                Shorts не поддерживаются
               </small>
             </div>
 
@@ -315,31 +310,6 @@
       </section>
     </main>
 
-    <!-- Модальное окно переименования поля -->
-    <div id="renameModal" class="modal-overlay hidden">
-      <div class="modal-content modal-rename">
-        <div class="modal-header">
-          <h3>Переименовать поле</h3>
-          <button class="modal-close" id="closeRenameModal">×</button>
-        </div>
-        <div class="modal-body">
-          <div class="form-group">
-            <label for="newFieldName">Новое название</label>
-            <input 
-              type="text" 
-              id="newFieldName" 
-              class="form-input" 
-              placeholder="Например: Титул, Никнейм"
-              maxlength="30"
-            >
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button class="modal-btn cancel" id="cancelRenameBtn">Отмена</button>
-          <button class="modal-btn save" id="saveRenameBtn">Сохранить</button>
-        </div>
-      </div>
-    </div>
 
     <footer class="footer">© 2026 StillyLink.</footer>
   </div>
