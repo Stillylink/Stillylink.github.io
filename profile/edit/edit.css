@@ -391,7 +391,13 @@ body.edit-page .site-wrapper {
   color: #000;
 }
 
-.btn-save:hover {
+.btn-save:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  filter: grayscale(0.4);
+}
+
+.btn-save:not(:disabled):hover {
   filter: brightness(1.1);
   transform: translateY(-2px);
 }
