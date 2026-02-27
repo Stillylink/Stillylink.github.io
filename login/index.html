@@ -141,7 +141,8 @@ import {
     doc,
     setDoc,
     getDoc,
-    runTransaction
+    runTransaction,
+    serverTimestamp
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -224,7 +225,8 @@ async function createUserProfile(user) {
         youtubeVideoId: null,
         status: "",
         postsCount: 0,
-        usernameID: generatedID, // ✅ Короткий ID типа "ivanivanov_a1b2"
+        usernameID: generatedID,
+        createdAt: serverTimestamp(),
         info: {
             links: [],
             email: "",
