@@ -68,6 +68,7 @@ const profileBio = document.getElementById("profileBio");
 const profileUsernameID = document.getElementById("profileUsernameID");
 const profileSocialLinks = document.getElementById("profileSocialLinks");
 const avatarUpload = document.getElementById("avatarUpload");
+const avatarUploadBtn = document.querySelector(".avatar-upload-btn");
 
 const editProfileBtn = document.getElementById("editProfileBtn");
 
@@ -76,6 +77,7 @@ const publishPostBtn = document.getElementById("publishPostBtn");
 const attachPhotoBtn = document.getElementById("attachPhotoBtn");
 const postPhotoInput = document.getElementById("postPhotoInput");
 const postsList = document.getElementById("postsList");
+const postComposer = document.getElementById("postComposer");
 
 const photoModal = document.getElementById("photoModal");
 const closePhotoModal = document.getElementById("closePhotoModal");
@@ -92,8 +94,15 @@ const addVideoBtn = document.getElementById("addVideoBtn");
 const statusText = document.querySelector(".status-text");
 const infoContent = document.getElementById("infoContent");
 
-let currentUser = null;
-let currentUserData = null;
+// ========================
+// СОСТОЯНИЕ
+// ========================
+let currentUser = null;       // залогиненный пользователь (или null)
+let currentUserData = null;   // данные залогиненного пользователя
+let profileOwnerUID = null;   // UID владельца просматриваемого профиля
+let profileOwnerData = null;  // данные владельца профиля
+let isOwnProfile = false;     // смотрим ли свой профиль
+
 let currentPhotoFile = null;
 const PROFILE_CACHE_KEY = "userProfileCache_v1";
 
@@ -106,8 +115,17 @@ let hasMore = true;
 // Unsubscribe-функции
 let unsubscribeProfile = null;
 let unsubscribePosts = null;
+const postsPageListeners = [];
 
-// ЗАГРУЗКА АВАТАРКИ ИЗ localStorage СРАЗУ
+// ========================
+// ЧИТАЕМ ?u= ИЗ URL
+// ========================
+const urlParams = new URLSearchParams(window.location.search);
+const usernameFromURL = urlParams.get("u")?.toLowerCase().trim() || null;
+
+// ========================
+// АВАТАРКА ИЗ localStorage СРАЗУ
+// ========================
 const savedAvatar = localStorage.getItem('userAvatarLetter');
 if (savedAvatar) {
     regBtn?.classList.add('hidden');
@@ -142,6 +160,36 @@ document.addEventListener("click", e => {
     if (userMenu.contains(e.target) || avatar.contains(e.target)) return;
     userMenu.classList.remove("open");
 });
+
+// ========================
+// СКРЫТЬ/ПОКАЗАТЬ ЭЛЕМЕНТЫ ВЛАДЕЛЬЦА
+// ========================
+function applyOwnerUI(isOwner) {
+    // Кнопка редактирования профиля
+    editProfileBtn?.classList.toggle("hidden", !isOwner);
+
+    // Кнопка загрузки аватара
+    avatarUploadBtn?.classList.toggle("hidden", !isOwner);
+
+    // Форма создания поста
+    postComposer?.classList.toggle("hidden", !isOwner);
+
+    // Кнопка добавления видео
+    addVideoBtn?.classList.toggle("hidden", !isOwner);
+
+    // "Мои записи" → "Записи" для чужого профиля
+    const wallTitle = document.querySelector(".wall-header h2");
+    if (wallTitle) {
+        wallTitle.textContent = isOwner ? "Мои записи" : "Записи";
+    }
+}
+
+// Скрывает кнопки удаления постов (вызывается после рендера постов)
+function hideDeleteButtons() {
+    document.querySelectorAll(".post-delete").forEach(btn => {
+        btn.classList.add("hidden");
+    });
+}
 
 // ========================
 // КОНФИГ СОЦИАЛЬНЫХ СЕТЕЙ
@@ -354,6 +402,7 @@ async function saveYoutubeVideo(videoId) {
 }
 
 addVideoBtn?.addEventListener("click", async () => {
+    if (!isOwnProfile) return;
     const url = prompt("Вставьте ссылку на YouTube видео:\n\nПоддерживаемые форматы:\n• youtube.com/watch?v=...\n• youtu.be/...\n\n⚠️ Shorts не поддерживаются!");
     if (!url) return;
     const videoId = extractVideoId(url);
@@ -381,9 +430,95 @@ function generateUsernameID(email, uid) {
 }
 
 // ========================
+// ЗАГРУЗКА ЧУЖОГО ПРОФИЛЯ
+// ========================
+async function resolveProfileOwner(usernameID) {
+    try {
+        const usernameDocRef = doc(db, "usernames", usernameID);
+        const usernameSnap = await getDoc(usernameDocRef);
+
+        if (!usernameSnap.exists()) {
+            return null;
+        }
+
+        return usernameSnap.data().ownerUID || null;
+    } catch (error) {
+        console.error("Ошибка поиска владельца профиля:", error);
+        return null;
+    }
+}
+
+function subscribeToProfileOwner(ownerUID) {
+    const userDocRef = doc(db, "users", ownerUID);
+
+    unsubscribeProfile = onSnapshot(
+        userDocRef,
+        { includeMetadataChanges: true },
+        (snap) => {
+            if (!snap.exists()) {
+                showProfileNotFound();
+                return;
+            }
+
+            const data = snap.data();
+            if (!data.socialLinks) data.socialLinks = [];
+            if (!data.info) data.info = { links: [], email: "", country: "", nickname: "", nicknameLabel: "Прозвище", occupation: "" };
+
+            profileOwnerData = data;
+
+            renderProfile(profileOwnerData, ownerUID);
+            renderSocialLinks(profileOwnerData.socialLinks);
+            renderStatus(profileOwnerData.status || "");
+            renderInfo(profileOwnerData.info);
+            loadYoutubeVideo(profileOwnerData.youtubeVideoId);
+
+            if (!observer) {
+                initScrollListener();
+                loadUserPosts();
+            }
+        },
+        (error) => {
+            console.error("Ошибка слушателя чужого профиля:", error);
+        }
+    );
+}
+
+function showProfileNotFound() {
+    profileName.textContent = "Профиль не найден";
+    profileBio.textContent = "Пользователь с таким именем не существует";
+    postsList.innerHTML = `
+        <div class="posts-empty">
+            <div class="posts-empty-icon">🔍</div>
+            <div class="posts-empty-text">Профиль не найден</div>
+        </div>
+    `;
+}
+
+// ========================
 // ПРОВЕРКА АВТОРИЗАЦИИ
 // ========================
 onAuthStateChanged(auth, async (user) => {
+    // Обновляем навигационный аватар
+    if (user) {
+        regBtn?.classList.add('hidden');
+        avatar?.classList.remove('hidden');
+        const letter = (user.displayName || user.email || "U").charAt(0).toUpperCase();
+        avatarLetter.textContent = letter;
+        localStorage.setItem("userAvatarLetter", letter);
+    } else {
+        regBtn?.classList.remove('hidden');
+        avatar?.classList.add('hidden');
+    }
+
+    currentUser = user || null;
+
+    // Если в URL есть ?u= — показываем чужой (или свой) профиль
+    if (usernameFromURL) {
+        await handleURLProfile(user);
+        return;
+    }
+
+    // Нет параметра u — показываем свой профиль, нужна авторизация
     if (!user || !user.email) {
         window.location.href = "/login/";
         return;
@@ -397,13 +532,16 @@ onAuthStateChanged(auth, async (user) => {
     }
     localStorage.setItem("currentUserUID", user.uid);
 
-    currentUser = user;
+    profileOwnerUID = user.uid;
+    isOwnProfile = true;
+    applyOwnerUI(true);
 
+    // Загружаем из кэша мгновенно
     const cachedProfile = localStorage.getItem(PROFILE_CACHE_KEY);
     if (cachedProfile) {
         try {
             currentUserData = JSON.parse(cachedProfile);
-            renderProfile(currentUserData);
+            renderProfile(currentUserData, user.uid);
             renderSocialLinks(currentUserData.socialLinks || []);
             renderStatus(currentUserData.status || "");
             renderInfo(currentUserData.info || {});
@@ -416,6 +554,7 @@ onAuthStateChanged(auth, async (user) => {
         }
     }
 
+    // Подписываемся на реалтайм обновления своего профиля
     const userDocRef = doc(db, "users", user.uid);
 
     unsubscribeProfile = onSnapshot(
@@ -484,10 +623,7 @@ onAuthStateChanged(auth, async (user) => {
                 });
             }
 
-            if (!freshData.socialLinks) {
-                freshData.socialLinks = [];
-            }
-
+            if (!freshData.socialLinks) freshData.socialLinks = [];
             if (!freshData.info) {
                 freshData.info = {
                     links: [],
@@ -506,7 +642,7 @@ onAuthStateChanged(auth, async (user) => {
                 console.log(fromCache ? "♻️ Профиль из Firestore-кэша" : "🔄 Профиль обновлён с сервера");
                 currentUserData = freshData;
                 localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(currentUserData));
-                renderProfile(currentUserData);
+                renderProfile(currentUserData, user.uid);
                 renderSocialLinks(currentUserData.socialLinks || []);
                 renderStatus(currentUserData.status || "");
                 renderInfo(currentUserData.info || {});
@@ -532,6 +668,35 @@ onAuthStateChanged(auth, async (user) => {
 });
 
 // ========================
+// ОБРАБОТКА ?u= ПРОФИЛЯ
+// ========================
+async function handleURLProfile(user) {
+    // Сначала узнаём UID владельца по usernameID
+    const ownerUID = await resolveProfileOwner(usernameFromURL);
+
+    if (!ownerUID) {
+        showProfileNotFound();
+        applyOwnerUI(false);
+        return;
+    }
+
+    profileOwnerUID = ownerUID;
+
+    // Определяем, свой ли это профиль
+    isOwnProfile = user ? (user.uid === ownerUID) : false;
+    applyOwnerUI(isOwnProfile);
+
+    if (isOwnProfile) {
+        // Если смотрим свой профиль через ссылку — сохраняем кэш данных залогиненного
+        currentUserData = null; // сбросим, onSnapshot сам обновит
+        localStorage.setItem("currentUserUID", user.uid);
+    }
+
+    // Подписываемся на профиль владельца
+    subscribeToProfileOwner(ownerUID);
+}
+
+// ========================
 // ВЫХОД
 // ========================
 logoutBtn?.addEventListener("click", async (e) => {
@@ -545,7 +710,7 @@ logoutBtn?.addEventListener("click", async (e) => {
 // ========================
 // РЕНДЕР ПРОФИЛЯ
 // ========================
-function renderProfile(userData) {
+function renderProfile(userData, ownerUID) {
     profileName.textContent = userData.name;
 
     if (profileUsernameID && userData.usernameID) {
@@ -575,7 +740,20 @@ function renderProfile(userData) {
         avatarLetterProfile.textContent = userData.name.charAt(0).toUpperCase();
     }
 
-    if (currentUser?.metadata?.creationTime) {
+    // Дату регистрации берём из createdAt документа или из Auth метаданных (только свой профиль)
+    if (userData.createdAt) {
+        try {
+            const date = userData.createdAt.toDate
+                ? userData.createdAt.toDate()
+                : new Date(userData.createdAt);
+            memberSince.textContent = date.toLocaleDateString("ru-RU", {
+                year: "numeric",
+                month: "long"
+            });
+        } catch (e) {
+            memberSince.textContent = "—";
+        }
+    } else if (isOwnProfile && currentUser?.metadata?.creationTime) {
         const date = new Date(currentUser.metadata.creationTime);
         memberSince.textContent = date.toLocaleDateString("ru-RU", {
             year: "numeric",
@@ -592,8 +770,10 @@ function renderProfile(userData) {
 // ЗАГРУЗКА АВАТАРКИ
 // ========================
 avatarUpload.addEventListener("change", async (e) => {
+    if (!isOwnProfile || !currentUser) return;
+
     const file = e.target.files?.[0];
-    if (!file || !currentUser) return;
+    if (!file) return;
 
     if (file.size > 5 * 1024 * 1024) {
         alert("Файл слишком большой. Максимальный размер: 5MB");
@@ -640,17 +820,18 @@ avatarUpload.addEventListener("change", async (e) => {
 // РЕДАКТИРОВАНИЕ ПРОФИЛЯ
 // ========================
 editProfileBtn.addEventListener("click", () => {
+    if (!isOwnProfile) return;
     window.location.href = "/profile/edit/";
 });
 
 // ========================
 // ПУБЛИКАЦИЯ ЗАПИСИ
 // ========================
-attachPhotoBtn.addEventListener("click", () => {
+attachPhotoBtn?.addEventListener("click", () => {
     postPhotoInput.click();
 });
 
-postPhotoInput.addEventListener("change", (e) => {
+postPhotoInput?.addEventListener("change", (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -665,8 +846,8 @@ postPhotoInput.addEventListener("change", (e) => {
     attachPhotoBtn.style.color = "var(--accent)";
 });
 
-publishPostBtn.addEventListener("click", async () => {
-    if (!currentUser || !currentUserData) return;
+publishPostBtn?.addEventListener("click", async () => {
+    if (!isOwnProfile || !currentUser || !currentUserData) return;
 
     const text = postInput.value.trim();
     if (!text && !currentPhotoFile) {
@@ -717,7 +898,6 @@ publishPostBtn.addEventListener("click", async () => {
         attachPhotoBtn.textContent = "📷 Фото";
         attachPhotoBtn.style.color = "";
 
-        // Пост появится автоматически через onSnapshot в loadUserPosts
         console.log("✅ Запись опубликована!");
     } catch (error) {
         console.error("Ошибка публикации записи:", error);
@@ -735,14 +915,16 @@ publishPostBtn.addEventListener("click", async () => {
 // ЗАГРУЗКА ПОСТОВ (INFINITE SCROLL)
 // ========================
 function loadUserPosts(isNextPage = false) {
-    if (!currentUser || isFetching) return;
+    // Для чужого профиля берём profileOwnerUID, для своего — currentUser.uid
+    const targetUID = profileOwnerUID || currentUser?.uid;
+    if (!targetUID || isFetching) return;
     if (isNextPage && !hasMore) return;
 
     isFetching = true;
 
     if (isNextPage) showLoadingIndicator();
 
-    const postsCollectionRef = collection(db, "users", currentUser.uid, "posts");
+    const postsCollectionRef = collection(db, "users", targetUID, "posts");
 
     let postsQuery;
     if (isNextPage && lastVisible) {
@@ -765,15 +947,13 @@ function loadUserPosts(isNextPage = false) {
 
     const unsubscribe = onSnapshot(
         postsQuery,
-        { includeMetadataChanges: false }, // ← ИЗМЕНЕНО: отключаем события fromCache
+        { includeMetadataChanges: false },
         (snapshot) => {
             console.log(`📄 Посты: docs=${snapshot.size}, isNextPage=${isNextPage}`);
 
             if (!isNextPage) {
-                // Для первой страницы — полная синхронизация с сервером
                 syncPostsFromSnapshot(snapshot);
             } else {
-                // Для следующих страниц — только добавляем новые
                 if (snapshot.empty) {
                     hasMore = false;
                 } else {
@@ -790,7 +970,9 @@ function loadUserPosts(isNextPage = false) {
             isFetching = false;
             hideLoadingIndicator();
 
-            // Показываем "нет записей" если список пуст после первой загрузки
+            // Если не свой профиль — скрываем все кнопки удаления
+            if (!isOwnProfile) hideDeleteButtons();
+
             if (!isNextPage && postsList.querySelectorAll('[data-post-id]').length === 0) {
                 showEmptyPosts();
             }
@@ -813,32 +995,26 @@ function loadUserPosts(isNextPage = false) {
 function syncPostsFromSnapshot(snapshot) {
     const serverIds = new Set(snapshot.docs.map(d => d.id));
 
-    // Удаляем посты которых нет на сервере
     document.querySelectorAll('[data-post-id]').forEach(el => {
         if (!serverIds.has(el.dataset.postId)) el.remove();
     });
 
-    // Добавляем новые посты которых нет в DOM (appendChild — временно в конец)
     snapshot.docs.forEach((docSnap) => {
         if (!document.querySelector(`[data-post-id="${docSnap.id}"]`)) {
             addPostToUI(docSnap.id, docSnap.data(), false);
         }
     });
 
-    // Перестраиваем порядок DOM строго по порядку сервера
     snapshot.docs.forEach((docSnap) => {
         const el = document.querySelector(`[data-post-id="${docSnap.id}"]`);
-        if (el) postsList.appendChild(el); // appendChild перемещает если элемент уже в DOM
+        if (el) postsList.appendChild(el);
     });
 
-    // Обновляем lastVisible для пагинации
     if (snapshot.docs.length > 0) {
         lastVisible = snapshot.docs[snapshot.docs.length - 1];
     }
     if (snapshot.size < POSTS_PER_PAGE) hasMore = false;
 }
-
-const postsPageListeners = [];
 
 function showLoadingIndicator() {
     let indicator = document.getElementById('loadingIndicator');
@@ -893,7 +1069,7 @@ function showEmptyPosts() {
     postsList.innerHTML = `
         <div class="posts-empty">
             <div class="posts-empty-icon">📝</div>
-            <div class="posts-empty-text">Здесь пока нет записей. Создайте первую!</div>
+            <div class="posts-empty-text">${isOwnProfile ? 'Здесь пока нет записей. Создайте первую!' : 'У этого пользователя пока нет записей.'}</div>
         </div>
     `;
     if (postsCount) postsCount.textContent = "0";
@@ -950,6 +1126,9 @@ function addPostToUI(postId, post, toTop = false) {
         ? `<img src="${userAvatar}" alt="${userName}" class="post-avatar-img">`
         : letter;
 
+    // Кнопку удаления рендерим всегда, но скрываем если чужой профиль
+    const deleteBtn = `<button class="post-delete${isOwnProfile ? '' : ' hidden'}" data-post-id="${postId}">Удалить</button>`;
+
     postItem.innerHTML = `
         <div class="post-header">
             <div class="post-avatar">${avatarHtml}</div>
@@ -957,7 +1136,7 @@ function addPostToUI(postId, post, toTop = false) {
                 <div class="post-author">${escapeHtml(userName)}</div>
                 <div class="post-time">${timeStr}</div>
             </div>
-            <button class="post-delete" data-post-id="${postId}">Удалить</button>
+            ${deleteBtn}
         </div>
         ${post.text ? `<div class="post-content">${escapeHtml(post.text)}</div>` : ''}
         ${post.photoUrl ? `<img src="${post.photoUrl}" alt="Post photo" class="post-image" data-photo="${post.photoUrl}">` : ''}
@@ -969,38 +1148,40 @@ function addPostToUI(postId, post, toTop = false) {
         postsList.appendChild(postItem);
     }
 
-    postItem.querySelector(".post-delete").addEventListener("click", async () => {
-        if (!confirm("Удалить эту запись?")) return;
-        try {
-            if (post.photoPath) {
-                try { await deleteObject(storageRef(storage, post.photoPath)); } catch (e) {}
-            } else if (post.photoUrl) {
-                try {
-                    const urlParts = post.photoUrl.split('/o/')[1];
-                    if (urlParts) {
-                        const path = decodeURIComponent(urlParts.split('?')[0]);
-                        await deleteObject(storageRef(storage, path));
-                    }
-                } catch (e) {}
+    // Вешаем обработчик удаления только если это свой профиль
+    if (isOwnProfile) {
+        postItem.querySelector(".post-delete").addEventListener("click", async () => {
+            if (!confirm("Удалить эту запись?")) return;
+            try {
+                if (post.photoPath) {
+                    try { await deleteObject(storageRef(storage, post.photoPath)); } catch (e) {}
+                } else if (post.photoUrl) {
+                    try {
+                        const urlParts = post.photoUrl.split('/o/')[1];
+                        if (urlParts) {
+                            const path = decodeURIComponent(urlParts.split('?')[0]);
+                            await deleteObject(storageRef(storage, path));
+                        }
+                    } catch (e) {}
+                }
+
+                await deleteDoc(doc(db, "users", currentUser.uid, "posts", postId));
+
+                const userDocRef = doc(db, "users", currentUser.uid);
+                await updateDoc(userDocRef, { postsCount: increment(-1) });
+
+                currentUserData.postsCount = Math.max(0, (currentUserData.postsCount || 1) - 1);
+                localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(currentUserData));
+
+                if (postsCount) postsCount.textContent = currentUserData.postsCount.toString();
+
+                console.log("✅ Запись удалена!");
+            } catch (error) {
+                console.error("Ошибка удаления записи:", error);
+                alert("Не удалось удалить запись");
             }
-
-            await deleteDoc(doc(db, "users", currentUser.uid, "posts", postId));
-            // НЕ удаляем postItem вручную — onSnapshot сам обновит DOM через syncPostsFromSnapshot
-
-            const userDocRef = doc(db, "users", currentUser.uid);
-            await updateDoc(userDocRef, { postsCount: increment(-1) });
-
-            currentUserData.postsCount = Math.max(0, (currentUserData.postsCount || 1) - 1);
-            localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(currentUserData));
-
-            if (postsCount) postsCount.textContent = currentUserData.postsCount.toString();
-
-            console.log("✅ Запись удалена!");
-        } catch (error) {
-            console.error("Ошибка удаления записи:", error);
-            alert("Не удалось удалить запись");
-        }
-    });
+        });
+    }
 
     const photoImg = postItem.querySelector(".post-image");
     if (photoImg) {
