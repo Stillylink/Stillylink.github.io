@@ -495,20 +495,41 @@ function showProfileNotFound() {
 }
 
 // ========================
+// ОБНОВЛЕНИЕ АВАТАРА В НАВБАРЕ
+// ========================
+async function updateNavAvatar(user) {
+    if (!user) {
+        regBtn?.classList.remove('hidden');
+        avatar?.classList.add('hidden');
+        return;
+    }
+
+    regBtn?.classList.add('hidden');
+    avatar?.classList.remove('hidden');
+
+    // Сначала показываем из кэша мгновенно
+    const savedLetter = localStorage.getItem("userAvatarLetter");
+    if (savedLetter) avatarLetter.textContent = savedLetter;
+
+    // Затем подгружаем актуальное имя из Firestore
+    try {
+        const userDocSnap = await getDoc(doc(db, "users", user.uid));
+        if (userDocSnap.exists()) {
+            const name = userDocSnap.data().name || user.email;
+            const letter = name.charAt(0).toUpperCase();
+            avatarLetter.textContent = letter;
+            localStorage.setItem("userAvatarLetter", letter);
+        }
+    } catch (e) {
+        console.warn("Не удалось загрузить имя для навбара:", e);
+    }
+}
+
+// ========================
 // ПРОВЕРКА АВТОРИЗАЦИИ
 // ========================
 onAuthStateChanged(auth, async (user) => {
-    // Обновляем навигационный аватар
-    if (user) {
-        regBtn?.classList.add('hidden');
-        avatar?.classList.remove('hidden');
-        // Берём букву из кэша (там никнейм), не из email/displayName
-        const savedLetter = localStorage.getItem("userAvatarLetter");
-        if (savedLetter) avatarLetter.textContent = savedLetter;
-    } else {
-        regBtn?.classList.remove('hidden');
-        avatar?.classList.add('hidden');
-    }
+    await updateNavAvatar(user);
 
     currentUser = user || null;
 
