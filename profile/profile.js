@@ -502,9 +502,9 @@ onAuthStateChanged(auth, async (user) => {
     if (user) {
         regBtn?.classList.add('hidden');
         avatar?.classList.remove('hidden');
-        const letter = (user.displayName || user.email || "U").charAt(0).toUpperCase();
-        avatarLetter.textContent = letter;
-        localStorage.setItem("userAvatarLetter", letter);
+        // Берём букву из кэша (там никнейм), не из email/displayName
+        const savedLetter = localStorage.getItem("userAvatarLetter");
+        if (savedLetter) avatarLetter.textContent = savedLetter;
     } else {
         regBtn?.classList.remove('hidden');
         avatar?.classList.add('hidden');
