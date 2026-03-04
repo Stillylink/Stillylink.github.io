@@ -24,7 +24,9 @@ import {
     startAfter,
     increment,
     persistentLocalCache,
+    persistentMultipleTabManager,
     initializeFirestore,
+    getDocFromCache,
     runTransaction
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
 
@@ -49,7 +51,9 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 
 const db = initializeFirestore(app, {
-    localCache: persistentLocalCache({})
+    localCache: persistentLocalCache({
+        tabManager: persistentMultipleTabManager()
+    })
 });
 
 const storage = getStorage(app);
@@ -432,16 +436,44 @@ function generateUsernameID(email, uid) {
 // ========================
 // ЗАГРУЗКА ЧУЖОГО ПРОФИЛЯ
 // ========================
-async function resolveProfileOwner(usernameID) {
-    try {
-        const usernameDocRef = doc(db, "usernames", usernameID);
-        const usernameSnap = await getDoc(usernameDocRef);
 
+// In-memory кэш для usernameID → ownerUID (живёт пока открыта вкладка)
+const usernameOwnerCache = {};
+
+async function resolveProfileOwner(usernameID) {
+    // 1. Проверяем in-memory кэш (бесплатно, работает при повторных визитах в рамках сессии)
+    if (usernameOwnerCache[usernameID]) {
+        console.log("⚡ ownerUID из in-memory кэша");
+        return usernameOwnerCache[usernameID];
+    }
+
+    const usernameDocRef = doc(db, "usernames", usernameID);
+
+    // 2. Пробуем взять из Firestore-кэша на диске (бесплатно, не тратит чтение)
+    try {
+        const cachedSnap = await getDocFromCache(usernameDocRef);
+        if (cachedSnap.exists()) {
+            const ownerUID = cachedSnap.data().ownerUID || null;
+            if (ownerUID) {
+                usernameOwnerCache[usernameID] = ownerUID;
+                console.log("♻️ ownerUID из Firestore disk-кэша");
+                return ownerUID;
+            }
+        }
+    } catch (e) {
+        // Кэша нет — идём в сеть, это нормально
+    }
+
+    // 3. Сетевой запрос (тратит одно чтение, но только если нет в кэше)
+    try {
+        const usernameSnap = await getDoc(usernameDocRef);
         if (!usernameSnap.exists()) {
             return null;
         }
-
-        return usernameSnap.data().ownerUID || null;
+        const ownerUID = usernameSnap.data().ownerUID || null;
+        if (ownerUID) usernameOwnerCache[usernameID] = ownerUID;
+        console.log("🌐 ownerUID загружен из сети");
+        return ownerUID;
     } catch (error) {
         console.error("Ошибка поиска владельца профиля:", error);
         return null;
@@ -497,7 +529,7 @@ function showProfileNotFound() {
 // ========================
 // ОБНОВЛЕНИЕ АВАТАРА В НАВБАРЕ
 // ========================
-async function updateNavAvatar(user) {
+function updateNavAvatar(user) {
     if (!user) {
         regBtn?.classList.remove('hidden');
         avatar?.classList.add('hidden');
@@ -507,21 +539,15 @@ async function updateNavAvatar(user) {
     regBtn?.classList.add('hidden');
     avatar?.classList.remove('hidden');
 
-    // Сначала показываем из кэша мгновенно
+    // Берём из localStorage — обновится автоматически через onSnapshot профиля
+    // (для своего профиля) или через отдельный getDoc (для чужого профиля при первом визите)
     const savedLetter = localStorage.getItem("userAvatarLetter");
-    if (savedLetter) avatarLetter.textContent = savedLetter;
-
-    // Затем подгружаем актуальное имя из Firestore
-    try {
-        const userDocSnap = await getDoc(doc(db, "users", user.uid));
-        if (userDocSnap.exists()) {
-            const name = userDocSnap.data().name || user.email;
-            const letter = name.charAt(0).toUpperCase();
-            avatarLetter.textContent = letter;
-            localStorage.setItem("userAvatarLetter", letter);
-        }
-    } catch (e) {
-        console.warn("Не удалось загрузить имя для навбара:", e);
+    if (savedLetter) {
+        avatarLetter.textContent = savedLetter;
+    } else {
+        // Если кэша нет вообще (первый вход) — временно ставим букву email
+        // до прихода данных из onSnapshot
+        avatarLetter.textContent = (user.email || "U").charAt(0).toUpperCase();
     }
 }
 
@@ -575,7 +601,16 @@ onAuthStateChanged(auth, async (user) => {
         }
     }
 
-    // Подписываемся на реалтайм обновления своего профиля
+    // Единственный onSnapshot для своего профиля — переиспользуется и при ?u= ссылке
+    subscribeToOwnProfile(user);
+});
+
+// ========================
+// ПОДПИСКА НА СВОЙ ПРОФИЛЬ
+// ========================
+function subscribeToOwnProfile(user) {
+    if (unsubscribeProfile) return; // уже подписаны, не дублируем
+
     const userDocRef = doc(db, "users", user.uid);
 
     unsubscribeProfile = onSnapshot(
@@ -673,6 +708,7 @@ onAuthStateChanged(auth, async (user) => {
                 currentUserData = freshData;
             }
 
+            // Обновляем навбар из реальных данных профиля (единственное место)
             const letter = currentUserData.name.charAt(0).toUpperCase();
             avatarLetter.textContent = letter;
             localStorage.setItem("userAvatarLetter", letter);
@@ -686,13 +722,12 @@ onAuthStateChanged(auth, async (user) => {
             console.error("Ошибка слушателя профиля:", error);
         }
     );
-});
+}
 
 // ========================
 // ОБРАБОТКА ?u= ПРОФИЛЯ
 // ========================
 async function handleURLProfile(user) {
-    // Сначала узнаём UID владельца по usernameID
     const ownerUID = await resolveProfileOwner(usernameFromURL);
 
     if (!ownerUID) {
@@ -702,19 +737,34 @@ async function handleURLProfile(user) {
     }
 
     profileOwnerUID = ownerUID;
-
-    // Определяем, свой ли это профиль
     isOwnProfile = user ? (user.uid === ownerUID) : false;
     applyOwnerUI(isOwnProfile);
 
     if (isOwnProfile) {
-        // Если смотрим свой профиль через ссылку — сохраняем кэш данных залогиненного
-        currentUserData = null; // сбросим, onSnapshot сам обновит
+        // Свой профиль через ?u= ссылку — запускаем основной поток,
+        // который уже содержит onSnapshot + кэш + создание профиля если нет
+        // Не создаём второй слушатель на тот же документ!
         localStorage.setItem("currentUserUID", user.uid);
-    }
 
-    // Подписываемся на профиль владельца
-    subscribeToProfileOwner(ownerUID);
+        const cachedProfile = localStorage.getItem(PROFILE_CACHE_KEY);
+        if (cachedProfile) {
+            try {
+                currentUserData = JSON.parse(cachedProfile);
+                renderProfile(currentUserData, user.uid);
+                renderSocialLinks(currentUserData.socialLinks || []);
+                renderStatus(currentUserData.status || "");
+                renderInfo(currentUserData.info || {});
+                loadYoutubeVideo(currentUserData.youtubeVideoId);
+            } catch (e) {
+                localStorage.removeItem(PROFILE_CACHE_KEY);
+            }
+        }
+
+        subscribeToOwnProfile(user);
+    } else {
+        // Чужой профиль — отдельный лёгкий слушатель без логики создания профиля
+        subscribeToProfileOwner(ownerUID);
+    }
 }
 
 // ========================
