@@ -39,6 +39,7 @@ body {
     align-items: center;
     height: 60px;
     padding: 0 20px;
+    gap: 16px;
     background: var(--bg-card);
     border-bottom: 1px solid var(--border);
     position: sticky;
@@ -54,6 +55,7 @@ body {
     font-size: 22px;
     font-weight: bold;
     color: var(--accent);
+    flex-shrink: 0;
 }
 
 /* Десктоп меню */
@@ -61,6 +63,7 @@ body {
     margin-left: auto;
     display: flex;
     gap: 20px;
+    flex-shrink: 0;
 }
 
 .nav-links a {
@@ -117,6 +120,260 @@ body {
 .menu-overlay {
     display: none !important;
 }
+
+/* ======== ПОИСК В НАВБАРЕ ======== */
+
+/* Обёртка — располагается между .nav-links и .user-avatar */
+.nav-search {
+    position: relative;
+    flex-shrink: 0;
+    /* Порядок: лого → поиск → ссылки → аватар */
+    /* Если нужен другой порядок — поменяйте HTML */
+}
+
+/* Поле ввода */
+.nav-search-input-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 0 10px;
+    height: 36px;
+    width: 200px;
+    transition: width 0.25s ease, border-color 0.2s, background 0.2s;
+}
+
+.nav-search-input-wrap:focus-within {
+    width: 260px;
+    background: rgba(255, 255, 255, 0.06);
+    border-color: var(--accent);
+}
+
+.nav-search-icon {
+    width: 14px;
+    height: 14px;
+    color: rgba(255, 255, 255, 0.3);
+    flex-shrink: 0;
+    transition: color 0.2s;
+    pointer-events: none;
+}
+
+.nav-search-input-wrap:focus-within .nav-search-icon {
+    color: var(--accent);
+}
+
+.nav-search-field {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text-main);
+    font-size: 14px;
+    font-family: inherit;
+    padding: 0;
+    min-width: 0;
+}
+
+.nav-search-field::placeholder {
+    color: rgba(255, 255, 255, 0.28);
+    font-size: 14px;
+}
+
+/* Кнопка очистки */
+.nav-search-clear {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    padding: 2px;
+    cursor: pointer;
+    color: rgba(255, 255, 255, 0.3);
+    flex-shrink: 0;
+    transition: color 0.2s;
+    border-radius: 4px;
+    line-height: 1;
+}
+
+.nav-search-clear:hover {
+    color: var(--accent);
+}
+
+.nav-search-clear svg {
+    width: 12px;
+    height: 12px;
+    display: block;
+}
+
+/* Выпадающий список */
+.nav-search-dropdown {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    right: 0;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6), 0 2px 8px rgba(0, 0, 0, 0.3);
+    overflow: hidden;
+    z-index: 9000;
+    min-width: 260px;
+    animation: searchDropdownIn 0.16s ease;
+}
+
+@keyframes searchDropdownIn {
+    from {
+        opacity: 0;
+        transform: translateY(-5px) scale(0.98);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* Контейнер результатов */
+.nav-search-results {
+    padding: 6px;
+}
+
+/* Один результат */
+.nav-search-result {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background 0.15s;
+    color: inherit;
+}
+
+.nav-search-result:hover {
+    background: var(--bg-hover);
+}
+
+.nav-search-result:active {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+/* Аватар в результате */
+.nav-search-result-avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 700;
+    color: #fff;
+    flex-shrink: 0;
+    overflow: hidden;
+    border: 1px solid var(--border);
+}
+
+.nav-search-result-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+}
+
+/* Текст */
+.nav-search-result-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.nav-search-result-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-main);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.nav-search-result-id {
+    font-size: 12px;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: 1px;
+}
+
+/* Подсветка совпадения */
+.nav-search-result-id mark {
+    background: transparent;
+    color: var(--accent);
+    font-weight: 600;
+}
+
+/* Стрелка */
+.nav-search-result-arrow {
+    color: rgba(255, 255, 255, 0.18);
+    flex-shrink: 0;
+    transition: color 0.15s, transform 0.15s;
+    display: flex;
+    align-items: center;
+}
+
+.nav-search-result:hover .nav-search-result-arrow {
+    color: var(--accent);
+    transform: translateX(2px);
+}
+
+.nav-search-result-arrow svg {
+    width: 13px;
+    height: 13px;
+    display: block;
+}
+
+/* Разделитель между результатами */
+.nav-search-result + .nav-search-result {
+    border-top: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+/* Состояния: загрузка / нет результатов / подсказка */
+.nav-search-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    padding: 18px 16px;
+    color: var(--text-secondary);
+    font-size: 13px;
+    text-align: center;
+}
+
+.nav-search-state-icon {
+    font-size: 22px;
+    opacity: 0.6;
+    margin-bottom: 2px;
+}
+
+/* Спиннер поиска */
+.nav-search-spinner {
+    width: 18px;
+    height: 18px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.75s linear infinite;
+    margin-bottom: 4px;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* ======== /ПОИСК В НАВБАРЕ ======== */
 
 /* ======== HERO-БЛОК ======== */
 .hero {
@@ -279,7 +536,8 @@ body {
     font-weight: bold;
     cursor: pointer;
     user-select: none;
-    margin-left: 20px;
+    flex-shrink: 0;
+    /* убираем margin-left: auto — теперь порядок задаётся через HTML */
 }
 /* ==== ВЫПАДАЮЩЕЕ МЕНЮ АВАТАРКИ ==== */
 .user-menu {
@@ -313,26 +571,6 @@ body {
     background: var(--bg-hover);
     color: var(--accent);
 }
-@media (max-width: 768px) {
-
-    .navbar {
-        justify-content: space-between;
-    }
-
-    .nav-toggle {
-        order: 1;
-    }
-
-    .user-avatar {
-        order: 2;
-        margin-left: 10px;
-    }
-
-    .user-menu {
-        right: 10px;
-        top: 55px;
-    }
-}
 
 /* ======== ФУТЕР ======== */
 .footer {
@@ -353,28 +591,47 @@ body {
     min-height: 100vh;
 }
 
-
-
 /* ======== АДАПТИВ ======== */
 @media (max-width: 768px) {
+    .navbar {
+        justify-content: space-between;
+    }
+
+    .nav-toggle {
+        order: 1;
+        display: block;
+        margin-left: auto;
+    }
+
+    .user-avatar {
+        order: 2;
+        margin-left: 10px;
+    }
+
+    .user-menu {
+        right: 10px;
+        top: 55px;
+    }
+
     .nav-links {
         display: none;
     }
 
-    .nav-toggle {
-        display: block;
+    /* Поиск скрываем на мобиле — он есть в десктопном навбаре */
+    .nav-search {
+        display: none;
     }
 }
 
 @media (max-width: 768px) {
     html {
-    background: var(--bg-card); /* #1a1c1f */
-}
+        background: var(--bg-card);
+    }
 
-  .navbar { position: fixed; top: 0; left: 0; right: 0; z-index: 1000; }
-  .navbar, .footer { will-change: transform; }
+    .navbar { position: fixed; top: 0; left: 0; right: 0; z-index: 1000; }
+    .navbar, .footer { will-change: transform; }
 
-        .site-wrapper {
+    .site-wrapper {
         display: flex;
         flex-direction: column;
         min-height: 100vh;
