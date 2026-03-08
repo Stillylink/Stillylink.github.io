@@ -16,6 +16,7 @@ import {
     collection,
     addDoc,
     query,
+    where,
     orderBy,
     onSnapshot,
     deleteDoc,
@@ -101,11 +102,11 @@ const infoContent = document.getElementById("infoContent");
 // ========================
 // СОСТОЯНИЕ
 // ========================
-let currentUser = null;       // залогиненный пользователь (или null)
-let currentUserData = null;   // данные залогиненного пользователя
-let profileOwnerUID = null;   // UID владельца просматриваемого профиля
-let profileOwnerData = null;  // данные владельца профиля
-let isOwnProfile = false;     // смотрим ли свой профиль
+let currentUser = null;
+let currentUserData = null;
+let profileOwnerUID = null;
+let profileOwnerData = null;
+let isOwnProfile = false;
 
 let currentPhotoFile = null;
 const PROFILE_CACHE_KEY = "userProfileCache_v1";
@@ -169,26 +170,17 @@ document.addEventListener("click", e => {
 // СКРЫТЬ/ПОКАЗАТЬ ЭЛЕМЕНТЫ ВЛАДЕЛЬЦА
 // ========================
 function applyOwnerUI(isOwner) {
-    // Кнопка редактирования профиля
     editProfileBtn?.classList.toggle("hidden", !isOwner);
-
-    // Кнопка загрузки аватара
     avatarUploadBtn?.classList.toggle("hidden", !isOwner);
-
-    // Форма создания поста
     postComposer?.classList.toggle("hidden", !isOwner);
-
-    // Кнопка добавления видео
     addVideoBtn?.classList.toggle("hidden", !isOwner);
 
-    // "Мои записи" → "Записи" для чужого профиля
     const wallTitle = document.querySelector(".wall-header h2");
     if (wallTitle) {
         wallTitle.textContent = isOwner ? "Мои записи" : "Записи";
     }
 }
 
-// Скрывает кнопки удаления постов (вызывается после рендера постов)
 function hideDeleteButtons() {
     document.querySelectorAll(".post-delete").forEach(btn => {
         btn.classList.add("hidden");
@@ -436,12 +428,9 @@ function generateUsernameID(email, uid) {
 // ========================
 // ЗАГРУЗКА ЧУЖОГО ПРОФИЛЯ
 // ========================
-
-// In-memory кэш для usernameID → ownerUID (живёт пока открыта вкладка)
 const usernameOwnerCache = {};
 
 async function resolveProfileOwner(usernameID) {
-    // 1. Проверяем in-memory кэш (бесплатно, работает при повторных визитах в рамках сессии)
     if (usernameOwnerCache[usernameID]) {
         console.log("⚡ ownerUID из in-memory кэша");
         return usernameOwnerCache[usernameID];
@@ -449,7 +438,6 @@ async function resolveProfileOwner(usernameID) {
 
     const usernameDocRef = doc(db, "usernames", usernameID);
 
-    // 2. Пробуем взять из Firestore-кэша на диске (бесплатно, не тратит чтение)
     try {
         const cachedSnap = await getDocFromCache(usernameDocRef);
         if (cachedSnap.exists()) {
@@ -461,10 +449,9 @@ async function resolveProfileOwner(usernameID) {
             }
         }
     } catch (e) {
-        // Кэша нет — идём в сеть, это нормально
+        // Кэша нет — идём в сеть
     }
 
-    // 3. Сетевой запрос (тратит одно чтение, но только если нет в кэше)
     try {
         const usernameSnap = await getDoc(usernameDocRef);
         if (!usernameSnap.exists()) {
@@ -539,14 +526,10 @@ function updateNavAvatar(user) {
     regBtn?.classList.add('hidden');
     avatar?.classList.remove('hidden');
 
-    // Берём из localStorage — обновится автоматически через onSnapshot профиля
-    // (для своего профиля) или через отдельный getDoc (для чужого профиля при первом визите)
     const savedLetter = localStorage.getItem("userAvatarLetter");
     if (savedLetter) {
         avatarLetter.textContent = savedLetter;
     } else {
-        // Если кэша нет вообще (первый вход) — временно ставим букву email
-        // до прихода данных из onSnapshot
         avatarLetter.textContent = (user.email || "U").charAt(0).toUpperCase();
     }
 }
@@ -559,13 +542,11 @@ onAuthStateChanged(auth, async (user) => {
 
     currentUser = user || null;
 
-    // Если в URL есть ?u= — показываем чужой (или свой) профиль
     if (usernameFromURL) {
         await handleURLProfile(user);
         return;
     }
 
-    // Нет параметра u — показываем свой профиль, нужна авторизация
     if (!user || !user.email) {
         window.location.href = "/login/";
         return;
@@ -583,7 +564,6 @@ onAuthStateChanged(auth, async (user) => {
     isOwnProfile = true;
     applyOwnerUI(true);
 
-    // Загружаем из кэша мгновенно
     const cachedProfile = localStorage.getItem(PROFILE_CACHE_KEY);
     if (cachedProfile) {
         try {
@@ -601,7 +581,6 @@ onAuthStateChanged(auth, async (user) => {
         }
     }
 
-    // Единственный onSnapshot для своего профиля — переиспользуется и при ?u= ссылке
     subscribeToOwnProfile(user);
 });
 
@@ -609,7 +588,7 @@ onAuthStateChanged(auth, async (user) => {
 // ПОДПИСКА НА СВОЙ ПРОФИЛЬ
 // ========================
 function subscribeToOwnProfile(user) {
-    if (unsubscribeProfile) return; // уже подписаны, не дублируем
+    if (unsubscribeProfile) return;
 
     const userDocRef = doc(db, "users", user.uid);
 
@@ -708,7 +687,6 @@ function subscribeToOwnProfile(user) {
                 currentUserData = freshData;
             }
 
-            // Обновляем навбар из реальных данных профиля (единственное место)
             const letter = currentUserData.name.charAt(0).toUpperCase();
             avatarLetter.textContent = letter;
             localStorage.setItem("userAvatarLetter", letter);
@@ -741,9 +719,6 @@ async function handleURLProfile(user) {
     applyOwnerUI(isOwnProfile);
 
     if (isOwnProfile) {
-        // Свой профиль через ?u= ссылку — запускаем основной поток,
-        // который уже содержит onSnapshot + кэш + создание профиля если нет
-        // Не создаём второй слушатель на тот же документ!
         localStorage.setItem("currentUserUID", user.uid);
 
         const cachedProfile = localStorage.getItem(PROFILE_CACHE_KEY);
@@ -762,7 +737,6 @@ async function handleURLProfile(user) {
 
         subscribeToOwnProfile(user);
     } else {
-        // Чужой профиль — отдельный лёгкий слушатель без логики создания профиля
         subscribeToProfileOwner(ownerUID);
     }
 }
@@ -811,7 +785,6 @@ function renderProfile(userData, ownerUID) {
         avatarLetterProfile.textContent = userData.name.charAt(0).toUpperCase();
     }
 
-    // Дату регистрации берём из createdAt документа или из Auth метаданных (только свой профиль)
     if (userData.createdAt) {
         try {
             const date = userData.createdAt.toDate
@@ -986,7 +959,6 @@ publishPostBtn?.addEventListener("click", async () => {
 // ЗАГРУЗКА ПОСТОВ (INFINITE SCROLL)
 // ========================
 function loadUserPosts(isNextPage = false) {
-    // Для чужого профиля берём profileOwnerUID, для своего — currentUser.uid
     const targetUID = profileOwnerUID || currentUser?.uid;
     if (!targetUID || isFetching) return;
     if (isNextPage && !hasMore) return;
@@ -1041,7 +1013,6 @@ function loadUserPosts(isNextPage = false) {
             isFetching = false;
             hideLoadingIndicator();
 
-            // Если не свой профиль — скрываем все кнопки удаления
             if (!isOwnProfile) hideDeleteButtons();
 
             if (!isNextPage && postsList.querySelectorAll('[data-post-id]').length === 0) {
@@ -1197,7 +1168,6 @@ function addPostToUI(postId, post, toTop = false) {
         ? `<img src="${userAvatar}" alt="${userName}" class="post-avatar-img">`
         : letter;
 
-    // Кнопку удаления рендерим всегда, но скрываем если чужой профиль
     const deleteBtn = `<button class="post-delete${isOwnProfile ? '' : ' hidden'}" data-post-id="${postId}">Удалить</button>`;
 
     postItem.innerHTML = `
@@ -1219,7 +1189,6 @@ function addPostToUI(postId, post, toTop = false) {
         postsList.appendChild(postItem);
     }
 
-    // Вешаем обработчик удаления только если это свой профиль
     if (isOwnProfile) {
         postItem.querySelector(".post-delete").addEventListener("click", async () => {
             if (!confirm("Удалить эту запись?")) return;
@@ -1286,4 +1255,172 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML.replace(/\n/g, '<br>');
+}
+
+// ========================
+// ПОИСК ПОЛЬЗОВАТЕЛЕЙ
+// ========================
+
+const navSearchInput    = document.getElementById("navSearchInput");
+const navSearchClear    = document.getElementById("navSearchClear");
+const navSearchDropdown = document.getElementById("navSearchDropdown");
+const navSearchResults  = document.getElementById("navSearchResults");
+
+let searchDebounceTimer = null;
+const SEARCH_DEBOUNCE_MS = 1500;
+const SEARCH_MIN_CHARS   = 3;
+const SEARCH_LIMIT       = 5;
+
+function showSearchState(icon, text) {
+    navSearchResults.innerHTML = `
+        <div class="nav-search-state">
+            <div class="nav-search-state-icon">${icon}</div>
+            <span>${text}</span>
+        </div>
+    `;
+}
+
+function showSearchLoading() {
+    navSearchResults.innerHTML = `
+        <div class="nav-search-state">
+            <div class="nav-search-spinner"></div>
+            <span>Поиск...</span>
+        </div>
+    `;
+}
+
+function highlightMatch(text, q) {
+    if (!q || !text) return escapeSearch(text);
+    const lower = text.toLowerCase();
+    const ql    = q.toLowerCase();
+    if (lower.startsWith(ql)) {
+        return `<mark>${escapeSearch(text.slice(0, ql.length))}</mark>${escapeSearch(text.slice(ql.length))}`;
+    }
+    return escapeSearch(text);
+}
+
+function escapeSearch(str) {
+    if (!str) return "";
+    return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+}
+
+function renderSearchResults(users, input) {
+    if (users.length === 0) {
+        showSearchState("🔍", "Пользователи не найдены");
+        return;
+    }
+
+    navSearchResults.innerHTML = users.map(user => {
+        const name   = user.name || "Пользователь";
+        const uid    = user.usernameID || "";
+        const letter = name.charAt(0).toUpperCase();
+
+        const avatarHtml = user.avatarUrl
+            ? `<img src="${escapeSearch(user.avatarUrl)}" alt="${escapeSearch(name)}" loading="lazy">`
+            : letter;
+
+        return `
+            <a href="/profile/?u=${encodeURIComponent(uid)}" class="nav-search-result">
+                <div class="nav-search-result-avatar">${avatarHtml}</div>
+                <div class="nav-search-result-info">
+                    <div class="nav-search-result-name">${escapeSearch(name)}</div>
+                    <div class="nav-search-result-id">@${highlightMatch(uid, input)}</div>
+                </div>
+                <div class="nav-search-result-arrow">
+                    <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M6 3L11 8L6 13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+            </a>
+        `;
+    }).join("");
+}
+
+async function performSearch(rawInput) {
+    const input = rawInput.trim().toLowerCase();
+    if (input.length < SEARCH_MIN_CHARS) return;
+
+    showSearchLoading();
+
+    try {
+        const usersRef = collection(db, "users");
+        const q = query(
+            usersRef,
+            where("usernameID", ">=", input),
+            where("usernameID", "<=", input + "\uf8ff"),
+            limit(SEARCH_LIMIT)
+        );
+
+        const snapshot = await getDocs(q);
+        const users = [];
+        snapshot.forEach(docSnap => users.push({ id: docSnap.id, ...docSnap.data() }));
+
+        renderSearchResults(users, input);
+        console.log(`🔍 Поиск "${input}": ${users.length} результатов`);
+    } catch (error) {
+        console.error("Ошибка поиска:", error);
+        showSearchState("⚠️", "Ошибка поиска. Попробуйте снова");
+    }
+}
+
+function openDropdown() {
+    navSearchDropdown.classList.remove("hidden");
+}
+
+function closeDropdown() {
+    navSearchDropdown.classList.add("hidden");
+    clearTimeout(searchDebounceTimer);
+}
+
+if (navSearchInput) {
+    navSearchInput.addEventListener("input", (e) => {
+        const val = e.target.value;
+
+        navSearchClear.classList.toggle("hidden", val.length === 0);
+
+        if (val.trim().length < SEARCH_MIN_CHARS) {
+            clearTimeout(searchDebounceTimer);
+            if (val.trim().length === 0) {
+                closeDropdown();
+            } else {
+                openDropdown();
+                const remaining = SEARCH_MIN_CHARS - val.trim().length;
+                showSearchState("✏️", `Введите ещё ${remaining} симв${remaining === 1 ? "ол" : "ола"}`);
+            }
+            return;
+        }
+
+        openDropdown();
+        showSearchState("⏳", "Подождите...");
+
+        clearTimeout(searchDebounceTimer);
+        searchDebounceTimer = setTimeout(() => performSearch(val), SEARCH_DEBOUNCE_MS);
+    });
+
+    navSearchClear.addEventListener("click", () => {
+        navSearchInput.value = "";
+        navSearchClear.classList.add("hidden");
+        closeDropdown();
+        navSearchInput.focus();
+    });
+
+    navSearchInput.addEventListener("focus", (e) => {
+        if (e.target.value.trim().length >= SEARCH_MIN_CHARS) openDropdown();
+    });
+
+    navSearchInput.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
+            closeDropdown();
+            navSearchInput.blur();
+        }
+    });
+
+    document.addEventListener("click", (e) => {
+        const navSearch = document.getElementById("navSearch");
+        if (navSearch && !navSearch.contains(e.target)) closeDropdown();
+    });
 }
