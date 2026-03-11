@@ -211,14 +211,13 @@ body {
     position: absolute;
     top: calc(100% + 8px);
     left: 0;
-    right: 0;
+    width: 100%;
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: 12px;
     box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6), 0 2px 8px rgba(0, 0, 0, 0.3);
     overflow: hidden;
     z-index: 9000;
-    min-width: 260px;
     animation: searchDropdownIn 0.16s ease;
 }
 
