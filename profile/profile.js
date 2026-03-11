@@ -1389,12 +1389,15 @@ if (navSearchInput) {
             return;
         }
 
-        // Всегда открываем дропдаун и сразу показываем спиннер
+        // Всегда открываем дропдаун и показываем спиннер
         openDropdown();
         showSearchLoading();
 
         if (val.trim().length < SEARCH_MIN_CHARS) {
-            // Меньше 3 символов — спиннер крутится, запрос не делаем
+            // Меньше 3 символов — спиннер на 600мс, потом пусто
+            searchDebounceTimer = setTimeout(() => {
+                navSearchResults.innerHTML = "";
+            }, 600);
             return;
         }
 
