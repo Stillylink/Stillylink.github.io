@@ -60,10 +60,10 @@ body {
 
 /* Десктоп меню */
 .nav-links {
-    margin-left: auto;
     display: flex;
     gap: 20px;
     flex-shrink: 0;
+    margin-left: auto; /* прижимает ссылки + аватар вправо */
 }
 
 .nav-links a {
@@ -127,8 +127,8 @@ body {
 .nav-search {
     position: relative;
     flex-shrink: 0;
-    /* Порядок: лого → поиск → ссылки → аватар */
-    /* Если нужен другой порядок — поменяйте HTML */
+    flex: 1;          /* растягивается между лого и ссылками */
+    max-width: 320px; /* но не шире 320px */
 }
 
 /* Поле ввода */
@@ -141,12 +141,11 @@ body {
     border-radius: 10px;
     padding: 0 10px;
     height: 36px;
-    width: 200px;
-    transition: width 0.25s ease, border-color 0.2s, background 0.2s;
+    width: 230px;
+    transition: border-color 0.2s, background 0.2s;
 }
 
 .nav-search-input-wrap:focus-within {
-    width: 260px;
     background: rgba(255, 255, 255, 0.06);
     border-color: var(--accent);
 }
