@@ -127,8 +127,7 @@ body {
 .nav-search {
     position: relative;
     flex-shrink: 0;
-    flex: 1;          /* растягивается между лого и ссылками */
-    max-width: 320px; /* но не шире 320px */
+    width: 230px;
 }
 
 /* Поле ввода */
