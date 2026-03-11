@@ -1382,22 +1382,23 @@ if (navSearchInput) {
 
         navSearchClear.classList.toggle("hidden", val.length === 0);
 
-        if (val.trim().length < SEARCH_MIN_CHARS) {
-            clearTimeout(searchDebounceTimer);
-            if (val.trim().length === 0) {
-                closeDropdown();
-            } else {
-                openDropdown();
-                const remaining = SEARCH_MIN_CHARS - val.trim().length;
-                showSearchState("✏️", `Введите ещё ${remaining} симв${remaining === 1 ? "ол" : "ола"}`);
-            }
+        clearTimeout(searchDebounceTimer);
+
+        if (val.trim().length === 0) {
+            closeDropdown();
             return;
         }
 
+        // Всегда открываем дропдаун и сразу показываем спиннер
         openDropdown();
-        showSearchState("⏳", "Подождите...");
+        showSearchLoading();
 
-        clearTimeout(searchDebounceTimer);
+        if (val.trim().length < SEARCH_MIN_CHARS) {
+            // Меньше 3 символов — спиннер крутится, запрос не делаем
+            return;
+        }
+
+        // 3+ символов — дебаунс, потом запрос
         searchDebounceTimer = setTimeout(() => performSearch(val), SEARCH_DEBOUNCE_MS);
     });
 
@@ -1409,7 +1410,13 @@ if (navSearchInput) {
     });
 
     navSearchInput.addEventListener("focus", (e) => {
-        if (e.target.value.trim().length >= SEARCH_MIN_CHARS) openDropdown();
+        if (e.target.value.trim().length > 0) {
+            openDropdown();
+            showSearchLoading();
+            if (e.target.value.trim().length >= SEARCH_MIN_CHARS) {
+                searchDebounceTimer = setTimeout(() => performSearch(e.target.value), SEARCH_DEBOUNCE_MS);
+            }
+        }
     });
 
     navSearchInput.addEventListener("keydown", (e) => {
