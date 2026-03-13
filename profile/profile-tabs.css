@@ -1,13 +1,13 @@
 /* ======== ВКЛАДКИ ПРОФИЛЯ (profile-tabs.js) ======== */
 
-/* Таб-бар */
+/* Таб-бар — отдельная карточка */
 .profile-tabs-bar {
   position: relative;
   display: flex;
   align-items: center;
-  border-bottom: 1px solid var(--border);
   background: var(--bg-card);
-  border-radius: 12px 12px 0 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
   overflow: hidden;
 }
 
