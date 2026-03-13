@@ -1,5 +1,13 @@
 /* ======== ВКЛАДКИ ПРОФИЛЯ (profile-tabs.js) ======== */
 
+/* Правая колонка — контейнер таб-бара и панелей */
+.right-column {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
 /* Таб-бар — отдельная карточка */
 .profile-tabs-bar {
   position: relative;
