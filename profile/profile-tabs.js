@@ -10,19 +10,17 @@ class ProfileTabs {
         this.wallSection = document.querySelector('.wall-section');
         if (!this.wallSection) return;
 
-        // Текущая активная вкладка
         this.activeTab = 'posts';
-
-        // Порог свайпа в пикселях
         this.SWIPE_THRESHOLD = 60;
 
-        // Состояние свайпа
         this.swipe = {
             startX: 0,
             startY: 0,
             active: false,
             isDragging: false
         };
+
+        this._lastSwipeX = undefined;
 
         this.init();
     }
@@ -38,7 +36,14 @@ class ProfileTabs {
     // ========================
 
     buildTabBar() {
-        // Таб-бар вставляем как отдельную карточку ПЕРЕД .wall-section
+        // Оборачиваем .wall-section в .right-column,
+        // чтобы таб-бар и панели были в одной колонке грида
+        this.rightColumn = document.createElement('div');
+        this.rightColumn.className = 'right-column';
+        this.wallSection.parentNode.insertBefore(this.rightColumn, this.wallSection);
+        this.rightColumn.appendChild(this.wallSection);
+
+        // Таб-бар — отдельная карточка над .wall-section
         this.tabBar = document.createElement('div');
         this.tabBar.className = 'profile-tabs-bar';
         this.tabBar.innerHTML = `
@@ -47,7 +52,7 @@ class ProfileTabs {
             <div class="profile-tabs-indicator"></div>
         `;
 
-        this.wallSection.parentNode.insertBefore(this.tabBar, this.wallSection);
+        this.rightColumn.insertBefore(this.tabBar, this.wallSection);
 
         this.indicator = this.tabBar.querySelector('.profile-tabs-indicator');
 
@@ -67,23 +72,20 @@ class ProfileTabs {
     }
 
     buildPanels() {
-        // Обёртка для анимируемых панелей
+        // Viewport — обрезает панели при анимации
         this.viewport = document.createElement('div');
         this.viewport.className = 'profile-tabs-viewport';
 
-        // Панель «Записи» — переносим в неё всё что было в .wall-section
-        // (кроме самого таб-бара, который уже вставлен)
+        // Панель «Записи» — переносим в неё всё содержимое .wall-section
         this.postsPanel = document.createElement('div');
         this.postsPanel.className = 'profile-tab-panel active';
         this.postsPanel.dataset.panel = 'posts';
 
-        // Переносим оригинальное содержимое (.wall-header, .post-composer, .posts-list, sentinel)
-        const children = Array.from(this.wallSection.children).filter(
-            el => !el.classList.contains('profile-tabs-bar')
-        );
-        children.forEach(el => this.postsPanel.appendChild(el));
+        Array.from(this.wallSection.children).forEach(el => {
+            this.postsPanel.appendChild(el);
+        });
 
-        // Панель «Вопросы» — пока пустая заглушка
+        // Панель «Вопросы» — заглушка
         this.questionsPanel = document.createElement('div');
         this.questionsPanel.className = 'profile-tab-panel';
         this.questionsPanel.dataset.panel = 'questions';
@@ -114,18 +116,16 @@ class ProfileTabs {
             btn.classList.toggle('active', btn.dataset.tab === tab);
         });
 
-        // Позиционируем входящую панель за кадром
         const enterFrom = direction === 'left' ? '100%' : '-100%';
         const leaveTo   = direction === 'left' ? '-100%' : '100%';
 
-        entering.style.transform = `translateX(${enterFrom})`;
+        entering.style.transform  = `translateX(${enterFrom})`;
         entering.style.transition = 'none';
         entering.classList.add('active');
 
-        // Форсируем reflow чтобы transition сработал
+        // Форсируем reflow
         entering.getBoundingClientRect();
 
-        // Запускаем анимацию
         const duration = '280ms';
         const easing   = 'cubic-bezier(0.25, 0.46, 0.45, 0.94)';
 
@@ -137,8 +137,8 @@ class ProfileTabs {
 
         leaving.addEventListener('transitionend', () => {
             leaving.classList.remove('active');
-            leaving.style.transform  = '';
-            leaving.style.transition = '';
+            leaving.style.transform   = '';
+            leaving.style.transition  = '';
             entering.style.transition = '';
         }, { once: true });
 
@@ -172,87 +172,12 @@ class ProfileTabs {
 
     bindSwipe() {
         const el = this.wallSection;
-
-        // Touch
-        el.addEventListener('touchstart', e => this.onSwipeStart(e.touches[0].clientX, e.touches[0].clientY), { passive: true });
-        el.addEventListener('touchmove',  e => this.onSwipeMove(e.touches[0].clientX, e.touches[0].clientY),  { passive: true });
-        el.addEventListener('touchend',   () => this.onSwipeEnd());
-
-        // Mouse (зажатая кнопка)
-        el.addEventListener('mousedown', e => {
-            // Только левая кнопка, не по интерактивным элементам
-            if (e.button !== 0) return;
-            if (e.target.closest('button, input, textarea, a, .post-delete, label')) return;
-            this.onSwipeStart(e.clientX, e.clientY);
-        });
-
-        window.addEventListener('mousemove', e => {
-            if (!this.swipe.active) return;
-            this.onSwipeMove(e.clientX, e.clientY);
-        });
-
-        window.addEventListener('mouseup', () => {
-            if (!this.swipe.active) return;
-            this.onSwipeEnd();
-        });
-    }
-
-    onSwipeStart(x, y) {
-        this.swipe.startX    = x;
-        this.swipe.startY    = y;
-        this.swipe.active    = true;
-        this.swipe.isDragging = false;
-    }
-
-    onSwipeMove(x, y) {
-        if (!this.swipe.active) return;
-        const dx = x - this.swipe.startX;
-        const dy = y - this.swipe.startY;
-
-        // Если вертикальный скролл — не перехватываем
-        if (!this.swipe.isDragging && Math.abs(dy) > Math.abs(dx)) {
-            this.swipe.active = false;
-            return;
-        }
-
-        if (Math.abs(dx) > 8) {
-            this.swipe.isDragging = true;
-        }
-    }
-
-    onSwipeEnd() {
-        if (!this.swipe.active || !this.swipe.isDragging) {
-            this.swipe.active = false;
-            this.swipe.isDragging = false;
-            return;
-        }
-
-        const dx = (window.lastMouseX ?? this.swipe.startX) - this.swipe.startX;
-
-        // Для touch используем финальное значение, для mouse — уже есть
-        const finalDx = this._lastSwipeX !== undefined
-            ? this._lastSwipeX - this.swipe.startX
-            : dx;
-
-        this.swipe.active    = false;
-        this.swipe.isDragging = false;
-        this._lastSwipeX = undefined;
-
-        if (finalDx < -this.SWIPE_THRESHOLD && this.activeTab === 'posts') {
-            this.switchTab('questions', 'left');
-        } else if (finalDx > this.SWIPE_THRESHOLD && this.activeTab === 'questions') {
-            this.switchTab('posts', 'right');
-        }
-    }
-
-    bindSwipe() {
-        const el = this.wallSection;
         let lastX = 0;
 
         // Touch
         el.addEventListener('touchstart', e => {
-            this.onSwipeStart(e.touches[0].clientX, e.touches[0].clientY);
             lastX = e.touches[0].clientX;
+            this.onSwipeStart(e.touches[0].clientX, e.touches[0].clientY);
         }, { passive: true });
 
         el.addEventListener('touchmove', e => {
@@ -284,6 +209,51 @@ class ProfileTabs {
             this._lastSwipeX = lastX;
             this.onSwipeEnd();
         });
+    }
+
+    onSwipeStart(x, y) {
+        this.swipe.startX     = x;
+        this.swipe.startY     = y;
+        this.swipe.active     = true;
+        this.swipe.isDragging = false;
+    }
+
+    onSwipeMove(x, y) {
+        if (!this.swipe.active) return;
+        const dx = x - this.swipe.startX;
+        const dy = y - this.swipe.startY;
+
+        // Вертикальный скролл — не перехватываем
+        if (!this.swipe.isDragging && Math.abs(dy) > Math.abs(dx)) {
+            this.swipe.active = false;
+            return;
+        }
+
+        if (Math.abs(dx) > 8) {
+            this.swipe.isDragging = true;
+        }
+    }
+
+    onSwipeEnd() {
+        if (!this.swipe.active || !this.swipe.isDragging) {
+            this.swipe.active     = false;
+            this.swipe.isDragging = false;
+            return;
+        }
+
+        const finalDx = this._lastSwipeX !== undefined
+            ? this._lastSwipeX - this.swipe.startX
+            : 0;
+
+        this.swipe.active     = false;
+        this.swipe.isDragging = false;
+        this._lastSwipeX      = undefined;
+
+        if (finalDx < -this.SWIPE_THRESHOLD && this.activeTab === 'posts') {
+            this.switchTab('questions', 'left');
+        } else if (finalDx > this.SWIPE_THRESHOLD && this.activeTab === 'questions') {
+            this.switchTab('posts', 'right');
+        }
     }
 }
 
