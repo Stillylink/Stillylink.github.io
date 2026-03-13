@@ -38,9 +38,7 @@ class ProfileTabs {
     // ========================
 
     buildTabBar() {
-        // Таб-бар вставляем ПЕРЕД wall-header
-        const wallHeader = this.wallSection.querySelector('.wall-header');
-
+        // Таб-бар вставляем как отдельную карточку ПЕРЕД .wall-section
         this.tabBar = document.createElement('div');
         this.tabBar.className = 'profile-tabs-bar';
         this.tabBar.innerHTML = `
@@ -49,7 +47,7 @@ class ProfileTabs {
             <div class="profile-tabs-indicator"></div>
         `;
 
-        this.wallSection.insertBefore(this.tabBar, wallHeader);
+        this.wallSection.parentNode.insertBefore(this.tabBar, this.wallSection);
 
         this.indicator = this.tabBar.querySelector('.profile-tabs-indicator');
 
