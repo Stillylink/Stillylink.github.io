@@ -785,19 +785,24 @@ function renderProfile(userData, ownerUID) {
         avatarLetterProfile.textContent = userData.name.charAt(0).toUpperCase();
     }
 
-    if (userData.createdAt) {
-        try {
-            const date = userData.createdAt.toDate
-                ? userData.createdAt.toDate()
-                : new Date(userData.createdAt);
-            memberSince.textContent = date.toLocaleDateString("ru-RU", {
-                year: "numeric",
-                month: "long"
-            });
-        } catch (e) {
-            memberSince.textContent = "—";
+if (userData.createdAt) {
+    try {
+        let date;
+        if (typeof userData.createdAt.toDate === 'function') {
+            date = userData.createdAt.toDate();
+        } else if (userData.createdAt.seconds) {
+            date = new Date(userData.createdAt.seconds * 1000);
+        } else {
+            date = new Date(userData.createdAt);
         }
-    } else if (isOwnProfile && currentUser?.metadata?.creationTime) {
+        memberSince.textContent = date.toLocaleDateString("ru-RU", {
+            year: "numeric",
+            month: "long"
+        });
+    } catch (e) {
+        memberSince.textContent = "—";
+    }
+} else if (isOwnProfile && currentUser?.metadata?.creationTime) {
         const date = new Date(currentUser.metadata.creationTime);
         memberSince.textContent = date.toLocaleDateString("ru-RU", {
             year: "numeric",
