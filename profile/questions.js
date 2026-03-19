@@ -45,14 +45,6 @@ function formatTime(ts) {
 // ГЛАВНЫЙ КЛАСС
 // ========================
 export class QuestionsModule {
-    /**
-     * @param {HTMLElement}  container       — .profile-tab-panel[data-panel="questions"]
-     * @param {string}       profileOwnerUID — UID хозяина профиля
-     * @param {boolean}      isOwner         — смотрит ли владелец
-     * @param {object|null}  currentUser     — firebase User или null
-     * @param {object|null}  currentUserData — данные профиля текущего пользователя
-     * @param {object}       db              — Firestore instance из profile.js
-     */
     constructor(container, profileOwnerUID, isOwner, currentUser, currentUserData, db) {
         this.container       = container;
         this.profileOwnerUID = profileOwnerUID;
@@ -69,9 +61,6 @@ export class QuestionsModule {
         this.render();
     }
 
-    // ========================
-    // РЕНДЕР
-    // ========================
     render() {
         this.container.innerHTML = '';
         if (this.isOwner) {
@@ -86,42 +75,28 @@ export class QuestionsModule {
     // ========================
     _renderOwnerView() {
         this.container.innerHTML = `
-            <div class="q-owner-tabs">
-                <button class="q-owner-tab active" data-tab="pending">Новые</button>
-                <button class="q-owner-tab" data-tab="answered">Ответы</button>
-                <div class="q-owner-tabs-indicator"></div>
+            <div class="q-filter-bar">
+                <button class="q-filter-pill active" data-tab="pending">Новые</button>
+                <button class="q-filter-pill" data-tab="answered">Ответы</button>
             </div>
             <div class="q-list" id="qList"></div>
         `;
 
-        this._indicator = this.container.querySelector('.q-owner-tabs-indicator');
-        this._qList     = this.container.querySelector('#qList');
+        this._qList = this.container.querySelector('#qList');
 
-        this.container.querySelectorAll('.q-owner-tab').forEach(btn => {
+        this.container.querySelectorAll('.q-filter-pill').forEach(btn => {
             btn.addEventListener('click', () => {
                 const tab = btn.dataset.tab;
                 if (tab === this.ownerTab) return;
                 this.ownerTab = tab;
-                this.container.querySelectorAll('.q-owner-tab').forEach(b =>
+                this.container.querySelectorAll('.q-filter-pill').forEach(b =>
                     b.classList.toggle('active', b.dataset.tab === tab)
                 );
-                this._updateOwnerIndicator();
                 this._loadOwnerList();
             });
         });
 
-        this._updateOwnerIndicator(false);
         this._loadOwnerList();
-    }
-
-    _updateOwnerIndicator(animate = true) {
-        const activeBtn = this.container.querySelector(`.q-owner-tab[data-tab="${this.ownerTab}"]`);
-        if (!activeBtn || !this._indicator) return;
-        this._indicator.style.transition = animate
-            ? 'left 250ms cubic-bezier(0.25,0.46,0.45,0.94), width 250ms cubic-bezier(0.25,0.46,0.45,0.94)'
-            : 'none';
-        this._indicator.style.left  = `${activeBtn.offsetLeft}px`;
-        this._indicator.style.width = `${activeBtn.offsetWidth}px`;
     }
 
     _loadOwnerList() {
@@ -363,7 +338,6 @@ export class QuestionsModule {
         sendBtn.textContent = 'Проверка...';
 
         try {
-            // Лимит: считаем ВСЕ вопросы от этого пользователя за всё время
             const limitQ = query(
                 collection(this.db, 'questions'),
                 where('toUserId',   '==', this.profileOwnerUID),
@@ -406,9 +380,6 @@ export class QuestionsModule {
         }
     }
 
-    // ========================
-    // УНИЧТОЖЕНИЕ
-    // ========================
     destroy() {
         if (this._unsubPending)  this._unsubPending();
         if (this._unsubAnswered) this._unsubAnswered();
