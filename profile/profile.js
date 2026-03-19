@@ -208,13 +208,14 @@ function initQuestionsModule() {
         questionsModule = null;
     }
 
-    questionsModule = new QuestionsModule(
-        questionsPanel,
-        profileOwnerUID,
-        isOwnProfile,
-        currentUser,
-        currentUserData
-    );
+questionsModule = new QuestionsModule(
+    questionsPanel,
+    profileOwnerUID,
+    isOwnProfile,
+    currentUser,
+    currentUserData,
+    db
+);
 }
 
 // ========================
