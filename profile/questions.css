@@ -296,3 +296,40 @@
 
 /* ---- Список ---- */
 .q-list {}
+
+/* ---- Фильтр-пилюли (стиль YouTube) ---- */
+.q-filter-bar {
+  display: flex;
+  gap: 8px;
+  padding: 14px 16px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  border-bottom: 1px solid var(--border);
+}
+
+.q-filter-bar::-webkit-scrollbar { display: none; }
+
+.q-filter-pill {
+  flex-shrink: 0;
+  padding: 7px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.6);
+  transition: background 0.18s, color 0.18s;
+  white-space: nowrap;
+  font-family: inherit;
+}
+
+.q-filter-pill:hover {
+  background: rgba(255, 255, 255, 0.14);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.q-filter-pill.active {
+  background: #fff;
+  color: #000;
+}
