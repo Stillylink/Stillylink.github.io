@@ -39,6 +39,8 @@ import {
     deleteObject
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-storage.js";
 
+import { QuestionsModule } from "./questions.js";
+
 const firebaseConfig = {
     apiKey: "AIzaSyBWlR4QWdnbqXLKKaftEAzhXneTmV9xXX0",
     authDomain: "stillylink-f1d0f.firebaseapp.com",
@@ -122,6 +124,9 @@ let unsubscribeProfile = null;
 let unsubscribePosts = null;
 const postsPageListeners = [];
 
+// Модуль вопросов
+let questionsModule = null;
+
 // ========================
 // ЧИТАЕМ ?u= ИЗ URL
 // ========================
@@ -185,6 +190,31 @@ function hideDeleteButtons() {
     document.querySelectorAll(".post-delete").forEach(btn => {
         btn.classList.add("hidden");
     });
+}
+
+// ========================
+// ИНИЦИАЛИЗАЦИЯ МОДУЛЯ ВОПРОСОВ
+// ========================
+function initQuestionsModule() {
+    const questionsPanel = document.querySelector('.profile-tab-panel[data-panel="questions"]');
+    if (!questionsPanel) {
+        // profile-tabs.js ещё не успел создать панель — ждём
+        setTimeout(initQuestionsModule, 100);
+        return;
+    }
+
+    if (questionsModule) {
+        questionsModule.destroy();
+        questionsModule = null;
+    }
+
+    questionsModule = new QuestionsModule(
+        questionsPanel,
+        profileOwnerUID,
+        isOwnProfile,
+        currentUser,
+        currentUserData
+    );
 }
 
 // ========================
@@ -494,6 +524,7 @@ function subscribeToProfileOwner(ownerUID) {
             if (!observer) {
                 initScrollListener();
                 loadUserPosts();
+                initQuestionsModule();
             }
         },
         (error) => {
@@ -694,6 +725,7 @@ function subscribeToOwnProfile(user) {
             if (!observer) {
                 initScrollListener();
                 loadUserPosts();
+                initQuestionsModule();
             }
         },
         (error) => {
@@ -785,24 +817,26 @@ function renderProfile(userData, ownerUID) {
         avatarLetterProfile.textContent = userData.name.charAt(0).toUpperCase();
     }
 
-if (userData.createdAt) {
-    try {
-        let date;
-        if (typeof userData.createdAt.toDate === 'function') {
-            date = userData.createdAt.toDate();
-        } else if (userData.createdAt.seconds) {
-            date = new Date(userData.createdAt.seconds * 1000);
-        } else {
-            date = new Date(userData.createdAt);
+    if (userData.createdAt) {
+        try {
+            let date;
+            if (typeof userData.createdAt.toDate === 'function') {
+                // Firestore Timestamp (живые данные)
+                date = userData.createdAt.toDate();
+            } else if (userData.createdAt.seconds) {
+                // JSON из localStorage: { seconds: ..., nanoseconds: ... }
+                date = new Date(userData.createdAt.seconds * 1000);
+            } else {
+                date = new Date(userData.createdAt);
+            }
+            memberSince.textContent = date.toLocaleDateString("ru-RU", {
+                year: "numeric",
+                month: "long"
+            });
+        } catch (e) {
+            memberSince.textContent = "—";
         }
-        memberSince.textContent = date.toLocaleDateString("ru-RU", {
-            year: "numeric",
-            month: "long"
-        });
-    } catch (e) {
-        memberSince.textContent = "—";
-    }
-} else if (isOwnProfile && currentUser?.metadata?.creationTime) {
+    } else if (isOwnProfile && currentUser?.metadata?.creationTime) {
         const date = new Date(currentUser.metadata.creationTime);
         memberSince.textContent = date.toLocaleDateString("ru-RU", {
             year: "numeric",
@@ -1107,6 +1141,7 @@ function cleanupAllListeners() {
     if (unsubscribePosts) { unsubscribePosts(); unsubscribePosts = null; }
     postsPageListeners.forEach(unsub => unsub());
     postsPageListeners.length = 0;
+    if (questionsModule) { questionsModule.destroy(); questionsModule = null; }
     console.log("🧹 Все слушатели отключены");
 }
 
@@ -1153,8 +1188,8 @@ function addPostToUI(postId, post, toTop = false) {
                 const diffHours = Math.floor(diffMs / 3600000);
                 const diffDays  = Math.floor(diffMs / 86400000);
 
-                if (diffMs < 0)        timeStr = "Только что";
-                else if (diffMins < 1) timeStr = "Только что";
+                if (diffMs < 0)         timeStr = "Только что";
+                else if (diffMins < 1)  timeStr = "Только что";
                 else if (diffMins < 60) timeStr = `${diffMins} ${pluralize(diffMins, 'минуту', 'минуты', 'минут')} назад`;
                 else if (diffHours < 24) timeStr = `${diffHours} ${pluralize(diffHours, 'час', 'часа', 'часов')} назад`;
                 else if (diffDays < 7)  timeStr = `${diffDays} ${pluralize(diffDays, 'день', 'дня', 'дней')} назад`;
@@ -1265,7 +1300,6 @@ function escapeHtml(text) {
 // ========================
 // ПОИСК ПОЛЬЗОВАТЕЛЕЙ
 // ========================
-
 const navSearchInput    = document.getElementById("navSearchInput");
 const navSearchClear    = document.getElementById("navSearchClear");
 const navSearchDropdown = document.getElementById("navSearchDropdown");
@@ -1394,19 +1428,16 @@ if (navSearchInput) {
             return;
         }
 
-        // Всегда открываем дропдаун и показываем спиннер
         openDropdown();
         showSearchLoading();
 
         if (val.trim().length < SEARCH_MIN_CHARS) {
-            // Меньше 3 символов — спиннер на 600мс, потом пусто
             searchDebounceTimer = setTimeout(() => {
                 navSearchResults.innerHTML = "";
             }, 600);
             return;
         }
 
-        // 3+ символов — дебаунс, потом запрос
         searchDebounceTimer = setTimeout(() => performSearch(val), SEARCH_DEBOUNCE_MS);
     });
 
