@@ -1,6 +1,4 @@
-
 import {
-    getFirestore,
     collection,
     addDoc,
     query,
@@ -15,16 +13,9 @@ import {
     limit,
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
 
-import {
-    getAuth,
-} from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
-
-import { getApps } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
-
-
-const app  = getApps()[0];
-const db   = getFirestore(app);
-
+// ========================
+// УТИЛИТЫ
+// ========================
 function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = String(text || '');
@@ -50,17 +41,27 @@ function formatTime(ts) {
     } catch { return ''; }
 }
 
-
+// ========================
+// ГЛАВНЫЙ КЛАСС
+// ========================
 export class QuestionsModule {
-
-    constructor(container, profileOwnerUID, isOwner, currentUser, currentUserData) {
+    /**
+     * @param {HTMLElement}  container       — .profile-tab-panel[data-panel="questions"]
+     * @param {string}       profileOwnerUID — UID хозяина профиля
+     * @param {boolean}      isOwner         — смотрит ли владелец
+     * @param {object|null}  currentUser     — firebase User или null
+     * @param {object|null}  currentUserData — данные профиля текущего пользователя
+     * @param {object}       db              — Firestore instance из profile.js
+     */
+    constructor(container, profileOwnerUID, isOwner, currentUser, currentUserData, db) {
         this.container       = container;
         this.profileOwnerUID = profileOwnerUID;
         this.isOwner         = isOwner;
         this.currentUser     = currentUser;
         this.currentUserData = currentUserData;
+        this.db              = db;
 
-        this.ownerTab = 'pending'; // 'pending' | 'answered'
+        this.ownerTab = 'pending';
 
         this._unsubPending  = null;
         this._unsubAnswered = null;
@@ -68,7 +69,9 @@ export class QuestionsModule {
         this.render();
     }
 
-
+    // ========================
+    // РЕНДЕР
+    // ========================
     render() {
         this.container.innerHTML = '';
         if (this.isOwner) {
@@ -78,6 +81,9 @@ export class QuestionsModule {
         }
     }
 
+    // ========================
+    // ВИД ВЛАДЕЛЬЦА
+    // ========================
     _renderOwnerView() {
         this.container.innerHTML = `
             <div class="q-owner-tabs">
@@ -127,7 +133,7 @@ export class QuestionsModule {
         const status = this.ownerTab;
 
         const q = query(
-            collection(db, 'questions'),
+            collection(this.db, 'questions'),
             where('toUserId', '==', this.profileOwnerUID),
             where('status',   '==', status),
             orderBy('timestamp', 'desc')
@@ -146,9 +152,7 @@ export class QuestionsModule {
             }
 
             snap.forEach(docSnap => {
-                this._qList.appendChild(
-                    this._buildOwnerCard(docSnap.id, docSnap.data())
-                );
+                this._qList.appendChild(this._buildOwnerCard(docSnap.id, docSnap.data()));
             });
         }, err => {
             console.error('Ошибка загрузки вопросов:', err);
@@ -210,18 +214,15 @@ export class QuestionsModule {
                     card.querySelector('.q-card-actions')?.classList.add('hidden');
                     card.querySelector('textarea')?.focus();
                 }
-
                 if (action === 'cancel') {
                     card.querySelector(`#replyArea_${qid}`)?.classList.add('hidden');
                     card.querySelector('.q-card-actions')?.classList.remove('hidden');
                 }
-
                 if (action === 'send') {
                     const text = card.querySelector('textarea')?.value?.trim();
                     if (!text) return;
                     this._sendAnswer(qid, text, btn);
                 }
-
                 if (action === 'delete') {
                     this._deleteQuestion(qid);
                 }
@@ -235,10 +236,10 @@ export class QuestionsModule {
         btn.disabled    = true;
         btn.textContent = 'Отправка...';
         try {
-            await updateDoc(doc(db, 'questions', qid), {
-                answer:      answerText,
-                status:      'answered',
-                answeredAt:  serverTimestamp(),
+            await updateDoc(doc(this.db, 'questions', qid), {
+                answer:     answerText,
+                status:     'answered',
+                answeredAt: serverTimestamp(),
             });
         } catch (e) {
             console.error('Ошибка отправки ответа:', e);
@@ -251,14 +252,16 @@ export class QuestionsModule {
     async _deleteQuestion(qid) {
         if (!confirm('Удалить вопрос?')) return;
         try {
-            await deleteDoc(doc(db, 'questions', qid));
+            await deleteDoc(doc(this.db, 'questions', qid));
         } catch (e) {
             console.error('Ошибка удаления:', e);
             alert('Не удалось удалить вопрос');
         }
     }
 
-
+    // ========================
+    // ВИД ГОСТЯ
+    // ========================
     _renderGuestView() {
         const canAsk = !!this.currentUser;
 
@@ -297,7 +300,7 @@ export class QuestionsModule {
         this._qList.innerHTML = `<div class="q-loading"><div class="spinner"></div></div>`;
 
         const q = query(
-            collection(db, 'questions'),
+            collection(this.db, 'questions'),
             where('toUserId', '==', this.profileOwnerUID),
             where('status',   '==', 'answered'),
             orderBy('timestamp', 'desc')
@@ -316,9 +319,7 @@ export class QuestionsModule {
             }
 
             snap.forEach(docSnap => {
-                this._qList.appendChild(
-                    this._buildGuestCard(docSnap.id, docSnap.data())
-                );
+                this._qList.appendChild(this._buildGuestCard(docSnap.id, docSnap.data()));
             });
         }, err => {
             console.error('Ошибка загрузки ответов:', err);
@@ -362,9 +363,9 @@ export class QuestionsModule {
         sendBtn.textContent = 'Проверка...';
 
         try {
-            // Лимит: считаем ВСЕ вопросы от этого пользователя (любой статус)
+            // Лимит: считаем ВСЕ вопросы от этого пользователя за всё время
             const limitQ = query(
-                collection(db, 'questions'),
+                collection(this.db, 'questions'),
                 where('toUserId',   '==', this.profileOwnerUID),
                 where('fromUserId', '==', this.currentUser.uid),
                 limit(6)
@@ -380,7 +381,7 @@ export class QuestionsModule {
 
             const isAnon = anonChk?.checked ?? false;
 
-            await addDoc(collection(db, 'questions'), {
+            await addDoc(collection(this.db, 'questions'), {
                 toUserId:       this.profileOwnerUID,
                 fromUserId:     this.currentUser.uid,
                 fromUserName:   isAnon ? null : (this.currentUserData?.usernameID || null),
