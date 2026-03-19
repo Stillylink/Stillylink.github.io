@@ -1,0 +1,298 @@
+/* ======== МОДУЛЬ ВОПРОСОВ (questions.js) ======== */
+
+/* ---- Под-вкладки владельца ---- */
+.q-owner-tabs {
+  position: relative;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-card);
+}
+
+.q-owner-tab {
+  flex: 1;
+  padding: 13px 0;
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  cursor: pointer;
+  transition: color 0.2s;
+  user-select: none;
+}
+
+.q-owner-tab:hover  { color: rgba(255, 255, 255, 0.7); }
+.q-owner-tab.active { color: var(--accent); }
+
+.q-owner-tabs-indicator {
+  position: absolute;
+  bottom: 0;
+  height: 2px;
+  background: var(--accent);
+  border-radius: 2px 2px 0 0;
+  pointer-events: none;
+  transition: left 250ms cubic-bezier(0.25,0.46,0.45,0.94),
+              width 250ms cubic-bezier(0.25,0.46,0.45,0.94);
+}
+
+/* ---- Форма гостя ---- */
+.q-form {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(180deg, #0f1112, #0d0d0d);
+}
+
+.q-form-input {
+  width: 100%;
+  min-height: 80px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: #0b0b0b;
+  color: var(--text-main);
+  font-size: 15px;
+  resize: none;
+  outline: none;
+  font-family: inherit;
+  margin-bottom: 10px;
+  box-sizing: border-box;
+  transition: border-color 0.2s;
+}
+
+.q-form-input:focus { border-color: var(--accent); }
+
+.q-form-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.q-anon-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text-secondary);
+  user-select: none;
+}
+
+.q-anon-check {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+/* Уведомление о входе */
+.q-auth-notice {
+  padding: 14px 20px;
+  font-size: 14px;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(180deg, #0f1112, #0d0d0d);
+}
+
+.q-auth-notice a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.q-auth-notice a:hover { text-decoration: underline; }
+
+/* ---- Карточка вопроса ---- */
+.q-card {
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.15s;
+}
+
+.q-card:last-child  { border-bottom: none; }
+.q-card:hover { background: rgba(255,255,255,0.02); }
+
+.q-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.q-author-anon {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.4);
+  font-style: italic;
+}
+
+.q-author-link {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.q-author-link:hover { text-decoration: underline; }
+
+.q-time {
+  font-size: 12px;
+  color: rgba(255,255,255,0.3);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.q-text {
+  font-size: 15px;
+  color: var(--text-main);
+  line-height: 1.6;
+  word-break: break-word;
+  margin-bottom: 10px;
+}
+
+/* ---- Блок ответа ---- */
+.q-answer-block {
+  background: rgba(255,255,255,0.03);
+  border-left: 2px solid var(--accent);
+  border-radius: 0 8px 8px 0;
+  padding: 10px 14px;
+  margin-top: 4px;
+}
+
+.q-answer-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.q-answer-text {
+  font-size: 14px;
+  color: rgba(255,255,255,0.85);
+  line-height: 1.6;
+  word-break: break-word;
+}
+
+/* ---- Кнопки карточки ---- */
+.q-card-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.q-btn {
+  padding: 7px 14px;
+  border-radius: 7px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  transition: all 0.18s;
+  font-family: inherit;
+}
+
+.q-btn-reply {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+}
+
+.q-btn-reply:hover {
+  background: rgba(255,255,255,0.05);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.q-btn-delete {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+}
+
+.q-btn-delete:hover {
+  background: rgba(255,59,48,0.08);
+  border-color: #ff3b30;
+  color: #ff3b30;
+}
+
+.q-btn-send {
+  background: var(--accent);
+  color: #000;
+  font-weight: 600;
+  padding: 8px 18px;
+}
+
+.q-btn-send:hover   { filter: brightness(1.1); }
+.q-btn-send:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.q-btn-cancel {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+}
+
+.q-btn-cancel:hover {
+  background: rgba(255,255,255,0.05);
+  color: var(--text-main);
+}
+
+/* ---- Форма ответа (владелец) ---- */
+.q-reply-area {
+  margin-top: 10px;
+}
+
+.q-reply-input {
+  width: 100%;
+  min-height: 72px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: #0b0b0b;
+  color: var(--text-main);
+  font-size: 14px;
+  resize: none;
+  outline: none;
+  font-family: inherit;
+  margin-bottom: 8px;
+  box-sizing: border-box;
+  transition: border-color 0.2s;
+}
+
+.q-reply-input:focus { border-color: var(--accent); }
+
+.q-reply-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+/* ---- Состояния списка ---- */
+.q-empty {
+  padding: 50px 20px;
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+.q-empty-icon {
+  font-size: 40px;
+  margin-bottom: 10px;
+  opacity: 0.5;
+}
+
+.q-empty-text {
+  font-size: 15px;
+  opacity: 0.6;
+}
+
+.q-loading {
+  display: flex;
+  justify-content: center;
+  padding: 40px;
+}
+
+/* ---- Список ---- */
+.q-list {}
