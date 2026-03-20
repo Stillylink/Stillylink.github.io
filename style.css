@@ -594,20 +594,20 @@ body {
         justify-content: space-between;
     }
 
-    .nav-toggle {
-        order: 1;
-        display: block;
-        margin-left: auto;
-    }
-
     .mobile-search-btn {
-        order: 2;
-        margin-left: 0;
+    order: 1;
+    margin-left: 0;
+    }
+    
+    .nav-toggle {
+    order: 2;
+    display: block;
+    margin-left: auto;
     }
 
-    .user-avatar {
-        order: 3;
-        margin-left: 10px;
+   .user-avatar {
+    order: 3;
+    margin-left: 10px;
     }
 
     .user-menu {
