@@ -600,8 +600,13 @@ body {
         margin-left: auto;
     }
 
-    .user-avatar {
+    .mobile-search-btn {
         order: 2;
+        margin-left: 0;
+    }
+
+    .user-avatar {
+        order: 3;
         margin-left: 10px;
     }
 
@@ -614,7 +619,6 @@ body {
         display: none;
     }
 
-    /* Поиск скрываем на мобиле — он есть в десктопном навбаре */
     .nav-search {
         display: none;
     }
