@@ -53,7 +53,7 @@ export class QuestionsModule {
         this.currentUserData = currentUserData;
         this.db              = db;
 
-        this.ownerTab = 'pending';
+        this.ownerTab = 'answered'; // по умолчанию открываются ответы
 
         this._unsubPending  = null;
         this._unsubAnswered = null;
@@ -76,8 +76,8 @@ export class QuestionsModule {
     _renderOwnerView() {
         this.container.innerHTML = `
             <div class="q-filter-bar">
-                <button class="q-filter-pill active" data-tab="pending">Новые</button>
-                <button class="q-filter-pill" data-tab="answered">Ответы</button>
+                <button class="q-filter-pill active" data-tab="answered">Ответы</button>
+                <button class="q-filter-pill" data-tab="pending">Новые</button>
             </div>
             <div class="q-list" id="qList"></div>
         `;
