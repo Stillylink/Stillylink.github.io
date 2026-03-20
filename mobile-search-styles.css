@@ -9,7 +9,7 @@
     background: transparent;
     border: none;
     cursor: pointer;
-    color: rgba(255, 255, 255, 0.6);
+    color: var(--accent);
     border-radius: 8px;
     flex-shrink: 0;
     transition: color 0.2s;
