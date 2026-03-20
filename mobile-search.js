@@ -1,10 +1,12 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const navbar       = document.querySelector('.navbar');
-    const logo         = document.querySelector('.logo');
-    const navToggle    = document.querySelector('.nav-toggle');
-    const userAvatar   = document.querySelector('.user-avatar');
-    const navSearch    = document.getElementById('navSearch');
-    const searchInput  = document.getElementById('navSearchInput');
+    const navbar      = document.querySelector('.navbar');
+    const logo        = document.querySelector('.logo');
+    const navToggle   = document.querySelector('.nav-toggle');
+    const userAvatar  = document.querySelector('.user-avatar');
+    const navSearch   = document.getElementById('navSearch');
+    const searchInput = document.getElementById('navSearchInput');
+
+    if (!navbar || !navSearch || !searchInput) return;
 
     const mobileSearchBtn = document.createElement('button');
     mobileSearchBtn.className = 'mobile-search-btn';
@@ -25,14 +27,17 @@ document.addEventListener('DOMContentLoaded', () => {
         </svg>
     `;
 
-    navbar.insertBefore(mobileSearchBtn, navToggle);
+    navToggle.after(mobileSearchBtn);
+
     navbar.insertBefore(mobileSearchBack, navSearch);
 
     function openMobileSearch() {
         logo.classList.add('mobile-hidden');
         navToggle.classList.add('mobile-hidden');
-        userAvatar.classList.add('mobile-hidden');
         mobileSearchBtn.classList.add('mobile-hidden');
+        if (!userAvatar.classList.contains('hidden')) {
+            userAvatar.classList.add('mobile-hidden');
+        }
 
         mobileSearchBack.classList.remove('hidden');
         navSearch.classList.add('mobile-search-active');
@@ -43,10 +48,10 @@ document.addEventListener('DOMContentLoaded', () => {
     function closeMobileSearch() {
         logo.classList.remove('mobile-hidden');
         navToggle.classList.remove('mobile-hidden');
+        mobileSearchBtn.classList.remove('mobile-hidden');
         if (!userAvatar.dataset.authHidden) {
             userAvatar.classList.remove('mobile-hidden');
         }
-        mobileSearchBtn.classList.remove('mobile-hidden');
 
         mobileSearchBack.classList.add('hidden');
         navSearch.classList.remove('mobile-search-active');
