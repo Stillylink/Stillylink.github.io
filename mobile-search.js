@@ -27,7 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
         </svg>
     `;
 
-    navToggle.after(mobileSearchBtn);
+    userAvatar.before(mobileSearchBtn);
 
     navbar.insertBefore(mobileSearchBack, navSearch);
 
