@@ -596,13 +596,13 @@ body {
 
     .mobile-search-btn {
     order: 1;
-    margin-left: 0;
+    margin-left: auto;
     }
     
     .nav-toggle {
     order: 2;
     display: block;
-    margin-left: auto;
+    margin-left: 0;
     }
 
    .user-avatar {
