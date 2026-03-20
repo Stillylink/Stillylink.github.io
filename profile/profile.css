@@ -1029,7 +1029,7 @@ body.profile-page .site-wrapper {
 @media (max-width: 1024px) {
   .content-grid {
     grid-template-columns: 1fr;
-    gap: 20px;
+    gap: 24px;
   }
 
   .sidebar-sticky-wrapper {
@@ -1079,6 +1079,8 @@ body.profile-page .site-wrapper {
 
   .profile-username-id {
     font-size: 14px;
+    text-align: center;
+    width: 100%;
   }
 
   .profile-social-links {
