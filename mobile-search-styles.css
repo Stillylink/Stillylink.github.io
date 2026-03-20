@@ -1,4 +1,5 @@
 /* ======== МОБИЛЬНЫЙ ПОИСК ======== */
+
 .mobile-search-btn {
     display: none;
     align-items: center;
@@ -12,7 +13,6 @@
     border-radius: 8px;
     flex-shrink: 0;
     transition: color 0.2s;
-    order: 0;
 }
 
 .mobile-search-btn:hover { color: var(--accent); }
@@ -49,7 +49,6 @@
 @media (max-width: 768px) {
     .mobile-search-btn {
         display: flex;
-        margin-left: 0;
     }
 
     .mobile-search-back {
@@ -80,5 +79,9 @@
         left: -52px;
         right: -20px;
         width: auto;
+    }
+
+    .nav-search-field {
+        font-size: 16px;
     }
 }
