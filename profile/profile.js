@@ -198,7 +198,6 @@ function hideDeleteButtons() {
 function initQuestionsModule() {
     const questionsPanel = document.querySelector('.profile-tab-panel[data-panel="questions"]');
     if (!questionsPanel) {
-        // profile-tabs.js ещё не успел создать панель — ждём
         setTimeout(initQuestionsModule, 100);
         return;
     }
@@ -208,14 +207,14 @@ function initQuestionsModule() {
         questionsModule = null;
     }
 
-questionsModule = new QuestionsModule(
-    questionsPanel,
-    profileOwnerUID,
-    isOwnProfile,
-    currentUser,
-    currentUserData,
-    db
-);
+    questionsModule = new QuestionsModule(
+        questionsPanel,
+        profileOwnerUID,
+        isOwnProfile,
+        currentUser,
+        currentUserData,
+        db
+    );
 }
 
 // ========================
@@ -479,15 +478,11 @@ async function resolveProfileOwner(usernameID) {
                 return ownerUID;
             }
         }
-    } catch (e) {
-        // Кэша нет — идём в сеть
-    }
+    } catch (e) {}
 
     try {
         const usernameSnap = await getDoc(usernameDocRef);
-        if (!usernameSnap.exists()) {
-            return null;
-        }
+        if (!usernameSnap.exists()) return null;
         const ownerUID = usernameSnap.data().ownerUID || null;
         if (ownerUID) usernameOwnerCache[usernameID] = ownerUID;
         console.log("🌐 ownerUID загружен из сети");
@@ -822,10 +817,8 @@ function renderProfile(userData, ownerUID) {
         try {
             let date;
             if (typeof userData.createdAt.toDate === 'function') {
-                // Firestore Timestamp (живые данные)
                 date = userData.createdAt.toDate();
             } else if (userData.createdAt.seconds) {
-                // JSON из localStorage: { seconds: ..., nanoseconds: ... }
                 date = new Date(userData.createdAt.seconds * 1000);
             } else {
                 date = new Date(userData.createdAt);
@@ -1032,8 +1025,6 @@ function loadUserPosts(isNextPage = false) {
         postsQuery,
         { includeMetadataChanges: false },
         (snapshot) => {
-            console.log(`📄 Посты: docs=${snapshot.size}, isNextPage=${isNextPage}`);
-
             if (!isNextPage) {
                 syncPostsFromSnapshot(snapshot);
             } else {
@@ -1127,13 +1118,11 @@ function initScrollListener() {
 
     observer = new IntersectionObserver((entries) => {
         if (entries[0].isIntersecting && !isFetching && hasMore) {
-            console.log("🎯 Маячок сработал! Подгружаем посты...");
             loadUserPosts(true);
         }
     }, { rootMargin: '400px' });
 
     observer.observe(sentinel);
-    console.log("✅ Intersection Observer активирован");
 }
 
 function cleanupAllListeners() {
@@ -1143,7 +1132,6 @@ function cleanupAllListeners() {
     postsPageListeners.forEach(unsub => unsub());
     postsPageListeners.length = 0;
     if (questionsModule) { questionsModule.destroy(); questionsModule = null; }
-    console.log("🧹 Все слушатели отключены");
 }
 
 window.addEventListener('beforeunload', cleanupAllListeners);
@@ -1189,11 +1177,11 @@ function addPostToUI(postId, post, toTop = false) {
                 const diffHours = Math.floor(diffMs / 3600000);
                 const diffDays  = Math.floor(diffMs / 86400000);
 
-                if (diffMs < 0)         timeStr = "Только что";
-                else if (diffMins < 1)  timeStr = "Только что";
-                else if (diffMins < 60) timeStr = `${diffMins} ${pluralize(diffMins, 'минуту', 'минуты', 'минут')} назад`;
+                if (diffMs < 0)          timeStr = "Только что";
+                else if (diffMins < 1)   timeStr = "Только что";
+                else if (diffMins < 60)  timeStr = `${diffMins} ${pluralize(diffMins, 'минуту', 'минуты', 'минут')} назад`;
                 else if (diffHours < 24) timeStr = `${diffHours} ${pluralize(diffHours, 'час', 'часа', 'часов')} назад`;
-                else if (diffDays < 7)  timeStr = `${diffDays} ${pluralize(diffDays, 'день', 'дня', 'дней')} назад`;
+                else if (diffDays < 7)   timeStr = `${diffDays} ${pluralize(diffDays, 'день', 'дня', 'дней')} назад`;
                 else timeStr = date.toLocaleDateString("ru-RU", {
                     day: 'numeric',
                     month: 'long',
@@ -1255,8 +1243,6 @@ function addPostToUI(postId, post, toTop = false) {
                 localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(currentUserData));
 
                 if (postsCount) postsCount.textContent = currentUserData.postsCount.toString();
-
-                console.log("✅ Запись удалена!");
             } catch (error) {
                 console.error("Ошибка удаления записи:", error);
                 alert("Не удалось удалить запись");
@@ -1296,178 +1282,4 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML.replace(/\n/g, '<br>');
-}
-
-// ========================
-// ПОИСК ПОЛЬЗОВАТЕЛЕЙ
-// ========================
-const navSearchInput    = document.getElementById("navSearchInput");
-const navSearchClear    = document.getElementById("navSearchClear");
-const navSearchDropdown = document.getElementById("navSearchDropdown");
-const navSearchResults  = document.getElementById("navSearchResults");
-
-let searchDebounceTimer = null;
-const SEARCH_DEBOUNCE_MS = 1500;
-const SEARCH_MIN_CHARS   = 3;
-const SEARCH_LIMIT       = 5;
-
-function showSearchState(icon, text) {
-    navSearchResults.innerHTML = `
-        <div class="nav-search-state">
-            <div class="nav-search-state-icon">${icon}</div>
-            <span>${text}</span>
-        </div>
-    `;
-}
-
-function showSearchLoading() {
-    navSearchResults.innerHTML = `
-        <div class="nav-search-state">
-            <div class="nav-search-spinner"></div>
-            <span>Поиск...</span>
-        </div>
-    `;
-}
-
-function highlightMatch(text, q) {
-    if (!q || !text) return escapeSearch(text);
-    const lower = text.toLowerCase();
-    const ql    = q.toLowerCase();
-    if (lower.startsWith(ql)) {
-        return `<mark>${escapeSearch(text.slice(0, ql.length))}</mark>${escapeSearch(text.slice(ql.length))}`;
-    }
-    return escapeSearch(text);
-}
-
-function escapeSearch(str) {
-    if (!str) return "";
-    return String(str)
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;");
-}
-
-function renderSearchResults(users, input) {
-    if (users.length === 0) {
-        showSearchState("🔍", "Пользователи не найдены");
-        return;
-    }
-
-    navSearchResults.innerHTML = users.map(user => {
-        const name   = user.name || "Пользователь";
-        const uid    = user.usernameID || "";
-        const letter = name.charAt(0).toUpperCase();
-
-        const avatarHtml = user.avatarUrl
-            ? `<img src="${escapeSearch(user.avatarUrl)}" alt="${escapeSearch(name)}" loading="lazy">`
-            : letter;
-
-        return `
-            <a href="/profile/?u=${encodeURIComponent(uid)}" class="nav-search-result">
-                <div class="nav-search-result-avatar">${avatarHtml}</div>
-                <div class="nav-search-result-info">
-                    <div class="nav-search-result-name">${escapeSearch(name)}</div>
-                    <div class="nav-search-result-id">@${highlightMatch(uid, input)}</div>
-                </div>
-                <div class="nav-search-result-arrow">
-                    <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M6 3L11 8L6 13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                </div>
-            </a>
-        `;
-    }).join("");
-}
-
-async function performSearch(rawInput) {
-    const input = rawInput.trim().toLowerCase();
-    if (input.length < SEARCH_MIN_CHARS) return;
-
-    showSearchLoading();
-
-    try {
-        const usersRef = collection(db, "users");
-        const q = query(
-            usersRef,
-            where("usernameID", ">=", input),
-            where("usernameID", "<=", input + "\uf8ff"),
-            limit(SEARCH_LIMIT)
-        );
-
-        const snapshot = await getDocs(q);
-        const users = [];
-        snapshot.forEach(docSnap => users.push({ id: docSnap.id, ...docSnap.data() }));
-
-        renderSearchResults(users, input);
-        console.log(`🔍 Поиск "${input}": ${users.length} результатов`);
-    } catch (error) {
-        console.error("Ошибка поиска:", error);
-        showSearchState("⚠️", "Ошибка поиска. Попробуйте снова");
-    }
-}
-
-function openDropdown() {
-    navSearchDropdown.classList.remove("hidden");
-}
-
-function closeDropdown() {
-    navSearchDropdown.classList.add("hidden");
-    clearTimeout(searchDebounceTimer);
-}
-
-if (navSearchInput) {
-    navSearchInput.addEventListener("input", (e) => {
-        const val = e.target.value;
-
-        navSearchClear.classList.toggle("hidden", val.length === 0);
-
-        clearTimeout(searchDebounceTimer);
-
-        if (val.trim().length === 0) {
-            closeDropdown();
-            return;
-        }
-
-        openDropdown();
-        showSearchLoading();
-
-        if (val.trim().length < SEARCH_MIN_CHARS) {
-            searchDebounceTimer = setTimeout(() => {
-                navSearchResults.innerHTML = "";
-            }, 600);
-            return;
-        }
-
-        searchDebounceTimer = setTimeout(() => performSearch(val), SEARCH_DEBOUNCE_MS);
-    });
-
-    navSearchClear.addEventListener("click", () => {
-        navSearchInput.value = "";
-        navSearchClear.classList.add("hidden");
-        closeDropdown();
-        navSearchInput.focus();
-    });
-
-    navSearchInput.addEventListener("focus", (e) => {
-        if (e.target.value.trim().length > 0) {
-            openDropdown();
-            showSearchLoading();
-            if (e.target.value.trim().length >= SEARCH_MIN_CHARS) {
-                searchDebounceTimer = setTimeout(() => performSearch(e.target.value), SEARCH_DEBOUNCE_MS);
-            }
-        }
-    });
-
-    navSearchInput.addEventListener("keydown", (e) => {
-        if (e.key === "Escape") {
-            closeDropdown();
-            navSearchInput.blur();
-        }
-    });
-
-    document.addEventListener("click", (e) => {
-        const navSearch = document.getElementById("navSearch");
-        if (navSearch && !navSearch.contains(e.target)) closeDropdown();
-    });
 }
