@@ -56,7 +56,7 @@ navSearch.style.display = 'none';
 onAuthStateChanged(auth, (user) => {
     if (user) {
         // Авторизован — показываем поиск
-        navSearch.style.display = '';
+        navSearch.style.display = 'flex';
         initSearch();
     } else {
         // Гость — скрываем поиск
