@@ -1,14 +1,5 @@
-/**
- * Поиск пользователей — универсальный модуль для всех страниц
- * - Показывается только авторизованным пользователям
- * - Подключать как type="module"
- */
 
 import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
-import {
-    getAuth,
-    onAuthStateChanged,
-} from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
 import {
     getFirestore,
     collection,
@@ -18,9 +9,6 @@ import {
     limit,
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
 
-// ========================
-// FIREBASE
-// ========================
 const firebaseConfig = {
     apiKey: "AIzaSyBWlR4QWdnbqXLKKaftEAzhXneTmV9xXX0",
     authDomain: "stillylink-f1d0f.firebaseapp.com",
@@ -31,54 +19,24 @@ const firebaseConfig = {
 };
 
 const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db   = getFirestore(app);
+const db  = getFirestore(app);
 
-// ========================
-// DOM
-// ========================
-const navSearch         = document.getElementById("navSearch");
 const navSearchInput    = document.getElementById("navSearchInput");
 const navSearchClear    = document.getElementById("navSearchClear");
 const navSearchDropdown = document.getElementById("navSearchDropdown");
 const navSearchResults  = document.getElementById("navSearchResults");
 
-if (!navSearch || !navSearchInput) {
-    throw new Error("search.js: элементы поиска не найдены");
+if (!navSearchInput) {
+    // На этой странице нет поиска — выходим
+    throw new Error("search.js: navSearchInput не найден, поиск не инициализирован");
 }
 
-// Скрываем поиск по умолчанию — покажем только после проверки авторизации
-if (localStorage.getItem('userAvatarLetter')) {
-    navSearch.style.display = 'flex';
-}
-
-// ========================
-// АВТОРИЗАЦИЯ
-// ========================
-onAuthStateChanged(auth, (user) => {
-    if (user) {
-        // Авторизован — показываем поиск
-        navSearch.style.display = 'flex';
-        initSearch();
-    } else {
-        // Гость — скрываем поиск
-        navSearch.style.display = 'none';
-    }
-});
-
-// ========================
-// НАСТРОЙКИ
-// ========================
 const SEARCH_DEBOUNCE_MS = 1500;
 const SEARCH_MIN_CHARS   = 3;
 const SEARCH_LIMIT       = 5;
 
 let searchDebounceTimer = null;
-let searchInitialized   = false;
 
-// ========================
-// УТИЛИТЫ
-// ========================
 function escapeSearch(str) {
     if (!str) return "";
     return String(str)
@@ -183,62 +141,55 @@ function closeDropdown() {
     clearTimeout(searchDebounceTimer);
 }
 
-// ========================
-// ИНИЦИАЛИЗАЦИЯ СОБЫТИЙ (один раз)
-// ========================
-function initSearch() {
-    if (searchInitialized) return;
-    searchInitialized = true;
+navSearchInput.addEventListener("input", (e) => {
+    const val = e.target.value;
 
-    navSearchInput.addEventListener("input", (e) => {
-        const val = e.target.value;
+    navSearchClear.classList.toggle("hidden", val.length === 0);
+    clearTimeout(searchDebounceTimer);
 
-        navSearchClear.classList.toggle("hidden", val.length === 0);
-        clearTimeout(searchDebounceTimer);
+    if (val.trim().length === 0) {
+        closeDropdown();
+        return;
+    }
 
-        if (val.trim().length === 0) {
-            closeDropdown();
-            return;
-        }
+    openDropdown();
+    showSearchLoading();
 
+    if (val.trim().length < SEARCH_MIN_CHARS) {
+        searchDebounceTimer = setTimeout(() => {
+            navSearchResults.innerHTML = "";
+        }, 600);
+        return;
+    }
+
+    searchDebounceTimer = setTimeout(() => performSearch(val), SEARCH_DEBOUNCE_MS);
+});
+
+navSearchClear.addEventListener("click", () => {
+    navSearchInput.value = "";
+    navSearchClear.classList.add("hidden");
+    closeDropdown();
+    navSearchInput.focus();
+});
+
+navSearchInput.addEventListener("focus", (e) => {
+    if (e.target.value.trim().length > 0) {
         openDropdown();
         showSearchLoading();
-
-        if (val.trim().length < SEARCH_MIN_CHARS) {
-            searchDebounceTimer = setTimeout(() => {
-                navSearchResults.innerHTML = "";
-            }, 600);
-            return;
+        if (e.target.value.trim().length >= SEARCH_MIN_CHARS) {
+            searchDebounceTimer = setTimeout(() => performSearch(e.target.value), SEARCH_DEBOUNCE_MS);
         }
+    }
+});
 
-        searchDebounceTimer = setTimeout(() => performSearch(val), SEARCH_DEBOUNCE_MS);
-    });
-
-    navSearchClear.addEventListener("click", () => {
-        navSearchInput.value = "";
-        navSearchClear.classList.add("hidden");
+navSearchInput.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
         closeDropdown();
-        navSearchInput.focus();
-    });
+        navSearchInput.blur();
+    }
+});
 
-    navSearchInput.addEventListener("focus", (e) => {
-        if (e.target.value.trim().length > 0) {
-            openDropdown();
-            showSearchLoading();
-            if (e.target.value.trim().length >= SEARCH_MIN_CHARS) {
-                searchDebounceTimer = setTimeout(() => performSearch(e.target.value), SEARCH_DEBOUNCE_MS);
-            }
-        }
-    });
-
-    navSearchInput.addEventListener("keydown", (e) => {
-        if (e.key === "Escape") {
-            closeDropdown();
-            navSearchInput.blur();
-        }
-    });
-
-    document.addEventListener("click", (e) => {
-        if (!navSearch.contains(e.target)) closeDropdown();
-    });
-}
+document.addEventListener("click", (e) => {
+    const navSearch = document.getElementById("navSearch");
+    if (navSearch && !navSearch.contains(e.target)) closeDropdown();
+});
