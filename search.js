@@ -48,7 +48,9 @@ if (!navSearch || !navSearchInput) {
 }
 
 // Скрываем поиск по умолчанию — покажем только после проверки авторизации
-navSearch.style.display = 'none';
+if (localStorage.getItem('userAvatarLetter')) {
+    navSearch.style.display = 'flex';
+}
 
 // ========================
 // АВТОРИЗАЦИЯ
