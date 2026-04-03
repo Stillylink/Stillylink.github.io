@@ -98,7 +98,7 @@ const youtubeEmpty = document.getElementById("youtubeEmpty");
 const youtubeIframe = document.getElementById("youtubeIframe");
 const addVideoBtn = document.getElementById("addVideoBtn");
 
-const statusText = document.querySelector(".status-text");
+const statusText = document.getElementById("statusText");
 const infoContent = document.getElementById("infoContent");
 
 // ========================
@@ -126,6 +126,63 @@ const postsPageListeners = [];
 
 // Модуль вопросов
 let questionsModule = null;
+
+// ========================
+// SKELETON REMOVAL
+// ========================
+const skeleton = {
+    profileCard() {
+        const card = document.getElementById('profileCard');
+        if (!card || !card.classList.contains('is-loading')) return;
+        card.classList.remove('is-loading');
+
+        document.getElementById('skeletonAvatar')?.remove();
+        document.getElementById('skeletonProfileInfo')?.remove();
+
+        document.getElementById('profileAvatar')?.classList.remove('hidden');
+        document.getElementById('avatarUploadLabel')?.classList.remove('hidden');
+        document.getElementById('realProfileNameSection')?.classList.remove('hidden');
+        document.getElementById('profileUsernameID')?.classList.remove('hidden');
+        document.getElementById('profileBio')?.classList.remove('hidden');
+        document.getElementById('profileMeta')?.classList.remove('hidden');
+    },
+
+    statusCard() {
+        const card = document.getElementById('statusCard');
+        if (!card || !card.classList.contains('is-loading')) return;
+        card.classList.remove('is-loading');
+        document.getElementById('skeletonStatus')?.remove();
+    },
+
+    infoCard() {
+        const card = document.getElementById('infoCard');
+        if (!card || !card.classList.contains('is-loading')) return;
+        card.classList.remove('is-loading');
+        document.getElementById('skeletonInfo')?.remove();
+    },
+
+    youtubeBlock() {
+        const block = document.getElementById('youtubeBlock');
+        if (!block || !block.classList.contains('is-loading')) return;
+        block.classList.remove('is-loading');
+        document.getElementById('skeletonVideo')?.remove();
+    },
+
+    postsList() {
+        const list = document.getElementById('postsList');
+        if (!list || !list.classList.contains('is-loading')) return;
+        list.classList.remove('is-loading');
+        list.querySelectorAll('.skeleton-post').forEach(el => el.remove());
+    },
+
+    all() {
+        this.profileCard();
+        this.statusCard();
+        this.infoCard();
+        this.youtubeBlock();
+        this.postsList();
+    }
+};
 
 // ========================
 // ЧИТАЕМ ?u= ИЗ URL
@@ -311,6 +368,7 @@ function renderInfo(infoData) {
 
     if (!hasAnyInfo) {
         infoContent.innerHTML = '<div class="info-empty">Информация отсутствует</div>';
+        skeleton.infoCard();
         return;
     }
 
@@ -369,6 +427,7 @@ function renderInfo(infoData) {
     }
 
     infoContent.innerHTML = html;
+    skeleton.infoCard();
 }
 
 // ========================
@@ -385,6 +444,8 @@ function renderStatus(status) {
         statusText.innerHTML = `<div class="status-content" style="white-space: pre-wrap; word-break: break-word;"></div>`;
         statusText.querySelector('.status-content').textContent = status;
     }
+
+    skeleton.statusCard();
 }
 
 // ========================
@@ -403,6 +464,9 @@ function extractVideoId(url) {
 }
 
 function loadYoutubeVideo(videoId) {
+    // Убираем скелетон в любом случае
+    skeleton.youtubeBlock();
+
     if (!videoId) {
         youtubeIframe.src = "";
         youtubeCard.classList.add('hidden');
@@ -502,6 +566,7 @@ function subscribeToProfileOwner(ownerUID) {
         (snap) => {
             if (!snap.exists()) {
                 showProfileNotFound();
+                skeleton.all(); // убираем скелетоны даже если профиль не найден
                 return;
             }
 
@@ -511,11 +576,11 @@ function subscribeToProfileOwner(ownerUID) {
 
             profileOwnerData = data;
 
-            renderProfile(profileOwnerData, ownerUID);
+            renderProfile(profileOwnerData, ownerUID);   // → skeleton.profileCard() внутри
             renderSocialLinks(profileOwnerData.socialLinks);
-            renderStatus(profileOwnerData.status || "");
-            renderInfo(profileOwnerData.info);
-            loadYoutubeVideo(profileOwnerData.youtubeVideoId);
+            renderStatus(profileOwnerData.status || "");  // → skeleton.statusCard() внутри
+            renderInfo(profileOwnerData.info);             // → skeleton.infoCard() внутри
+            loadYoutubeVideo(profileOwnerData.youtubeVideoId); // → skeleton.youtubeBlock() внутри
 
             if (!observer) {
                 initScrollListener();
@@ -525,6 +590,7 @@ function subscribeToProfileOwner(ownerUID) {
         },
         (error) => {
             console.error("Ошибка слушателя чужого профиля:", error);
+            skeleton.all();
         }
     );
 }
@@ -595,11 +661,11 @@ onAuthStateChanged(auth, async (user) => {
     if (cachedProfile) {
         try {
             currentUserData = JSON.parse(cachedProfile);
-            renderProfile(currentUserData, user.uid);
+            renderProfile(currentUserData, user.uid);          // → skeleton.profileCard()
             renderSocialLinks(currentUserData.socialLinks || []);
-            renderStatus(currentUserData.status || "");
-            renderInfo(currentUserData.info || {});
-            loadYoutubeVideo(currentUserData.youtubeVideoId);
+            renderStatus(currentUserData.status || "");        // → skeleton.statusCard()
+            renderInfo(currentUserData.info || {});            // → skeleton.infoCard()
+            loadYoutubeVideo(currentUserData.youtubeVideoId);  // → skeleton.youtubeBlock()
             console.log("⚡ Профиль отрисован из localStorage-кэша");
         } catch (e) {
             console.error("Ошибка парсинга кэша:", e);
@@ -704,18 +770,21 @@ function subscribeToOwnProfile(user) {
                 console.log(fromCache ? "♻️ Профиль из Firestore-кэша" : "🔄 Профиль обновлён с сервера");
                 currentUserData = freshData;
                 localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(currentUserData));
-                renderProfile(currentUserData, user.uid);
+                renderProfile(currentUserData, user.uid);          // → skeleton.profileCard()
                 renderSocialLinks(currentUserData.socialLinks || []);
-                renderStatus(currentUserData.status || "");
-                renderInfo(currentUserData.info || {});
-                loadYoutubeVideo(currentUserData.youtubeVideoId);
+                renderStatus(currentUserData.status || "");        // → skeleton.statusCard()
+                renderInfo(currentUserData.info || {});            // → skeleton.infoCard()
+                loadYoutubeVideo(currentUserData.youtubeVideoId);  // → skeleton.youtubeBlock()
             } else {
                 console.log(fromCache ? "✅ Профиль актуален (кэш)" : "✅ Профиль актуален (сервер подтвердил)");
                 currentUserData = freshData;
+                // Данные совпали с кэшем — скелетоны уже убраны выше, но на случай
+                // если кэша не было (первый вход), убираем принудительно
+                skeleton.all();
             }
 
             const letter = currentUserData.name.charAt(0).toUpperCase();
-            avatarLetter.textContent = letter;
+            avatarLetterProfile.textContent = letter;
             localStorage.setItem("userAvatarLetter", letter);
 
             if (!observer) {
@@ -726,6 +795,7 @@ function subscribeToOwnProfile(user) {
         },
         (error) => {
             console.error("Ошибка слушателя профиля:", error);
+            skeleton.all(); // убираем скелетоны даже при ошибке
         }
     );
 }
@@ -739,6 +809,7 @@ async function handleURLProfile(user) {
     if (!ownerUID) {
         showProfileNotFound();
         applyOwnerUI(false);
+        skeleton.all();
         return;
     }
 
@@ -841,6 +912,9 @@ function renderProfile(userData, ownerUID) {
     if (postsCount) {
         postsCount.textContent = (userData.postsCount || 0).toString();
     }
+
+    // Снимаем скелетон карточки профиля
+    skeleton.profileCard();
 }
 
 // ========================
@@ -1011,6 +1085,8 @@ function loadUserPosts(isNextPage = false) {
             limit(POSTS_PER_PAGE)
         );
     } else {
+        // Первая загрузка — убираем skeleton-посты
+        skeleton.postsList();
         postsList.innerHTML = "";
         lastVisible = null;
         hasMore = true;
@@ -1054,6 +1130,7 @@ function loadUserPosts(isNextPage = false) {
             console.error("Ошибка слушателя постов:", error);
             isFetching = false;
             hideLoadingIndicator();
+            skeleton.postsList(); // убираем скелетоны даже при ошибке
         }
     );
 
