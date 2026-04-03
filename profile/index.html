@@ -7,6 +7,7 @@
 
   <link rel="stylesheet" href="/style.css">
   <link rel="stylesheet" href="profile.css">
+  <link rel="stylesheet" href="skeleton.css">
   <link rel="stylesheet" href="profile-tabs.css">
   <link rel="stylesheet" href="questions.css">
   <link rel="stylesheet" href="/mobile-search-styles.css">
@@ -17,34 +18,31 @@
     <header class="navbar">
       <div class="logo">StillyLink</div>
 
+      <div class="nav-search" id="navSearch">
+        <div class="nav-search-input-wrap">
+          <svg class="nav-search-icon" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="8.5" cy="8.5" r="5.5" stroke="currentColor" stroke-width="1.6"/>
+            <path d="M13 13L17 17" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+          </svg>
+          <input
+            type="text"
+            id="navSearchInput"
+            class="nav-search-field"
+            placeholder="Найти пользователя..."
+            autocomplete="off"
+            spellcheck="false"
+          />
+          <button class="nav-search-clear hidden" id="navSearchClear" aria-label="Очистить">
+            <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M4 4L12 12M12 4L4 12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+            </svg>
+          </button>
+        </div>
+        <div class="nav-search-dropdown hidden" id="navSearchDropdown">
+          <div class="nav-search-results" id="navSearchResults"></div>
+        </div>
+      </div>
 
-<div class="nav-search" id="navSearch">
-  <div class="nav-search-input-wrap">
-    <svg class="nav-search-icon" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="8.5" cy="8.5" r="5.5" stroke="currentColor" stroke-width="1.6"/>
-      <path d="M13 13L17 17" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
-    </svg>
-    <input
-      type="text"
-      id="navSearchInput"
-      class="nav-search-field"
-      placeholder="Найти пользователя..."
-      autocomplete="off"
-      spellcheck="false"
-    />
-    <button class="nav-search-clear hidden" id="navSearchClear" aria-label="Очистить">
-      <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M4 4L12 12M12 4L4 12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
-      </svg>
-    </button>
-  </div>
-
-  <div class="nav-search-dropdown hidden" id="navSearchDropdown">
-    <div class="nav-search-results" id="navSearchResults"></div>
-  </div>
-</div>
-
-      
       <nav class="nav-links">
         <a href="/">Главная</a>
         <a href="/anonymous/">Анонимное общение</a>
@@ -59,75 +57,124 @@
         <a href="/anonymous/replies/">Мои ответы</a>
         <a href="#" id="logoutBtn">Выйти</a>
       </div>
-      
+
       <div class="nav-toggle" onclick="toggleMenu()">☰</div>
     </header>
 
     <main class="profile-container">
-
-      <!-- Центральная часть -->
       <div class="profile-main">
-        <!-- Карточка профиля -->
-        <div class="profile-card">
+
+        <div class="profile-card is-loading" id="profileCard">
           <div class="profile-header">
+
+            <!-- Аватар -->
             <div class="avatar-section">
-              <div class="profile-avatar" id="profileAvatar">
+              <!-- skeleton аватар -->
+              <span class="skeleton skeleton-avatar" id="skeletonAvatar"></span>
+
+              <!-- реальный аватар (скрыт пока is-loading) -->
+              <div class="profile-avatar hidden" id="profileAvatar">
                 <span id="avatarLetter">U</span>
               </div>
-              <label for="avatarUpload" class="avatar-upload-btn" title="Изменить аватар">
+
+              <label for="avatarUpload" class="avatar-upload-btn hidden" id="avatarUploadLabel" title="Изменить аватар">
                 <input type="file" id="avatarUpload" accept="image/*" class="hidden">
                 📷
               </label>
             </div>
-            
+
+            <!-- Информация профиля -->
             <div class="profile-info">
-              <div class="profile-name-section">
+
+              <!-- ── SKELETON INFO ── -->
+              <div class="skeleton-profile-info" id="skeletonProfileInfo">
+                <div class="skeleton-name-row">
+                  <span class="skeleton skeleton-name"></span>
+                  <span class="skeleton skeleton-btn"></span>
+                </div>
+                <span class="skeleton skeleton-username"></span>
+                <span class="skeleton skeleton-bio"></span>
+                <span class="skeleton skeleton-bio"></span>
+                <span class="skeleton skeleton-meta"></span>
+              </div>
+
+              <!-- ── РЕАЛЬНЫЙ КОНТЕНТ (скрыт до загрузки) ── -->
+              <div class="profile-name-section hidden" id="realProfileNameSection">
                 <h1 class="profile-name" id="profileName">Пользователь</h1>
                 <button class="edit-profile-btn" id="editProfileBtn">
                   Редактировать профиль
                 </button>
               </div>
-              
-              <!-- ID профиля -->
-              <div class="profile-username-id" id="profileUsernameID">
-                @username_id
-              </div>
-              
-              <div class="profile-bio" id="profileBio"></div>
-              
-              <div class="profile-meta">
+
+              <div class="profile-username-id hidden" id="profileUsernameID">@username_id</div>
+
+              <div class="profile-bio hidden" id="profileBio"></div>
+
+              <div class="profile-meta hidden" id="profileMeta">
                 Регистрация: <span id="memberSince">—</span>
               </div>
 
-              <!-- Иконки социальных сетей -->
               <div class="profile-social-links hidden" id="profileSocialLinks"></div>
             </div>
+
           </div>
         </div>
 
-        <!-- Сетка: YouTube слева, Записи справа -->
         <div class="content-grid">
-          <!-- ЛЕВАЯ КОЛОНКА -->
+
           <div class="left-column">
-            
-            <!-- Статус / цитата -->
-            <div class="sidebar-card status-card">
+
+            <!-- СТАТУС -->
+            <div class="sidebar-card status-card is-loading" id="statusCard">
               <div class="sidebar-title">Статус</div>
-              <div class="status-text"></div>
+
+              <!-- skeleton -->
+              <div id="skeletonStatus">
+                <span class="skeleton skeleton-status-line"></span>
+                <span class="skeleton skeleton-status-line"></span>
+              </div>
+
+              <!-- реальный контент -->
+              <div class="status-text" id="statusText"></div>
             </div>
 
-            <!-- Информация -->
-            <div class="sidebar-card info-card">
+            <!-- ИНФОРМАЦИЯ -->
+            <div class="sidebar-card info-card is-loading" id="infoCard">
               <div class="sidebar-title">Информация</div>
+
+              <!-- skeleton -->
+              <div id="skeletonInfo">
+                <div class="skeleton-info-item">
+                  <span class="skeleton skeleton-info-label"></span>
+                  <span class="skeleton skeleton-info-value"></span>
+                </div>
+                <div class="skeleton-info-item">
+                  <span class="skeleton skeleton-info-label"></span>
+                  <span class="skeleton skeleton-info-value"></span>
+                  <span class="skeleton skeleton-info-value"></span>
+                </div>
+                <div class="skeleton-info-item">
+                  <span class="skeleton skeleton-info-label"></span>
+                  <span class="skeleton skeleton-info-value"></span>
+                </div>
+              </div>
+
+              <!-- реальный контент -->
               <div class="info-content" id="infoContent">
                 <div class="info-empty">Информация отсутствует</div>
               </div>
             </div>
 
-            <!-- YouTube -->
-            <div class="sidebar-card youtube-block">
+            <!-- YOUTUBE -->
+            <div class="sidebar-card youtube-block is-loading" id="youtubeBlock">
               <div class="sidebar-title">Любимое видео</div>
 
+              <!-- skeleton -->
+              <div class="skeleton-video" id="skeletonVideo">
+                <span class="skeleton"></span>
+              </div>
+
+              <!-- реальный контент -->
               <div class="youtube-card hidden" id="youtubeCard">
                 <div class="video-wrapper">
                   <iframe
@@ -141,25 +188,25 @@
                 </div>
               </div>
 
-              <div class="youtube-empty" id="youtubeEmpty">
+              <div class="youtube-empty hidden" id="youtubeEmpty">
                 <p>Видео не добавлено</p>
                 <button class="add-video-btn" id="addVideoBtn">➕ Добавить видео</button>
               </div>
             </div>
+
           </div>
 
-          <!-- ПРАВАЯ КОЛОНКА -->
+          <!-- ────────── ПРАВАЯ КОЛОНКА (СТЕНА) ────────── -->
           <div class="wall-section">
             <div class="wall-header">
               <h2>Мои записи</h2>
               <span class="posts-counter">Записей: <span id="postsCount">0</span></span>
             </div>
 
-            <!-- Форма добавления записи -->
             <div class="post-composer" id="postComposer">
-              <textarea 
-                id="postInput" 
-                class="post-input" 
+              <textarea
+                id="postInput"
+                class="post-input"
                 placeholder="Что у вас нового?"
                 rows="3"
               ></textarea>
@@ -170,15 +217,55 @@
               </div>
             </div>
 
-            <!-- Список записей -->
-            <div class="posts-list" id="postsList"></div>
-            <div id="scrollSentinel" style="height: 1px; margin: 0; padding: 0; opacity: 0; pointer-events: none;"></div>
+            <div class="posts-list is-loading" id="postsList">
+    
+              <div class="skeleton-post">
+                <div class="skeleton-post-header">
+                  <span class="skeleton skeleton-post-avatar"></span>
+                  <div class="skeleton-post-meta">
+                    <span class="skeleton skeleton-post-author"></span>
+                    <span class="skeleton skeleton-post-time"></span>
+                  </div>
+                </div>
+                <span class="skeleton skeleton-post-line"></span>
+                <span class="skeleton skeleton-post-line"></span>
+                <span class="skeleton skeleton-post-line"></span>
+              </div>
+
+              <div class="skeleton-post">
+                <div class="skeleton-post-header">
+                  <span class="skeleton skeleton-post-avatar"></span>
+                  <div class="skeleton-post-meta">
+                    <span class="skeleton skeleton-post-author"></span>
+                    <span class="skeleton skeleton-post-time"></span>
+                  </div>
+                </div>
+                <span class="skeleton skeleton-post-line"></span>
+                <span class="skeleton skeleton-post-line"></span>
+              </div>
+
+              <div class="skeleton-post">
+                <div class="skeleton-post-header">
+                  <span class="skeleton skeleton-post-avatar"></span>
+                  <div class="skeleton-post-meta">
+                    <span class="skeleton skeleton-post-author"></span>
+                    <span class="skeleton skeleton-post-time"></span>
+                  </div>
+                </div>
+                <span class="skeleton skeleton-post-line"></span>
+                <span class="skeleton skeleton-post-line"></span>
+                <span class="skeleton skeleton-post-line"></span>
+              </div>
+
+            </div>
+
+            <div id="scrollSentinel" style="height:1px;margin:0;padding:0;opacity:0;pointer-events:none;"></div>
           </div>
+
         </div>
       </div>
     </main>
 
-    <!-- Модальное окно просмотра фото -->
     <div id="photoModal" class="modal-overlay hidden">
       <div class="photo-modal-content">
         <button class="modal-close" id="closePhotoModal">×</button>
@@ -194,5 +281,7 @@
   <script type="module" src="profile.js"></script>
   <script type="module" src="/search.js"></script>
   <script src="/mobile-search.js"></script>
+
+
 </body>
 </html>
