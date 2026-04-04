@@ -6,6 +6,7 @@ import {
     orderBy,
     onSnapshot,
     doc,
+    getDoc,
     updateDoc,
     deleteDoc,
     getDocs,
@@ -338,6 +339,10 @@ export class QuestionsModule {
         sendBtn.textContent = 'Проверка...';
 
         try {
+            // Читаем свежие данные отправителя напрямую из Firestore
+            const senderSnap = await getDoc(doc(this.db, 'users', this.currentUser.uid));
+            const senderData = senderSnap.exists() ? senderSnap.data() : null;
+
             const limitQ = query(
                 collection(this.db, 'questions'),
                 where('toUserId',   '==', this.profileOwnerUID),
@@ -358,8 +363,8 @@ export class QuestionsModule {
             await addDoc(collection(this.db, 'questions'), {
                 toUserId:       this.profileOwnerUID,
                 fromUserId:     this.currentUser.uid,
-                fromUserName:   isAnon ? null : (this.currentUserData?.name || this.currentUserData?.usernameID || null),
-                fromUserNameId: isAnon ? null : (this.currentUserData?.usernameID || null),
+                fromUserName:   isAnon ? null : (senderData?.name || senderData?.usernameID || null),
+                fromUserNameId: isAnon ? null : (senderData?.usernameID || null),
                 text,
                 isAnonymous:    isAnon,
                 status:         'pending',
