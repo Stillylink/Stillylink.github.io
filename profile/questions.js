@@ -358,7 +358,7 @@ export class QuestionsModule {
             await addDoc(collection(this.db, 'questions'), {
                 toUserId:       this.profileOwnerUID,
                 fromUserId:     this.currentUser.uid,
-                fromUserName:   isAnon ? null : (this.currentUserData?.usernameID || null),
+                fromUserName:   isAnon ? null : (this.currentUserData?.name || this.currentUserData?.usernameID || null),
                 fromUserNameId: isAnon ? null : (this.currentUserData?.usernameID || null),
                 text,
                 isAnonymous:    isAnon,
