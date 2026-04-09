@@ -12,6 +12,7 @@ class ProfileTabs {
 
         this.activeTab = 'posts';
         this.SWIPE_THRESHOLD = 60;
+        this._questionsInited = false;
 
         this.swipe = {
             startX: 0,
@@ -36,14 +37,11 @@ class ProfileTabs {
     // ========================
 
     buildTabBar() {
-        // Оборачиваем .wall-section в .right-column,
-        // чтобы таб-бар и панели были в одной колонке грида
         this.rightColumn = document.createElement('div');
         this.rightColumn.className = 'right-column';
         this.wallSection.parentNode.insertBefore(this.rightColumn, this.wallSection);
         this.rightColumn.appendChild(this.wallSection);
 
-        // Таб-бар — отдельная карточка над .wall-section
         this.tabBar = document.createElement('div');
         this.tabBar.className = 'profile-tabs-bar';
         this.tabBar.innerHTML = `
@@ -56,7 +54,6 @@ class ProfileTabs {
 
         this.indicator = this.tabBar.querySelector('.profile-tabs-indicator');
 
-        // Клики по кнопкам
         this.tabBar.querySelectorAll('.profile-tab').forEach(btn => {
             btn.addEventListener('click', () => {
                 const tab = btn.dataset.tab;
@@ -67,16 +64,13 @@ class ProfileTabs {
             });
         });
 
-        // Начальное положение индикатора
         this.updateIndicator(false);
     }
 
     buildPanels() {
-        // Viewport — обрезает панели при анимации
         this.viewport = document.createElement('div');
         this.viewport.className = 'profile-tabs-viewport';
 
-        // Панель «Записи» — переносим в неё всё содержимое .wall-section
         this.postsPanel = document.createElement('div');
         this.postsPanel.className = 'profile-tab-panel active';
         this.postsPanel.dataset.panel = 'posts';
@@ -85,7 +79,6 @@ class ProfileTabs {
             this.postsPanel.appendChild(el);
         });
 
-        // Панель «Вопросы» — заглушка
         this.questionsPanel = document.createElement('div');
         this.questionsPanel.className = 'profile-tab-panel';
         this.questionsPanel.dataset.panel = 'questions';
@@ -108,10 +101,14 @@ class ProfileTabs {
     switchTab(tab, direction) {
         if (tab === this.activeTab) return;
 
+        if (tab === 'questions' && !this._questionsInited) {
+            this._questionsInited = true;
+            window.initQuestionsModuleExternal?.();
+        }
+
         const leaving  = this.getPanelByTab(this.activeTab);
         const entering = this.getPanelByTab(tab);
 
-        // Обновляем кнопки
         this.tabBar.querySelectorAll('.profile-tab').forEach(btn => {
             btn.classList.toggle('active', btn.dataset.tab === tab);
         });
@@ -123,7 +120,6 @@ class ProfileTabs {
         entering.style.transition = 'none';
         entering.classList.add('active');
 
-        // Форсируем reflow
         entering.getBoundingClientRect();
 
         const duration = '280ms';
@@ -174,7 +170,6 @@ class ProfileTabs {
         const el = this.wallSection;
         let lastX = 0;
 
-        // Touch
         el.addEventListener('touchstart', e => {
             lastX = e.touches[0].clientX;
             this.onSwipeStart(e.touches[0].clientX, e.touches[0].clientY);
@@ -190,7 +185,6 @@ class ProfileTabs {
             this.onSwipeEnd();
         });
 
-        // Mouse
         el.addEventListener('mousedown', e => {
             if (e.button !== 0) return;
             if (e.target.closest('button, input, textarea, a, .post-delete, label')) return;
@@ -223,7 +217,6 @@ class ProfileTabs {
         const dx = x - this.swipe.startX;
         const dy = y - this.swipe.startY;
 
-        // Вертикальный скролл — не перехватываем
         if (!this.swipe.isDragging && Math.abs(dy) > Math.abs(dx)) {
             this.swipe.active = false;
             return;
