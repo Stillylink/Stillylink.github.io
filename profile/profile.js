@@ -274,6 +274,9 @@ function initQuestionsModule() {
     );
 }
 
+// Экспортируем для вызова из tabs.js при первом открытии вкладки вопросов
+window.initQuestionsModuleExternal = initQuestionsModule;
+
 // ========================
 // КОНФИГ СОЦИАЛЬНЫХ СЕТЕЙ
 // ========================
@@ -464,7 +467,6 @@ function extractVideoId(url) {
 }
 
 function loadYoutubeVideo(videoId) {
-    // Убираем скелетон в любом случае
     skeleton.youtubeBlock();
 
     if (!videoId) {
@@ -562,11 +564,10 @@ function subscribeToProfileOwner(ownerUID) {
 
     unsubscribeProfile = onSnapshot(
         userDocRef,
-        { includeMetadataChanges: true },
         (snap) => {
             if (!snap.exists()) {
                 showProfileNotFound();
-                skeleton.all(); // убираем скелетоны даже если профиль не найден
+                skeleton.all();
                 return;
             }
 
@@ -576,16 +577,15 @@ function subscribeToProfileOwner(ownerUID) {
 
             profileOwnerData = data;
 
-            renderProfile(profileOwnerData, ownerUID);   // → skeleton.profileCard() внутри
+            renderProfile(profileOwnerData, ownerUID);
             renderSocialLinks(profileOwnerData.socialLinks);
-            renderStatus(profileOwnerData.status || "");  // → skeleton.statusCard() внутри
-            renderInfo(profileOwnerData.info);             // → skeleton.infoCard() внутри
-            loadYoutubeVideo(profileOwnerData.youtubeVideoId); // → skeleton.youtubeBlock() внутри
+            renderStatus(profileOwnerData.status || "");
+            renderInfo(profileOwnerData.info);
+            loadYoutubeVideo(profileOwnerData.youtubeVideoId);
 
             if (!observer) {
                 initScrollListener();
                 loadUserPosts();
-                initQuestionsModule();
             }
         },
         (error) => {
@@ -661,11 +661,11 @@ onAuthStateChanged(auth, async (user) => {
     if (cachedProfile) {
         try {
             currentUserData = JSON.parse(cachedProfile);
-            renderProfile(currentUserData, user.uid);          // → skeleton.profileCard()
+            renderProfile(currentUserData, user.uid);
             renderSocialLinks(currentUserData.socialLinks || []);
-            renderStatus(currentUserData.status || "");        // → skeleton.statusCard()
-            renderInfo(currentUserData.info || {});            // → skeleton.infoCard()
-            loadYoutubeVideo(currentUserData.youtubeVideoId);  // → skeleton.youtubeBlock()
+            renderStatus(currentUserData.status || "");
+            renderInfo(currentUserData.info || {});
+            loadYoutubeVideo(currentUserData.youtubeVideoId);
             console.log("⚡ Профиль отрисован из localStorage-кэша");
         } catch (e) {
             console.error("Ошибка парсинга кэша:", e);
@@ -770,16 +770,14 @@ function subscribeToOwnProfile(user) {
                 console.log(fromCache ? "♻️ Профиль из Firestore-кэша" : "🔄 Профиль обновлён с сервера");
                 currentUserData = freshData;
                 localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(currentUserData));
-                renderProfile(currentUserData, user.uid);          // → skeleton.profileCard()
+                renderProfile(currentUserData, user.uid);
                 renderSocialLinks(currentUserData.socialLinks || []);
-                renderStatus(currentUserData.status || "");        // → skeleton.statusCard()
-                renderInfo(currentUserData.info || {});            // → skeleton.infoCard()
-                loadYoutubeVideo(currentUserData.youtubeVideoId);  // → skeleton.youtubeBlock()
+                renderStatus(currentUserData.status || "");
+                renderInfo(currentUserData.info || {});
+                loadYoutubeVideo(currentUserData.youtubeVideoId);
             } else {
                 console.log(fromCache ? "✅ Профиль актуален (кэш)" : "✅ Профиль актуален (сервер подтвердил)");
                 currentUserData = freshData;
-                // Данные совпали с кэшем — скелетоны уже убраны выше, но на случай
-                // если кэша не было (первый вход), убираем принудительно
                 skeleton.all();
             }
 
@@ -790,12 +788,11 @@ function subscribeToOwnProfile(user) {
             if (!observer) {
                 initScrollListener();
                 loadUserPosts();
-                initQuestionsModule();
             }
         },
         (error) => {
             console.error("Ошибка слушателя профиля:", error);
-            skeleton.all(); // убираем скелетоны даже при ошибке
+            skeleton.all();
         }
     );
 }
@@ -913,7 +910,6 @@ function renderProfile(userData, ownerUID) {
         postsCount.textContent = (userData.postsCount || 0).toString();
     }
 
-    // Снимаем скелетон карточки профиля
     skeleton.profileCard();
 }
 
@@ -1085,7 +1081,6 @@ function loadUserPosts(isNextPage = false) {
             limit(POSTS_PER_PAGE)
         );
     } else {
-        // Первая загрузка — убираем skeleton-посты
         skeleton.postsList();
         postsList.innerHTML = "";
         lastVisible = null;
@@ -1130,7 +1125,7 @@ function loadUserPosts(isNextPage = false) {
             console.error("Ошибка слушателя постов:", error);
             isFetching = false;
             hideLoadingIndicator();
-            skeleton.postsList(); // убираем скелетоны даже при ошибке
+            skeleton.postsList();
         }
     );
 
